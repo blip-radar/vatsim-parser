@@ -1,0 +1,80 @@
+ASRFastKeys	1	\EDMM\ASR\iCAS2\EDDM_GND_GR.asr
+ASRFastKeys	2	\EDMM\ASR\iCAS2\EDDM_TWR_GR.asr
+ASRFastKeys	3	\EDMM\ASR\iCAS2\EDDM_APP.asr
+ASRFastKeys	4	\EDMM\ASR\iCAS2\EDDN_GND_GR.asr
+ASRFastKeys	5	\EDMM\ASR\iCAS2\EDDN_TWR_GR.asr
+ASRFastKeys	6	\EDMM\ASR\iCAS2\EDDN_APP.asr
+ASRFastKeys	7	\EDMM\ASR\iCAS2\EDMM_CTR.asr
+ASRFastKeys	8	\EDMM\ASR\TWR_REAL\EDDP_GND_REAL.asr
+ASRFastKeys	9	\EDMM\ASR\Minor_GR\EDDC_GND_GR.asr
+Plugins	Plugin0	\EDMM\Plugins\AfvEuroScopeBridge.dll
+Plugins	Plugin0Display0	Ground Radar display
+Plugins	Plugin0Display1	Standard ES radar screen
+Plugins	Plugin0Display3	ModeS Function Relay (no display)
+Plugins	Plugin1	\EDMM\Plugins\Topsky\iCAS2\TopSky.dll
+Plugins	Plugin1Display0	Standard ES radar screen
+Plugins	Plugin1Display1	Ground Radar display
+Plugins	Plugin2	\EDMM\Plugins\GRPlugin\iCAS2\GRplugin.dll
+Plugins	Plugin2Display0	Ground Radar display
+Plugins	Plugin3	\EDMM\Plugins\EsCenterLines.dll
+Plugins	Plugin3Display0	ES CenterLines
+Plugins	Plugin3Display1	Ground Radar display
+Plugins	Plugin3Display2	Standard ES radar screen
+Plugins	Plugin4	\EDMM\Plugins\DelHel\DelHel.dll
+Plugins	Plugin4Display0	ES CenterLines
+Plugins	Plugin4Display1	Ground Radar display
+Plugins	Plugin4Display3	Standard ES radar screen
+Plugins	Plugin5	\EDMM\Plugins\PushbackFlo\PushbackFlorian.dll
+Plugins	Plugin5Display0	Ground Radar display
+Plugins	Plugin5Display1	Standard ES radar screen
+Plugins	Plugin6	\EDMM\Plugins\CDM\CDM.dll
+Plugins	Plugin6Display0	Ground Radar display
+Plugins	Plugin6Display1	Standard ES radar screen
+Plugins	Plugin7	\EDMM\Plugins\Squawks\iCAS2\Squawks.dll
+Plugins	Plugin8	\EDMM\Plugins\VCH.dll
+Plugins	Plugin9	\EDMM\Plugins\CCAMS.dll
+Plugins	Plugin10	\EDMM\Plugins\IASsure\IASsure.dll
+RecentFiles	Recent1	\EDMM\ASR\iCAS2\EDMM_CTR.asr
+Settings	AselKey	5111808
+Settings	AtisFolder	\EDMM\ATIS\AtisFiles.txt
+Settings	FreqKey	3604480
+Settings	Settingsfile	\EDMM\Settings\iCAS2\General.txt
+Settings	SettingsfileADCS	\EDMM\Settings\iCAS2\General.txt
+Settings	SettingsfileARR	\EDMM\Settings\iCAS2\ArrivalList.txt
+Settings	SettingsfileCONFLICT	\EDMM\Settings\iCAS2\ConflictListConfiguration.txt
+Settings	SettingsfileDEP	\EDMM\Settings\iCAS2\DepartureList.txt
+Settings	SettingsfileFP	\EDMM\Settings\iCAS2\FPList.txt
+Settings	SettingsfileORIGPLANE	\EDMM\Settings\iCAS2\General.txt
+Settings	SettingsfilePILOTING	\EDMM\Settings\iCAS2\Piloting.txt
+Settings	SettingsfilePLUGINS	\EDMM\Settings\iCAS2\Plugins.txt
+Settings	SettingsfilePROFILE	\EDMM\Settings\iCAS2\Profiles.txt
+Settings	SettingsfileSCREEN	\EDMM\Settings\iCAS2\Screen.txt
+Settings	SettingsfileSEL	\EDMM\Settings\iCAS2\SectorExitList.txt
+Settings	SettingsfileSIL	\EDMM\Settings\iCAS2\SectorInboundList.txt
+Settings	SettingsfileSTUP	\EDMM\Settings\iCAS2\General.txt
+Settings	SettingsfileSYMBOLOGY	\EDMM\Settings\iCAS2\Symbology.txt
+Settings	SettingsfileTAGS	\EDMM\Settings\iCAS2\Tags.txt
+Settings	SettingsfileTAKEOFF	\EDMM\Settings\iCAS2\General.txt
+Settings	SettingsfileTAXIIN	\EDMM\Settings\iCAS2\General.txt
+Settings	SettingsfileTAXIOUT	\EDMM\Settings\iCAS2\General.txt
+Settings	SettingsfileVCCS	\EDMM\Settings\iCAS2\VCCS.txt
+Settings	SettingsfileVOICE	\EDMM\Settings\VoiceChannels.txt
+Settings	performance	\EDMM\Settings\AircraftPerformance.txt
+Settings	aircraft	\EDMM\ICAO\ICAO_Aircraft.txt
+Settings	airlines	\EDMM\ICAO\ICAO_Airlines.txt
+Settings	airportcoords	\EDMM\NavData\icao.txt
+Settings	airports	\EDMM\ICAO\ICAO_Airports.txt
+Settings	airways	\EDMM\NavData\airway.txt
+Settings	alias	\EDMM\Alias\alias.txt
+Settings	sector	\EDMM-AeroNav.sct
+Sounds	Sound18	\EDMM\Sounds\startup_silent.wav
+TeamSpeakVccs	Ts3DialogBottom	721
+TeamSpeakVccs	Ts3DialogLeft	119
+TeamSpeakVccs	Ts3DialogRight	1002
+TeamSpeakVccs	Ts3DialogTop	121
+TeamSpeakVccs	TsVccsMiniControlX	955
+TeamSpeakVccs	TsVccsMiniControlY	24
+LastSession	atis_url0	http://uniatis.net/atis.php?arr=$arrrwy($atisairportA)&dep=$deprwy($atisairportA)&apptype=ILS&info=$atiscodeA&metar=$metar($atisairportA)
+LastSession	atis_url1	http://uniatis.net/atis.php?arr=$arrrwy($atisairportB)&dep=$deprwy($atisairportB)&apptype=ILS&info=$atiscodeB&metar=$metar($atisairportB)
+LastSession	atis_url2	http://uniatis.net/atis.php?arr=$arrrwy($atisairportC)&dep=$deprwy($atisairportC)&apptype=ILS&info=$atiscodeC&metar=$metar($atisairportC)
+LastSession	atis_url3	http://uniatis.net/atis.php?arr=$arrrwy($atisairportD)&dep=$deprwy($atisairportD)&apptype=ILS&info=$atiscodeD&metar=$metar($atisairportD)

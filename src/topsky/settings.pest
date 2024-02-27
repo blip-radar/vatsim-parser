@@ -1,0 +1,17 @@
+settings = { SOI ~ NL? ~ setting+ ~ EOI}
+
+setting = _{
+  (color_setting | ignored_setting) ~ NL?
+}
+color_setting = {
+  "Color_" ~ name ~ ("=" ~ color_setting_rgb)?
+}
+color_setting_rgb = { number ~ "," ~ number ~ "," ~ number }
+ignored_setting = { (!NL ~ ANY)+ }
+
+name = @{ ("_" | ASCII_ALPHA | ASCII_DIGIT)+ }
+number = @{ ASCII_DIGIT+ }
+
+WHITESPACE = _{ (" " | "\t") }
+NL = _{ NEWLINE+ }
+COMMENT = _{ "//" ~ (!NL ~ ANY)* ~ NL }

@@ -1,0 +1,71 @@
+asr = { SOI ~ NL? ~ setting+ ~ EOI}
+
+setting = _{
+  (above
+  | below
+  | disable_panning
+  | disable_zooming
+  | display_rotation
+  | display_type
+  | display_type_geo_referenced
+  | display_type_need_radar_content
+  | history_dots
+  | leader
+  | plugin
+  | runways
+  | sector_file
+  | sector_title
+  | show_leader
+  | show_c
+  | show_standby
+  | simulation_mode
+  | tag_family
+  | turn_leader
+  | window_area)
+  ~ NL
+}
+
+above = { "ABOVE:" ~ INTEGER }
+below = { "BELOW:" ~ INTEGER }
+disable_panning = { "DISABLEPANNING:" ~ BOOL }
+disable_zooming = { "DISABLEZOOMING:" ~ BOOL }
+display_rotation = { "DisplayRotation:" ~ DECIMAL }
+display_type = { "DisplayTypeName:" ~ value }
+display_type_geo_referenced = { "DisplayTypeGeoReferenced:" ~ BOOL }
+display_type_need_radar_content = { "DisplayTypeNeedRadarContent:" ~ BOOL }
+history_dots = { "HISTORY_DOTS:" ~ INTEGER }
+leader = { "LEADER:" ~ INTEGER }
+sector_file = { "SECTORFILE:" ~ value }
+sector_title = { "SECTORTITLE:" ~ value }
+show_leader = { "SHOWLEADER:" ~ BOOL }
+show_c = { "SHOWC:" ~ BOOL }
+show_standby = { "SHOWSB:" ~ BOOL }
+simulation_mode = { "SIMULATION_MODE:" ~ INTEGER }
+tag_family = { "TAGFAMILY:" ~ value }
+turn_leader = { "TURNLEADER:" ~ BOOL }
+window_area = { "WINDOWAREA:" ~ coordinate ~ ":" ~ coordinate }
+
+plugin = { "PLUGIN:" ~ multivalue ~ ":" ~ multivalue ~ ":" ~ value }
+runways = { "Runways:" ~ multivalue ~ ":" ~ value }
+
+// EDGG has invalid WPT with spaces
+broken = @{ !("[") ~ (!NL ~ ANY)* }
+
+coordinate = _{ coord_part ~ ":" ~ coord_part }
+coord_part = { DECIMAL | sct_coord_part }
+sct_coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
+
+value = @{ (!NL ~ ANY)* }
+multivalue = @{ (!(NL|":") ~ ANY)* }
+
+deg = @{ ASCII_DIGIT+ }
+min = @{ ASCII_DIGIT+ }
+sec = @{ DECIMAL }
+hemi = @{ "N" | "S" | "W" | "E" }
+
+INTEGER = @{ "-"? ~ ASCII_DIGIT+ }
+DECIMAL = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+BOOL = { "0" | "1" }
+
+NL = _{ NEWLINE+ }
+COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* ~ NL }

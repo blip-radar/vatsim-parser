@@ -1,0 +1,12 @@
+prf = { SOI ~ NL? ~ setting+ ~ EOI}
+
+setting = {
+  category ~ key ~ value ~ NL?
+}
+
+category = @{ LETTER+ }
+key = @{ (LETTER | ASCII_DIGIT | "_")+ }
+value = @{ (!"\n" ~ ANY)+ }
+
+NL = _{ NEWLINE+ }
+WHITESPACE = _{ " "| "\t" }

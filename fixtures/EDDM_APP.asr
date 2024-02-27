@@ -1,0 +1,25 @@
+DisplayTypeName:Standard ES radar screen
+DisplayTypeNeedRadarContent:1
+DisplayTypeGeoReferenced:1
+SECTORFILE:
+SECTORTITLE:
+Runways:EDDM 08L-26R:centerline
+Runways:EDDM 08R-26L:centerline
+Runways:EDMA 07-25:centerline
+Runways:EDMO 04-22:centerline
+SHOWC:1
+SHOWSB:0
+BELOW:0
+ABOVE:0
+LEADER:3
+SHOWLEADER:0
+TURNLEADER:0
+HISTORY_DOTS:0
+SIMULATION_MODE:1
+DISABLEPANNING:0
+DISABLEZOOMING:0
+DisplayRotation:0.00000
+TAGFAMILY:iCAS2-APP
+WINDOWAREA:47.687116:9.936633:49.020449:13.635539
+PLUGIN:EsCenterLines:Active:2
+PLUGIN:TopSky plugin:ShowMapData:APP,EDDM_APP
