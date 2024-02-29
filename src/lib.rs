@@ -59,7 +59,7 @@ impl Color {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TwoKeyMap<K1: Eq + Hash, K2: Eq + Hash, V>(HashMap<(K1, K2), V>);
+pub struct TwoKeyMap<K1: Eq + Hash, K2: Eq + Hash, V>(pub HashMap<(K1, K2), V>);
 
 impl<K1, K2, V> Serialize for TwoKeyMap<K1, K2, V>
 where
