@@ -1,4 +1,4 @@
-symbols = { SOI ~ symbol+ ~ EOI}
+symbols = { SOI ~ NL? ~ symbol+ ~ EOI}
 maps = { SOI ~ (map | symboldef | colordef | override_sct)+ ~ EOI }
 
 symbol = {

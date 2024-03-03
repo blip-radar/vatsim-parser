@@ -16,7 +16,7 @@ use thiserror::Error;
 
 use self::map::{parse_color, parse_map, parse_override, ColorDef, Map, OverrideSct};
 use self::settings::parse_topsky_settings;
-use self::symbol::{parse_symbol, SymbolDef};
+use self::symbol::{parse_symbol, parse_topsky_symbols, SymbolDef};
 
 use super::read_to_string;
 
@@ -220,21 +220,6 @@ fn parse_point(pair: Pair<Rule>) -> (f64, f64) {
     (x, y)
 }
 
-fn parse_topsky_symbols(path: PathBuf) -> Result<HashMap<String, SymbolDef>, TopskyError> {
-    let file_contents = read_to_string(&fs::read(path)?)?;
-    let symbols = TopskyParser::parse(Rule::symbols, &file_contents).map(|mut pairs| {
-        pairs
-            .next()
-            .unwrap()
-            .into_inner()
-            .filter_map(parse_symbol)
-            .map(|symbol| (symbol.name.clone(), symbol))
-            .collect::<HashMap<_, _>>()
-    })?;
-
-    Ok(symbols)
-}
-
 #[derive(Debug)]
 pub enum MapDefinition {
     Map(Map),
@@ -299,7 +284,7 @@ pub type TopskyResult = Result<Topsky, TopskyError>;
 impl Topsky {
     pub fn parse(path: PathBuf) -> TopskyResult {
         let mut colors = parse_topsky_settings(path.join("TopSkySettings.txt"))?;
-        let mut symbols = parse_topsky_symbols(path.join("TopSkySymbols.txt"))?;
+        let mut symbols = parse_topsky_symbols(&fs::read(path.join("TopSkySymbols.txt"))?)?;
         let (maps, mapsymbols, mapcolors, overrides) =
             parse_topsky_maps(path.join("TopSkyMaps.txt"))?;
         symbols.extend(mapsymbols);
