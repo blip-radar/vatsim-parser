@@ -346,7 +346,7 @@ pub enum MapRule {
     ScreenSpecific,
     Layer(i32),
     Symbol(MapSymbol),
-    Zoom(i32),
+    Zoom(f32),
     FontSize(FontSize),
     LineStyle(LineStyle),
     Line(MapLine),

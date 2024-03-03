@@ -57,7 +57,7 @@ mapsymbollabel = { name ~ ":" ~ point }
 fontsize = { "FONTSIZE:" ~ (font_symbol ~ ":" ~ number | "0")}
 font_symbol = { "=" | "+" | "-" | "*" }
 
-zoom = { "ZOOM:" ~ number }
+zoom = { "ZOOM:" ~ decimal }
 
 style = { "STYLE:" ~ name ~ (":" ~ number)? }
 
@@ -67,7 +67,7 @@ maplinewpts = { name ~ ":" ~ name }
 
 text = { "TEXT" ~ ("/" ~ textalign)? ~ ":" ~ (coordinate | name) ~ ":" ~ text_content }
 text_content = { (!NL ~ ANY)+ }
-textalign = { horizontalalign ~ verticalalign }
+textalign = { horizontalalign ~ verticalalign? }
 horizontalalign = { "L" | "C" | "R" }
 verticalalign = { "T" | "C" | "B" }
 
@@ -85,16 +85,16 @@ symbolrule = _{ (moveto | line | fillarc | arc | polygon | pixel) ~ NL? }
 moveto = { "MOVETO:" ~ point }
 line = { "LINETO:" ~ point }
 fillarc = {
-  "FILLARC:" ~ point ~ ":" ~ number ~ ":" ~ number ~ ":" ~ number
+  "FILLARC:" ~ point ~ ":" ~ decimal ~ ":" ~ number ~ ":" ~ number
 }
 arc = {
-  "ARC:" ~ point ~ ":" ~ number ~ ":" ~ number ~ ":" ~ number
+  "ARC:" ~ point ~ ":" ~ decimal ~ ":" ~ number ~ ":" ~ number
 }
 polygon = { "POLYGON" ~ (":" ~ point)+ }
 pixel = { "SETPIXEL:" ~ point }
 
 
-name = @{ (ASCII_ALPHA | ASCII_DIGIT | "_" | "-" | " " | "/" | "." | "(" | ")")+ }
+name = @{ (ASCII_ALPHA | ASCII_DIGIT | "_" | "-" | " " | "/" | "," | "." | "(" | ")" | "&")+ }
 names = { name ~ ("," ~ name)* }
 wildcard = { "*" }
 
@@ -113,9 +113,9 @@ hm = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 runway = { icao ~ rwy_designator }
 icao = { ASCII_ALPHA_UPPER{4} }
 rwy_designator = { ASCII_DIGIT{2} ~ ("L" | "C" | "R")? }
-point = { number ~ ":" ~ number }
+point = { decimal ~ ":" ~ decimal }
 number = @{ "-"? ~ ("0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)) }
-decimal = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+decimal = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 
 NL = _{ ((" " | "\t")* ~ NEWLINE)+ }
 COMMENT = _{ "//" ~ (!NL ~ ANY)* ~ NL }

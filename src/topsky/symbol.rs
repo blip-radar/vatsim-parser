@@ -16,10 +16,10 @@ pub enum SymbolRule {
     Move((f64, f64)),
     Line((f64, f64)),
     Pixel((f64, f64)),
-    Arc((f64, f64), i64, i64, i64),
-    EllipticArc((f64, f64), i64, i64, i64, i64),
-    FilledArc((f64, f64), i64, i64, i64),
-    FilledEllipticArc((f64, f64), i64, i64, i64, i64),
+    Arc((f64, f64), f64, i64, i64),
+    EllipticArc((f64, f64), f64, f64, i64, i64),
+    FilledArc((f64, f64), f64, i64, i64),
+    FilledEllipticArc((f64, f64), f64, f64, i64, i64),
     Polygon(Vec<(f64, f64)>),
 }
 
@@ -107,7 +107,7 @@ mod test {
     fn test_symbols() {
         let symbols_str = br#"
 SYMBOL:AIRPORT
-MOVETO:-3:-3
+MOVETO:-3.2:-3
 LINETO:3:-3
 LINETO:3:3
 LINETO:-3:3
@@ -136,7 +136,7 @@ ARC:0:0:8:0:0"#;
             &SymbolDef {
                 name: "AIRPORT".to_string(),
                 rules: vec![
-                    SymbolRule::Move((-3.0, -3.0)),
+                    SymbolRule::Move((-3.2, -3.0)),
                     SymbolRule::Line((3.0, -3.0)),
                     SymbolRule::Line((3.0, 3.0)),
                     SymbolRule::Line((-3.0, 3.0)),
@@ -155,9 +155,9 @@ ARC:0:0:8:0:0"#;
                 name: "NDB".to_string(),
                 rules: vec![
                     SymbolRule::Pixel((0.0, 0.0)),
-                    SymbolRule::Arc((0.0, 0.0), 1, 0, 0),
-                    SymbolRule::Arc((0.0, 0.0), 3, 0, 0),
-                    SymbolRule::Arc((0.0, 0.0), 5, 0, 0),
+                    SymbolRule::Arc((0.0, 0.0), 1.0, 0, 0),
+                    SymbolRule::Arc((0.0, 0.0), 3.0, 0, 0),
+                    SymbolRule::Arc((0.0, 0.0), 5.0, 0, 0),
                 ]
             }
         );
@@ -166,7 +166,7 @@ ARC:0:0:8:0:0"#;
             symbols.get("HISTORY").unwrap(),
             &SymbolDef {
                 name: "HISTORY".to_string(),
-                rules: vec![SymbolRule::FilledArc((0.0, 0.0), 1, 0, 0),]
+                rules: vec![SymbolRule::FilledArc((0.0, 0.0), 1.0, 0, 0),]
             }
         );
 
@@ -176,7 +176,7 @@ ARC:0:0:8:0:0"#;
                 name: "NODAPS_DIV".to_string(),
                 rules: vec![
                     SymbolRule::Polygon(vec![(-4.0, 0.0), (0.0, -4.0), (4.0, 0.0), (0.0, 4.0)]),
-                    SymbolRule::Arc((0.0, 0.0), 8, 0, 0),
+                    SymbolRule::Arc((0.0, 0.0), 8.0, 0, 0),
                 ]
             }
         );
