@@ -51,7 +51,7 @@ active_sched = { (ymd | md) ~ ":" ~ (ymd | md) ~ ":" ~ ASCII_DIGIT+ ~ ":" ~ hm ~
 
 layer = { "LAYER:" ~ number }
 
-mapsymbol = { "SYMBOL:" ~ name ~ ":" ~ (coordinate | name) ~ (":" ~ mapsymbollabel)? }
+mapsymbol = { "SYMBOL" ~ ("/" ~ textalign)? ~ ":" ~ name ~ ":" ~ (coordinate | name) ~ (":" ~ mapsymbollabel)? }
 mapsymbollabel = { name ~ ":" ~ point }
 
 fontsize = { "FONTSIZE:" ~ (font_symbol ~ ":" ~ number | "0")}

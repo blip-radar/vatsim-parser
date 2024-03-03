@@ -178,11 +178,19 @@ pub struct MapSymbol {
     pub name: String,
     pub location: Location,
     pub label: Option<Label>,
+    pub label_alignment: Option<Alignment>,
 }
 impl MapSymbol {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut symbol = pair.into_inner();
-        let name = symbol.next().unwrap().as_str().to_string();
+        let label_alignment_or_name = symbol.next().unwrap();
+        let (label_alignment, name) =
+            if matches!(label_alignment_or_name.as_rule(), Rule::textalign) {
+                // FIXME parse alignment
+                (None, symbol.next().unwrap().as_str().to_string())
+            } else {
+                (None, label_alignment_or_name.as_str().to_string())
+            };
         let location = Location::parse(symbol.next().unwrap());
         let label = symbol.next().map(|label_pair| {
             let mut label_pairs = label_pair.into_inner();
@@ -195,6 +203,7 @@ impl MapSymbol {
             name,
             location,
             label,
+            label_alignment,
         }
     }
 }
