@@ -43,7 +43,9 @@ impl ActiveRunwaysType {
 #[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
 pub struct ActiveRunways {
     pub arrival: ActiveRunwaysType,
+    pub arrival_excludes: ActiveRunwaysType,
     pub departure: ActiveRunwaysType,
+    pub departure_excludes: ActiveRunwaysType,
 }
 
 impl ActiveRunways {
@@ -51,7 +53,26 @@ impl ActiveRunways {
         let mut active = pair.into_inner();
         let arrival = ActiveRunwaysType::parse(active.next().unwrap());
         let departure = ActiveRunwaysType::parse(active.next().unwrap());
-        Self { arrival, departure }
+        Self {
+            arrival,
+            arrival_excludes: ActiveRunwaysType::Wildcard,
+            departure,
+            departure_excludes: ActiveRunwaysType::Wildcard,
+        }
+    }
+
+    fn parse_with_excludes(pair: Pair<Rule>) -> Self {
+        let mut active = pair.into_inner();
+        let arrival = ActiveRunwaysType::parse(active.next().unwrap());
+        let arrival_excludes = ActiveRunwaysType::parse(active.next().unwrap());
+        let departure = ActiveRunwaysType::parse(active.next().unwrap());
+        let departure_excludes = ActiveRunwaysType::parse(active.next().unwrap());
+        Self {
+            arrival,
+            arrival_excludes,
+            departure,
+            departure_excludes,
+        }
     }
 }
 
@@ -72,6 +93,9 @@ impl Active {
             Rule::active_id => Self::Id,          // TODO
             Rule::active_sched => Self::Schedule, // TODO
             Rule::active_rwy => Self::Runway(ActiveRunways::parse(active)),
+            Rule::active_rwy_with_excludes => {
+                Self::Runway(ActiveRunways::parse_with_excludes(active))
+            }
             rule => {
                 eprintln!("{rule:?}");
                 unreachable!()

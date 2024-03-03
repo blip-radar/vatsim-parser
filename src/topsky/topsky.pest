@@ -33,7 +33,7 @@ color = { "COLOR:" ~ name }
 
 asrdata = { "ASRDATA:" ~ (wildcard | (name ~ ("," ~ name)*)) }
 
-active = { "ACTIVE:" ~ (active_sched | active_id | active_rwy | active_always ) }
+active = { "ACTIVE:" ~ (active_sched | active_id | active_rwy_with_excludes | active_rwy | active_always ) }
 active_always = { "1" }
 active_id = {
   "ID:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":"
@@ -41,6 +41,10 @@ active_id = {
 }
 active_rwy = {
   "RWY:ARR:" ~ (wildcard | runways) ~ ":DEP:" ~ (wildcard | runways)
+}
+active_rwy_with_excludes = {
+  "RWY:ARR:" ~ (wildcard | runways) ~ ":" ~ (wildcard | runways)
+  ~ ":DEP:" ~ (wildcard | runways) ~ ":" ~ (wildcard | runways)
 }
 runways = { runway ~ ("," ~ runway)* }
 active_sched = { (ymd | md) ~ ":" ~ (ymd | md) ~ ":" ~ ASCII_DIGIT+ ~ ":" ~ hm ~ ":" ~ hm }
