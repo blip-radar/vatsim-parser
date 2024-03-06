@@ -258,22 +258,22 @@ impl Text {
 
 #[derive(Clone, Debug, Reflect, Serialize)]
 pub enum FontSize {
-    Exact(i32),
-    Add(i32),
-    Subtract(i32),
-    Multiply(i32),
+    Exact(f64),
+    Add(f64),
+    Subtract(f64),
+    Multiply(f64),
     Default,
 }
 
 impl FontSize {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut fontsize = pair.into_inner();
-        if fontsize.as_str() == "0" {
+        let default_or_modifier = fontsize.next().unwrap();
+        if matches!(default_or_modifier.as_rule(), Rule::fontsize_default) {
             Self::Default
         } else {
-            let modifier = fontsize.next().unwrap().as_str();
             let size = fontsize.next().unwrap().as_str().parse().unwrap();
-            match modifier {
+            match default_or_modifier.as_str() {
                 "=" => Self::Exact(size),
                 "+" => Self::Add(size),
                 "-" => Self::Subtract(size),
@@ -343,6 +343,7 @@ pub enum MapRule {
     Color(String),
     AsrData,
     Active(Active),
+    Global,
     ScreenSpecific,
     Layer(i32),
     Symbol(MapSymbol),
@@ -379,10 +380,13 @@ impl MapRule {
                     Rule::mapline => Some(MapRule::Line(MapLine::parse(pair))),
                     Rule::text => Some(MapRule::Text(Text::parse(pair))),
                     Rule::screen_specific => Some(MapRule::ScreenSpecific),
+                    Rule::global => Some(MapRule::Global),
+                    // TODO
                     Rule::circle => None,
                     Rule::coordline => None,
                     Rule::coord => None,
                     Rule::coordpoly => None,
+                    Rule::fontstyle => None,
                     _ => {
                         eprintln!("unhandled {ruletype:?}");
                         unreachable!()

@@ -47,6 +47,16 @@ fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
                     SymbolRule::Arc(pos, radius, start_angle, end_angle)
                 }
+                Rule::arc_ellipse => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let start_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    let end_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    SymbolRule::EllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                }
                 Rule::fillarc => {
                     let pos = parse_point(symbolrule.next().unwrap());
                     let radius = symbolrule.next().unwrap().as_str().parse().unwrap();
@@ -55,6 +65,27 @@ fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
                     let end_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
                     SymbolRule::FilledArc(pos, radius, start_angle, end_angle)
+                }
+                Rule::fillarc_ellipse => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let start_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    let end_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    SymbolRule::FilledEllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                }
+                Rule::ellipse_circle => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    SymbolRule::FilledArc(pos, radius, 0, 0)
+                }
+                Rule::ellipse => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    SymbolRule::FilledEllipticArc(pos, radius_x, radius_y, 0, 0)
                 }
                 Rule::polygon => SymbolRule::Polygon(symbolrule.map(parse_point).collect()),
                 _ => {
@@ -126,6 +157,10 @@ ARC:0:0:5:0:360
 SYMBOL:HISTORY
 FILLARC:0:0:1:0:360
 
+SYMBOL:APPFix
+ARC:0:0:2:6:0:360
+ARC:0:0:6:2:0:360
+
 SYMBOL:NODAPS_DIV
 POLYGON:-4:0:0:-4:4:0:0:4
 ARC:0:0:8:0:0"#;
@@ -167,6 +202,17 @@ ARC:0:0:8:0:0"#;
             &SymbolDef {
                 name: "HISTORY".to_string(),
                 rules: vec![SymbolRule::FilledArc((0.0, 0.0), 1.0, 0, 0),]
+            }
+        );
+
+        assert_eq!(
+            symbols.get("APPFix").unwrap(),
+            &SymbolDef {
+                name: "APPFix".to_string(),
+                rules: vec![
+                    SymbolRule::EllipticArc((0.0, 0.0), 2.0, 6.0, 0, 0),
+                    SymbolRule::EllipticArc((0.0, 0.0), 6.0, 2.0, 0, 0),
+                ]
             }
         );
 
