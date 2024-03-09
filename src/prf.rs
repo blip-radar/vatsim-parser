@@ -68,6 +68,12 @@ impl Prf {
             .map(|path| self.path.parent().unwrap().join(path))
     }
 
+    pub fn recent_path(&self, num: u8) -> PathBuf {
+        let recent_path =
+            from_prf_path(&self.settings.0[&("RecentFiles".to_string(), format!("Recent{num}"))]);
+        self.path.parent().unwrap().join(recent_path)
+    }
+
     pub fn parse(path: &Path, contents: &[u8]) -> PrfResult {
         let file_contents = read_to_string(contents)?;
         let settings = PrfParser::parse(Rule::prf, &file_contents).map(|mut pairs| {
@@ -107,7 +113,7 @@ mod test {
     use super::Prf;
 
     #[test]
-    fn test() {
+    fn test_basic_paths() {
         let prf_path = PathBuf::from("./fixtures/iCAS2.prf");
         let prf_contents = fs::read(&prf_path).unwrap();
         let prf = Prf::parse(&prf_path, &prf_contents).unwrap();
@@ -134,6 +140,21 @@ mod test {
                 .canonicalize()
                 .unwrap()
                 .join("./fixtures/EDMM-AeroNav.sct")
+        );
+    }
+
+    #[test]
+    fn test_recent_path() {
+        let prf_path = PathBuf::from("./fixtures/iCAS2.prf");
+        let prf_contents = fs::read(&prf_path).unwrap();
+        let prf = Prf::parse(&prf_path, &prf_contents).unwrap();
+
+        assert_eq!(
+            prf.recent_path(1),
+            PathBuf::from(".")
+                .canonicalize()
+                .unwrap()
+                .join("./fixtures/EDMM/ASR/iCAS2/EDMM_CTR.asr")
         );
     }
 }
