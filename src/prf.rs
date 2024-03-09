@@ -68,10 +68,11 @@ impl Prf {
             .map(|path| self.path.parent().unwrap().join(path))
     }
 
-    pub fn recent_path(&self, num: u8) -> PathBuf {
-        let recent_path =
-            from_prf_path(&self.settings.0[&("RecentFiles".to_string(), format!("Recent{num}"))]);
-        self.path.parent().unwrap().join(recent_path)
+    pub fn recent_path(&self, num: u8) -> Option<PathBuf> {
+        self.settings
+            .0
+            .get(&("RecentFiles".to_string(), format!("Recent{num}")))
+            .map(|recent_path| self.path.parent().unwrap().join(from_prf_path(recent_path)))
     }
 
     pub fn parse(path: &Path, contents: &[u8]) -> PrfResult {
@@ -151,10 +152,13 @@ mod test {
 
         assert_eq!(
             prf.recent_path(1),
-            PathBuf::from(".")
-                .canonicalize()
-                .unwrap()
-                .join("./fixtures/EDMM/ASR/iCAS2/EDMM_CTR.asr")
+            Some(
+                PathBuf::from(".")
+                    .canonicalize()
+                    .unwrap()
+                    .join("./fixtures/EDMM/ASR/iCAS2/EDMM_CTR.asr")
+            )
         );
+        assert_eq!(prf.recent_path(2), None);
     }
 }
