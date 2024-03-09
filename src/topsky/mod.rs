@@ -205,7 +205,7 @@ pub static DEFAULT_COLORS: ColorMap = phf_map! {
     "WM_Frame" => (Some((1,1,0)), Some((88,95,99))),
 };
 
-#[derive(Debug, Reflect, Serialize)]
+#[derive(Debug, Clone, Reflect, Serialize)]
 pub struct Topsky {
     pub symbols: HashMap<String, SymbolDef>,
     pub maps: HashMap<String, Map>,
