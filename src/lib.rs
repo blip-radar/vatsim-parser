@@ -4,6 +4,7 @@ use bevy_reflect::Reflect;
 use serde::{Serialize, Serializer};
 
 pub mod asr;
+pub mod ese;
 pub mod prf;
 pub mod sct;
 pub mod symbology;

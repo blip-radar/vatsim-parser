@@ -1,0 +1,45 @@
+ese = { SOI ~ NL? ~ section+ ~ EOI}
+
+section = _{
+  position_section
+  | unparsed_section
+}
+
+line = _{ broken ~ NL }
+
+section_header = _{ "[" ~ header_name ~ "]" }
+
+position_section = { "[POSITIONS]" ~ NL ~ (position ~ NL)* }
+unparsed_section = { (section_header ~ NL ~ line*) }
+
+position = {
+  text ~ ":" ~ text ~ ":" ~ frequency ~ ":" ~ text ~ ":" ~ text ~ ":" ~ text ~ ":"
+  ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ INTEGER ~ ":" ~ INTEGER
+  ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)?
+}
+
+broken = @{ !("[") ~ (!NL ~ ANY)* }
+
+coordinate = { coord_part ~ ":" ~ coord_part }
+frequency = @{ DECIMAL }
+
+coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
+
+fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | ".")+ }
+designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
+pos_designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "_" | "-")+ }
+text = @{ (!":" ~ ANY)* }
+
+header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }
+
+deg = @{ ASCII_DIGIT+ }
+min = @{ ASCII_DIGIT+ }
+sec = @{ DECIMAL }
+hemi = @{ "N" | "S" | "W" | "E" }
+
+DECIMAL = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+INTEGER = @{ ASCII_DIGIT+ }
+
+NL = _{ NEWLINE+ }
+COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* ~ NL }
+WHITESPACE = _{ " " | "\t" }
