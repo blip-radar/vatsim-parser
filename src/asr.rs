@@ -41,8 +41,8 @@ pub enum DisplayType {
 }
 
 enum AsrData {
-    Above(Option<u8>),
-    Below(Option<u8>),
+    Above(Option<u16>),
+    Below(Option<u16>),
     DisablePanning(bool),
     DisableZooming(bool),
     DisplayRotation(f64),
@@ -67,9 +67,9 @@ enum AsrData {
 #[derive(Clone, Debug, Serialize)]
 pub struct Asr {
     // ABOVE – xxxxx. The value if you choose not to display aircraft above xxxxx feet altitude (your ceiling level). Zero indicates no filter at all.
-    pub above: Option<u8>,
+    pub above: Option<u16>,
     // BELOW – xxxxx. The value if you choose not to display aircraft below xxxxx feet altitude (your floor level). Zero indicates no filter at all.
-    pub below: Option<u8>,
+    pub below: Option<u16>,
     /// DISABLEPANNING
     pub disable_panning: bool,
     /// DISABLEZOOOMING
