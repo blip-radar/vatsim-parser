@@ -1,10 +1,19 @@
+use std::collections::HashMap;
+
 use bevy_reflect::Reflect;
-use pest::iterators::{Pair, Pairs};
+use pest::{
+    iterators::{Pair, Pairs},
+    Parser,
+};
 use serde::Serialize;
 
-use crate::{Color, Coordinate, DegMinSec};
+use crate::{read_to_string, Color, Coordinate, DegMinSec};
 
-use super::{parse_point, Rule};
+use super::{
+    parse_point,
+    symbol::{parse_symbol, SymbolDef},
+    Rule, TopskyError, TopskyParser,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Reflect, Serialize)]
 pub struct Runway {
@@ -20,7 +29,53 @@ impl Runway {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
+pub enum ActiveIdType {
+    Wildcard,
+    Defined(Vec<String>),
+}
+impl ActiveIdType {
+    fn parse(pair: Pair<Rule>) -> Self {
+        match pair.as_rule() {
+            Rule::wildcard => Self::Wildcard,
+            Rule::names => Self::Defined(
+                pair.into_inner()
+                    .map(|pair| pair.as_str().to_string())
+                    .collect(),
+            ),
+            rule => {
+                eprintln!("{rule:?}");
+                unreachable!()
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
+pub struct ActiveIds {
+    pub own: ActiveIdType,
+    pub own_excludes: ActiveIdType,
+    pub online: ActiveIdType,
+    pub online_excludes: ActiveIdType,
+}
+
+impl ActiveIds {
+    fn parse(pair: Pair<Rule>) -> Self {
+        let mut active = pair.into_inner();
+        let own = ActiveIdType::parse(active.next().unwrap());
+        let own_excludes = ActiveIdType::parse(active.next().unwrap());
+        let online = ActiveIdType::parse(active.next().unwrap());
+        let online_excludes = ActiveIdType::parse(active.next().unwrap());
+        Self {
+            own,
+            own_excludes,
+            online,
+            online_excludes,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
 pub enum ActiveRunwaysType {
     Wildcard,
     Active(Vec<Runway>),
@@ -40,7 +95,7 @@ impl ActiveRunwaysType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
 pub struct ActiveRunways {
     pub arrival: ActiveRunwaysType,
     pub arrival_excludes: ActiveRunwaysType,
@@ -76,12 +131,11 @@ impl ActiveRunways {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
 pub enum Active {
     True,
-    False,
     Schedule,
-    Id,
+    Id(ActiveIds),
     Runway(ActiveRunways),
 }
 
@@ -90,8 +144,8 @@ impl Active {
         let active = pair.into_inner().next().unwrap();
         match active.as_rule() {
             Rule::active_always => Self::True,
-            Rule::active_id => Self::Id,          // TODO
-            Rule::active_sched => Self::Schedule, // TODO
+            Rule::active_id => Self::Id(ActiveIds::parse(active)), // TODO
+            Rule::active_sched => Self::Schedule,                  // TODO
             Rule::active_rwy => Self::Runway(ActiveRunways::parse(active)),
             Rule::active_rwy_with_excludes => {
                 Self::Runway(ActiveRunways::parse_with_excludes(active))
@@ -152,7 +206,7 @@ impl Coordinate {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub enum Location {
     Fix(String),
     Coordinate(Coordinate),
@@ -167,13 +221,13 @@ impl Location {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub struct Label {
     pub text: String,
     pub pos: (f64, f64),
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub struct MapSymbol {
     pub name: String,
     pub location: Location,
@@ -208,27 +262,27 @@ impl MapSymbol {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
 pub enum HorizontalAlignment {
     Left,
     Center,
     Right,
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
 pub enum VerticalAlignment {
     Top,
     Center,
     Bottom,
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
 pub struct Alignment {
     pub horizontal: HorizontalAlignment,
     pub vertical: VerticalAlignment,
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub struct Text {
     pub location: Location,
     pub content: String,
@@ -256,7 +310,7 @@ impl Text {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub enum FontSize {
     Exact(f64),
     Add(f64),
@@ -284,7 +338,7 @@ impl FontSize {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
 pub enum LineStyleType {
     Solid,
     Alternate,
@@ -294,7 +348,7 @@ pub enum LineStyleType {
     DashDotDot,
     Custom(String),
 }
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
 pub struct LineStyle {
     pub width: i32,
     pub style: LineStyleType,
@@ -321,7 +375,7 @@ impl LineStyle {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub struct MapLine {
     pub start: Location,
     pub end: Location,
@@ -337,7 +391,7 @@ impl MapLine {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub enum MapRule {
     Folder(String),
     Color(String),
@@ -403,7 +457,6 @@ pub struct Map {
     pub folder: String,
     pub color: String,
     pub rules: Vec<MapRule>,
-    pub active: Active,
 }
 
 #[derive(Clone, Debug, Reflect, Serialize)]
@@ -441,21 +494,10 @@ pub(super) fn parse_map(pair: Pair<Rule>) -> Option<Map> {
                     None
                 }
             });
-            let active = rules
-                .iter()
-                .find_map(|rule| {
-                    if let MapRule::Active(active) = rule {
-                        Some(active.clone())
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or(Active::False);
             if maybe_color.is_none() {
                 eprintln!("map {name} doesn't include color");
             }
             maybe_color.map(|color| Map {
-                active,
                 name,
                 folder,
                 color,
@@ -510,5 +552,149 @@ pub(super) fn parse_override(pair: Pair<Rule>) -> Option<OverrideSct> {
             eprintln!("{rule:?}");
             unreachable!()
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum MapDefinition {
+    Map(Map),
+    Color(ColorDef),
+    Symbol(SymbolDef),
+    Override(OverrideSct),
+}
+pub(super) fn parse_topsky_maps(
+    file_contents: &[u8],
+) -> Result<
+    (
+        HashMap<String, Map>,
+        HashMap<String, SymbolDef>,
+        HashMap<String, ColorDef>,
+        Vec<OverrideSct>,
+    ),
+    TopskyError,
+> {
+    TopskyParser::parse(Rule::maps, &read_to_string(file_contents)?)
+        .map(|mut pairs| {
+            pairs
+                .next()
+                .unwrap()
+                .into_inner()
+                .filter_map(|pair| match pair.as_rule() {
+                    Rule::map => parse_map(pair).map(MapDefinition::Map),
+                    Rule::colordef => parse_color(pair).map(MapDefinition::Color),
+                    Rule::symboldef => parse_symbol(pair).map(MapDefinition::Symbol),
+                    Rule::override_sct => parse_override(pair).map(MapDefinition::Override),
+                    Rule::EOI => None,
+                    _ => {
+                        eprintln!("{:?}", pair.as_rule());
+                        unreachable!()
+                    }
+                })
+                .fold(
+                    (HashMap::new(), HashMap::new(), HashMap::new(), vec![]),
+                    |(mut maps, mut symbols, mut colors, mut overrides), def| {
+                        match def {
+                            MapDefinition::Map(map) => {
+                                maps.insert(map.name.clone(), map);
+                            }
+                            MapDefinition::Color(color) => {
+                                colors.insert(color.name.clone(), color);
+                            }
+                            MapDefinition::Symbol(symbol) => {
+                                symbols.insert(symbol.name.clone(), symbol);
+                            }
+                            MapDefinition::Override(override_sct) => {
+                                overrides.push(override_sct);
+                            }
+                        };
+                        (maps, symbols, colors, overrides)
+                    },
+                )
+        })
+        .map_err(|e| e.into())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::topsky::map::{
+        parse_topsky_maps, Active, ActiveIdType, ActiveIds, ActiveRunways, ActiveRunwaysType,
+        MapRule, Runway,
+    };
+
+    #[test]
+    fn test_active() {
+        let symbols_str = br#"
+MAP:SYMBOLS
+FOLDER:FIXES
+COLOR:Active_Map_Type_20
+ACTIVE:1
+
+MAP:AOR ALTMUEHL
+FOLDER:SECTORLINES
+COLOR:Active_Map_Type_20
+ASRDATA:CTR,EDDM_APP
+STYLE:Dot:1
+LAYER:-2
+ACTIVE:ID:*:*:IGL:*
+ACTIVE:ID:IGL:*:*:*
+
+MAP:EDMO_RNP22
+ASRDATA:APP,CTR
+ZOOM:9
+COLOR:Active_Map_Type_20
+ACTIVE:RWY:ARR:EDMO22:DEP:*
+"#;
+        let (mut maps, ..) = parse_topsky_maps(symbols_str).unwrap();
+
+        assert_eq!(
+            maps.remove("SYMBOLS")
+                .unwrap()
+                .rules
+                .into_iter()
+                .filter(|rule| matches!(rule, MapRule::Active(_)))
+                .collect::<Vec<_>>(),
+            vec![MapRule::Active(Active::True)]
+        );
+
+        assert_eq!(
+            maps.remove("AOR ALTMUEHL")
+                .unwrap()
+                .rules
+                .into_iter()
+                .filter(|rule| matches!(rule, MapRule::Active(_)))
+                .collect::<Vec<_>>(),
+            vec![
+                MapRule::Active(Active::Id(ActiveIds {
+                    own: ActiveIdType::Wildcard,
+                    own_excludes: ActiveIdType::Wildcard,
+                    online: ActiveIdType::Defined(vec!["IGL".to_string()]),
+                    online_excludes: ActiveIdType::Wildcard
+                })),
+                MapRule::Active(Active::Id(ActiveIds {
+                    own: ActiveIdType::Defined(vec!["IGL".to_string()]),
+                    own_excludes: ActiveIdType::Wildcard,
+                    online: ActiveIdType::Wildcard,
+                    online_excludes: ActiveIdType::Wildcard
+                }))
+            ]
+        );
+
+        assert_eq!(
+            maps.remove("EDMO_RNP22")
+                .unwrap()
+                .rules
+                .into_iter()
+                .filter(|rule| matches!(rule, MapRule::Active(_)))
+                .collect::<Vec<_>>(),
+            vec![MapRule::Active(Active::Runway(ActiveRunways {
+                arrival: ActiveRunwaysType::Active(vec![Runway {
+                    icao: "EDMO".to_string(),
+                    designator: "22".to_string()
+                }]),
+                arrival_excludes: ActiveRunwaysType::Wildcard,
+                departure: ActiveRunwaysType::Wildcard,
+                departure_excludes: ActiveRunwaysType::Wildcard
+            }))]
+        );
     }
 }

@@ -7,18 +7,16 @@ use std::path::PathBuf;
 use std::{fs, io};
 
 use bevy_reflect::Reflect;
-use pest::{iterators::Pair, Parser};
+use pest::iterators::Pair;
 use pest_derive::Parser;
 
 use phf::phf_map;
 use serde::Serialize;
 use thiserror::Error;
 
-use self::map::{parse_color, parse_map, parse_override, ColorDef, Map, OverrideSct};
+use self::map::{parse_topsky_maps, ColorDef, Map, OverrideSct};
 use self::settings::parse_topsky_settings;
-use self::symbol::{parse_symbol, parse_topsky_symbols, SymbolDef};
-
-use super::read_to_string;
+use self::symbol::{parse_topsky_symbols, SymbolDef};
 
 #[derive(Error, Debug)]
 pub enum TopskyError {
@@ -220,73 +218,13 @@ fn parse_point(pair: Pair<Rule>) -> (f64, f64) {
     (x, y)
 }
 
-#[derive(Debug)]
-pub enum MapDefinition {
-    Map(Map),
-    Color(ColorDef),
-    Symbol(SymbolDef),
-    Override(OverrideSct),
-}
-fn parse_topsky_maps(
-    path: PathBuf,
-) -> Result<
-    (
-        HashMap<String, Map>,
-        HashMap<String, SymbolDef>,
-        HashMap<String, ColorDef>,
-        Vec<OverrideSct>,
-    ),
-    TopskyError,
-> {
-    let file_contents = read_to_string(&fs::read(path)?)?;
-    TopskyParser::parse(Rule::maps, &file_contents)
-        .map(|mut pairs| {
-            pairs
-                .next()
-                .unwrap()
-                .into_inner()
-                .filter_map(|pair| match pair.as_rule() {
-                    Rule::map => parse_map(pair).map(MapDefinition::Map),
-                    Rule::colordef => parse_color(pair).map(MapDefinition::Color),
-                    Rule::symboldef => parse_symbol(pair).map(MapDefinition::Symbol),
-                    Rule::override_sct => parse_override(pair).map(MapDefinition::Override),
-                    Rule::EOI => None,
-                    _ => {
-                        eprintln!("{:?}", pair.as_rule());
-                        unreachable!()
-                    }
-                })
-                .fold(
-                    (HashMap::new(), HashMap::new(), HashMap::new(), vec![]),
-                    |(mut maps, mut symbols, mut colors, mut overrides), def| {
-                        match def {
-                            MapDefinition::Map(map) => {
-                                maps.insert(map.name.clone(), map);
-                            }
-                            MapDefinition::Color(color) => {
-                                colors.insert(color.name.clone(), color);
-                            }
-                            MapDefinition::Symbol(symbol) => {
-                                symbols.insert(symbol.name.clone(), symbol);
-                            }
-                            MapDefinition::Override(override_sct) => {
-                                overrides.push(override_sct);
-                            }
-                        };
-                        (maps, symbols, colors, overrides)
-                    },
-                )
-        })
-        .map_err(|e| e.into())
-}
-
 pub type TopskyResult = Result<Topsky, TopskyError>;
 impl Topsky {
     pub fn parse(path: PathBuf) -> TopskyResult {
         let mut colors = parse_topsky_settings(path.join("TopSkySettings.txt"))?;
         let mut symbols = parse_topsky_symbols(&fs::read(path.join("TopSkySymbols.txt"))?)?;
         let (maps, mapsymbols, mapcolors, overrides) =
-            parse_topsky_maps(path.join("TopSkyMaps.txt"))?;
+            parse_topsky_maps(&fs::read(path.join("TopSkyMaps.txt"))?)?;
         symbols.extend(mapsymbols);
         colors.extend(mapcolors);
 

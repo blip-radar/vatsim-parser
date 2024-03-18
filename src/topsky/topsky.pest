@@ -1,5 +1,5 @@
 symbols = { SOI ~ NL? ~ symbol+ ~ EOI}
-maps = { SOI ~ (map | symboldef | colordef | override_sct)+ ~ EOI }
+maps = { SOI ~ NL? ~ (map | symboldef | colordef | override_sct)+ ~ EOI }
 
 symbol = {
   "SYMBOL:" ~ name ~ NL ~ symbolrule+
