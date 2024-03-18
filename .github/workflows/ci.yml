@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - '*'
+      - main
   pull_request:
     branches:
       - '*'
@@ -34,7 +34,8 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v10
       - name: Run cargo test
-        run: nix develop --command cargo test
+        run: nix develop --command cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+      - uses: k1LoW/octocov-action@v1
 
   # Run cargo clippy -- -D warnings
   clippy_check:
