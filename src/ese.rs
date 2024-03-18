@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io;
 
+use bevy_reflect::Reflect;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -20,7 +21,7 @@ pub enum EseError {
     FileRead(#[from] io::Error),
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Reflect, Serialize, PartialEq)]
 pub struct Position {
     pub name: String,
     pub callsign: String,
@@ -33,7 +34,7 @@ pub struct Position {
     pub vis_points: Vec<Coordinate>,
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Default, Reflect, Serialize, PartialEq)]
 pub struct Ese {
     pub positions: HashMap<String, Position>,
 }

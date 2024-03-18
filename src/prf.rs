@@ -46,6 +46,12 @@ impl Prf {
         self.path.parent().unwrap().join(sct_path)
     }
 
+    pub fn ese_path(&self) -> PathBuf {
+        let ese_path =
+            from_prf_path(&self.settings.0[&("Settings".to_string(), "sector".to_string())].replace(".sct", ".ese"));
+        self.path.parent().unwrap().join(ese_path)
+    }
+
     pub fn symbology_path(&self) -> PathBuf {
         let symbology_path = from_prf_path(
             &self.settings.0[&("Settings".to_string(), "SettingsfileSYMBOLOGY".to_string())],
