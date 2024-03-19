@@ -47,8 +47,10 @@ impl Prf {
     }
 
     pub fn ese_path(&self) -> PathBuf {
-        let ese_path =
-            from_prf_path(&self.settings.0[&("Settings".to_string(), "sector".to_string())].replace(".sct", ".ese"));
+        let ese_path = from_prf_path(
+            &self.settings.0[&("Settings".to_string(), "sector".to_string())]
+                .replace(".sct", ".ese"),
+        );
         self.path.parent().unwrap().join(ese_path)
     }
 
