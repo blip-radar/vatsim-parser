@@ -2,6 +2,7 @@ ese = { SOI ~ NL? ~ section+ ~ EOI}
 
 section = _{
   position_section
+  | airspace_section
   | unparsed_section
 }
 
@@ -10,6 +11,7 @@ line = _{ broken ~ NL }
 section_header = _{ "[" ~ header_name ~ "]" }
 
 position_section = { "[POSITIONS]" ~ NL ~ (position ~ NL)* }
+airspace_section = { "[AIRSPACE]" ~ NL ~ (sectorline | display_sectorline | sector | cop | fir_cop)* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 position = {
@@ -17,6 +19,46 @@ position = {
   ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ INTEGER ~ ":" ~ INTEGER
   ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)?
 }
+
+cop = {
+  "COPX:" ~ prev ~ ":" ~ dep_rwy ~ ":" ~ cop_def ~ ":" ~ after ~ ":" ~ arr_rwy ~ ":" ~ sctx ~ ":"
+  ~ sctn ~ ":" ~ alt_clb ~ ":" ~ alt_des ~ ":" ~ cop_description ~ NL
+}
+fir_cop = {
+  "FIR_COPX:" ~ prev ~ ":" ~ dep_rwy ~ ":" ~ cop_def ~ ":" ~ after ~ ":" ~ arr_rwy ~ ":" ~ sctx ~ ":"
+  ~ sctn ~ ":" ~ alt_clb ~ ":" ~ alt_des ~ ":" ~ cop_description ~ NL
+}
+prev = _{ wildcard | text }
+dep_rwy = _{ wildcard | designator }
+after = _{ wildcard | text }
+arr_rwy = _{ wildcard | designator }
+cop_def = _{ wildcard | text }
+sctx = _{ text }
+sctn = _{ text }
+alt_clb = _{ wildcard | INTEGER }
+alt_des = _{ wildcard | INTEGER }
+cop_description = _{ text }
+
+sectorline = { "SECTORLINE:" ~ text ~ NL ~ ((display | sectorline_coord) ~ NL)* }
+display = { "DISPLAY:" ~ text ~ ":" ~ text ~ ":" ~ text }
+sectorline_coord = _{ "COORD:" ~ coordinate }
+
+display_sectorline = { "DISPLAY_SECTORLINE:" ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ text ~ NL }
+
+sector = { "SECTOR:" ~ text ~ ":" ~ INTEGER ~ ":" ~ INTEGER ~ NL ~ (sector_subsettings ~ NL)* }
+sector_subsettings = _{ owner | altowner | border | guest | active | depapt | arrapt }
+owner = { "OWNER" ~ (":" ~ text)+ }
+altowner = { "ALTOWNER:" ~ text ~ (":" ~ text)+ }
+border = { "BORDER" ~ (":" ~ text)+ }
+guest = { "GUEST" ~ ":" ~ sct ~ ":" ~ adep ~ ":" ~ ades  }
+active = { "ACTIVE:" ~ designator ~ ":" ~ designator }
+depapt = { "DEPAPT" ~ (":" ~ designator)+ }
+arrapt = { "ARRAPT" ~ (":" ~ designator)+ }
+sct = _{ text }
+adep = _{ wildcard | designator }
+ades = _{ wildcard | designator }
+
+wildcard = { "*" }
 
 broken = @{ !("[") ~ (!NL ~ ANY)* }
 
@@ -28,14 +70,14 @@ coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | ".")+ }
 designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
 pos_designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "_" | "-")+ }
-text = @{ (!":" ~ ANY)* }
+text = @{ (!(":" | NL) ~ ANY)* }
 
 header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }
 
 deg = @{ ASCII_DIGIT+ }
 min = @{ ASCII_DIGIT+ }
 sec = @{ DECIMAL }
-hemi = @{ "N" | "S" | "W" | "E" }
+hemi = @{ "N" | "n" | "S" | "s" | "W" | "w" | "E" | "e" }
 
 DECIMAL = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 INTEGER = @{ ASCII_DIGIT+ }
