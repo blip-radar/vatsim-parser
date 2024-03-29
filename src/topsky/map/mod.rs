@@ -252,17 +252,29 @@ impl LineStyle {
 
 #[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub struct MapLine {
-    pub start: Location,
-    pub end: Location,
+    pub points: Vec<Location>,
 }
 impl MapLine {
-    fn parse(pair: Pair<Rule>) -> Self {
-        let mut line = pair.into_inner();
-        let mut locations = line.next().unwrap().into_inner();
-        let start = Location::parse(locations.next().unwrap());
-        let end = Location::parse(locations.next().unwrap());
+    fn parse(pair: Pair<Rule>) -> Vec<Self> {
+        let lines = pair.into_inner();
+        lines.fold(vec![], |mut acc, pair| {
+            let mut line = pair.into_inner();
+            let start = Location::parse(line.next().unwrap());
+            let end = Location::parse(line.next().unwrap());
+            if let Some(last_line) = acc.last_mut() {
+                if let Some(last_loc) = last_line.points.last() {
+                    if *last_loc == start {
+                        last_line.points.push(end);
 
-        Self { start, end }
+                        return acc;
+                    }
+                }
+            }
+
+            acc.push(Self { points: vec![start, end]});
+
+            acc
+        })
     }
 }
 
@@ -279,7 +291,7 @@ pub enum MapRule {
     Zoom(f32),
     FontSize(FontSize),
     LineStyle(LineStyle),
-    Line(MapLine),
+    Line(Vec<MapLine>),
     Text(Text),
 }
 

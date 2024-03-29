@@ -68,7 +68,7 @@ zoom = { "ZOOM:" ~ decimal }
 
 style = { "STYLE:" ~ name ~ (":" ~ number)? }
 
-mapline = { "LINE:" ~ (maplinecoordinates | maplinewpts) }
+mapline = { ("LINE:" ~ (maplinecoordinates | maplinewpts) ~ NL)+ }
 maplinecoordinates = { coordinate ~ ":" ~ coordinate }
 maplinewpts = { name ~ ":" ~ name }
 
