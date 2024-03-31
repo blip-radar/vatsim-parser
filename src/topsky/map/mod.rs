@@ -271,7 +271,9 @@ impl MapLine {
                 }
             }
 
-            acc.push(Self { points: vec![start, end]});
+            acc.push(Self {
+                points: vec![start, end],
+            });
 
             acc
         })
