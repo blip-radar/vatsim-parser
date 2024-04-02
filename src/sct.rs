@@ -59,6 +59,7 @@ pub struct Runway {
 // TODO GEO, REGIONS, ARTCC, SID, STAR, AIRWAY
 #[derive(Debug, Serialize, PartialEq)]
 pub struct Sct {
+    pub info: SctInfo,
     pub airports: Vec<Airport>,
     pub fixes: Vec<Fix>,
     pub ndbs: Vec<NDB>,
@@ -66,10 +67,23 @@ pub struct Sct {
     pub runways: Vec<Runway>,
 }
 
+#[derive(Debug, Default, Serialize, PartialEq)]
+pub struct SctInfo {
+    pub name: String,
+    pub default_callsign: String,
+    pub default_airport: String,
+    pub centre_point: Coordinate,
+    pub miles_per_deg_lat: f64,
+    pub miles_per_deg_lng: f64,
+    pub magnetic_variation: f64,
+    pub scale_factor: f64,
+}
+
 pub type SctResult = Result<Sct, SctError>;
 
 #[derive(Debug)]
 enum Section {
+    Info(SctInfo),
     Airport(Vec<Airport>),
     Fixes(Vec<Fix>),
     NDBs(Vec<NDB>),
@@ -80,6 +94,7 @@ enum Section {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum SectionName {
+    Info,
     Airport,
     Fixes,
     NDBs,
@@ -189,6 +204,37 @@ fn parse_runway(pair: Pair<Rule>) -> Runway {
     }
 }
 
+fn parse_info_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> SctInfo {
+    let mut sct_info = SctInfo::default();
+    let mut i = 0;
+    let mut lat = DegMinSec::default();
+    
+    for pair in pair.into_inner() {
+
+        if let Rule::color_definition = pair.as_rule() {
+            store_color(colors, pair);
+        } else {
+            match i {
+                0 => sct_info.name = pair.as_str().to_string(),
+                1 => sct_info.default_callsign = pair.as_str().to_string(),
+                2 => sct_info.default_airport = pair.as_str().to_string(),
+                3 => lat = parse_coordinate_part(pair),
+                4 => {
+                    let lng = parse_coordinate_part(pair);
+                    sct_info.centre_point = Coordinate::from_deg_min_sec(lat, lng);
+                },
+                5 => sct_info.miles_per_deg_lat = pair.as_str().parse().unwrap(),
+                6 => sct_info.miles_per_deg_lng = pair.as_str().parse().unwrap(),
+                7 => sct_info.magnetic_variation = pair.as_str().parse().unwrap(),
+                8 => sct_info.scale_factor = pair.as_str().parse().unwrap(),
+                _ => unreachable!(),
+            }
+            i += 1;
+        }
+    }
+    sct_info
+}
+
 fn parse_color_definition(pair: Pair<Rule>) -> (String, Color) {
     let mut pairs = pair.into_inner();
     let color_name = pairs.next().unwrap().as_str().to_string();
@@ -207,6 +253,10 @@ fn parse_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> (Sect
     
 
     match pair.as_rule() {
+        Rule::info_section => (
+            SectionName::Info,
+            Section::Info(parse_info_section(pair, colors))
+        ),
         Rule::airport_section => (
             SectionName::Airport,
             Section::Airport(pair.into_inner().filter_map(|pair| {
@@ -290,6 +340,10 @@ impl Sct {
                 })
                 .collect::<HashMap<_, _>>()
         })?;
+        let info = match sections.remove_entry(&SectionName::Info) {
+            Some((_, Section::Info(sct_info))) => sct_info,
+            _ => SctInfo::default(),
+        };
         let airports = match sections.remove_entry(&SectionName::Airport) {
             Some((_, Section::Airport(airports))) => airports,
             _ => vec![],
@@ -312,6 +366,7 @@ impl Sct {
         };
 
         Ok(Sct {
+            info,
             airports,
             fixes,
             ndbs,
