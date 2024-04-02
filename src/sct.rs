@@ -208,9 +208,8 @@ fn parse_info_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> 
     let mut sct_info = SctInfo::default();
     let mut i = 0;
     let mut lat = DegMinSec::default();
-    
-    for pair in pair.into_inner() {
 
+    for pair in pair.into_inner() {
         if let Rule::color_definition = pair.as_rule() {
             store_color(colors, pair);
         } else {
@@ -222,7 +221,7 @@ fn parse_info_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> 
                 4 => {
                     let lng = parse_coordinate_part(pair);
                     sct_info.centre_point = Coordinate::from_deg_min_sec(lat, lng);
-                },
+                }
                 5 => sct_info.miles_per_deg_lat = pair.as_str().parse().unwrap(),
                 6 => sct_info.miles_per_deg_lng = pair.as_str().parse().unwrap(),
                 7 => sct_info.magnetic_variation = pair.as_str().parse().unwrap(),
@@ -249,72 +248,89 @@ fn store_color(colors: &mut HashMap<String, Color>, pair: Pair<Rule>) {
 }
 
 fn parse_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> (SectionName, Section) {
-
-    
-
     match pair.as_rule() {
         Rule::info_section => (
             SectionName::Info,
-            Section::Info(parse_info_section(pair, colors))
+            Section::Info(parse_info_section(pair, colors)),
         ),
         Rule::airport_section => (
             SectionName::Airport,
-            Section::Airport(pair.into_inner().filter_map(|pair| {
-                if let Rule::color_definition = pair.as_rule() {
-                    store_color(colors, pair);
-                    None
-                } else {
-                    Some(parse_airport(pair))
-                }
-            }).collect()),
+            Section::Airport(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::color_definition = pair.as_rule() {
+                            store_color(colors, pair);
+                            None
+                        } else {
+                            Some(parse_airport(pair))
+                        }
+                    })
+                    .collect(),
+            ),
         ),
-        
+
         Rule::fixes_section => (
             SectionName::Fixes,
-            Section::Fixes(pair.into_inner().filter_map(|pair| {
-                if let Rule::color_definition = pair.as_rule() {
-                    store_color(colors, pair);
-                    None
-                } else {
-                    parse_fix(pair)
-                }
-            }).collect()),
+            Section::Fixes(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::color_definition = pair.as_rule() {
+                            store_color(colors, pair);
+                            None
+                        } else {
+                            parse_fix(pair)
+                        }
+                    })
+                    .collect(),
+            ),
         ),
-        
+
         Rule::ndb_section => (
             SectionName::NDBs,
-            Section::NDBs(pair.into_inner().filter_map(|pair| {
-                if let Rule::color_definition = pair.as_rule() {
-                    store_color(colors, pair);
-                    None
-                } else {
-                    Some(parse_ndb(pair))
-                }
-            }).collect()),
+            Section::NDBs(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::color_definition = pair.as_rule() {
+                            store_color(colors, pair);
+                            None
+                        } else {
+                            Some(parse_ndb(pair))
+                        }
+                    })
+                    .collect(),
+            ),
         ),
 
         Rule::vor_section => (
             SectionName::VORs,
-            Section::VORs(pair.into_inner().filter_map(|pair| {
-                if let Rule::color_definition = pair.as_rule() {
-                    store_color(colors, pair);
-                    None
-                } else {
-                    Some(parse_vor(pair))
-                }
-            }).collect()),
+            Section::VORs(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::color_definition = pair.as_rule() {
+                            store_color(colors, pair);
+                            None
+                        } else {
+                            Some(parse_vor(pair))
+                        }
+                    })
+                    .collect(),
+            ),
         ),
 
         Rule::runway_section => (
             SectionName::Runways,
-            Section::Runways(pair.into_inner().filter_map(|pair| {
-                if let Rule::color_definition = pair.as_rule() {
-                    store_color(colors, pair);
-                    None
-                } else {
-                    Some(parse_runway(pair))
-                }
-            }).collect()),
+            Section::Runways(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::color_definition = pair.as_rule() {
+                            store_color(colors, pair);
+                            None
+                        } else {
+                            Some(parse_runway(pair))
+                        }
+                    })
+                    .collect(),
+            ),
         ),
 
         _ => (SectionName::Unsupported, Section::Unsupported),
