@@ -1,4 +1,4 @@
-sct = { SOI ~ NL? ~ section+ ~ EOI}
+sct = { SOI ~ NL? ~ (color_definition ~ NL)* ~ section+ ~ EOI}
 
 section = _{
   vor_section
@@ -15,21 +15,25 @@ line = _{ broken ~ NL }
 
 section_header = _{ "[" ~ header_name ~ "]" }
 
-vor_section = { "[VOR]" ~ NL ~ (location ~ NL)* }
-ndb_section = { "[NDB]" ~ NL ~ (location ~ NL)* }
-fixes_section = { "[FIXES]" ~ NL ~ ((fix | broken) ~ NL)* }
-airport_section = { "[AIRPORT]" ~ NL ~ (location ~ NL)* }
-runway_section = { "[RUNWAY]" ~ NL ~ (runway ~ NL)* }
-high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ (airway ~ NL)* }
-low_airway_section = { "[LOW AIRWAY]" ~ NL ~ (airway ~ NL)* }
+vor_section = { "[VOR]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL)* ~ (color_definition ~ NL)* }
+ndb_section = { "[NDB]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL)* ~ (color_definition ~ NL)* }
+fixes_section = { "[FIXES]" ~ NL ~ (color_definition ~ NL)* ~ ((fix | broken) ~ NL)* ~ (color_definition ~ NL)* }
+airport_section = { "[AIRPORT]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL)* ~ (color_definition ~ NL)* }
+runway_section = { "[RUNWAY]" ~ NL ~ (color_definition ~ NL)* ~ (runway ~ NL)* ~ (color_definition ~ NL)* }
+high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ (color_definition ~ NL)* ~(airway ~ NL)* ~ (color_definition ~ NL)* }
+low_airway_section = { "[LOW AIRWAY]" ~ NL ~ (color_definition ~ NL)* ~ (airway ~ NL)* ~ (color_definition ~ NL)* }
 unparsed_section = { (section_header ~ NL ~ line*) }
+
+color_definition = { "#define" ~ color_name ~ color_value }
+color_name = @{ (ASCII_ALPHANUMERIC | "-" | "_")+ }
+color_value = @{ ASCII_DIGIT+ }
 
 fix = { fix_designator ~ coordinate }
 location = { designator ~ frequency ~ coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G")? }
 runway = { runway_designator ~ runway_designator ~ degrees ~ degrees ~ coordinate ~ coordinate ~ designator }
 airway = { designator ~ coordinate ~ coordinate }
 // EDGG has invalid WPT with spaces
-broken = @{ !("[") ~ (!NL ~ ANY)* }
+broken = @{ !("[" | "#") ~ (!NL ~ ANY)* }
 
 coordinate = { coord_part ~ coord_part }
 degrees = @{ ASCII_DIGIT+ }

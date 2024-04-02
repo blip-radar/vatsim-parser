@@ -6,6 +6,8 @@ use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::Color;
+
 use super::{read_to_string, Coordinate, DegMinSec};
 
 #[derive(Parser)]
@@ -187,28 +189,84 @@ fn parse_runway(pair: Pair<Rule>) -> Runway {
     }
 }
 
-fn parse_section(pair: Pair<Rule>) -> (SectionName, Section) {
+fn parse_color_definition(pair: Pair<Rule>) -> (String, Color) {
+    let mut pairs = pair.into_inner();
+    let color_name = pairs.next().unwrap().as_str().to_string();
+    let color_value = Color::from_euroscope(pairs.next().unwrap().as_str().parse().unwrap());
+    (color_name, color_value)
+}
+
+#[inline]
+fn store_color(colors: &mut HashMap<String, Color>, pair: Pair<Rule>) {
+    let (color_name, color) = parse_color_definition(pair);
+    colors.insert(color_name, color);
+}
+
+fn parse_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> (SectionName, Section) {
+
+    
+
     match pair.as_rule() {
         Rule::airport_section => (
             SectionName::Airport,
-            Section::Airport(pair.into_inner().map(parse_airport).collect()),
+            Section::Airport(pair.into_inner().filter_map(|pair| {
+                if let Rule::color_definition = pair.as_rule() {
+                    store_color(colors, pair);
+                    None
+                } else {
+                    Some(parse_airport(pair))
+                }
+            }).collect()),
         ),
+        
         Rule::fixes_section => (
             SectionName::Fixes,
-            Section::Fixes(pair.into_inner().filter_map(parse_fix).collect()),
+            Section::Fixes(pair.into_inner().filter_map(|pair| {
+                if let Rule::color_definition = pair.as_rule() {
+                    store_color(colors, pair);
+                    None
+                } else {
+                    parse_fix(pair)
+                }
+            }).collect()),
         ),
+        
         Rule::ndb_section => (
             SectionName::NDBs,
-            Section::NDBs(pair.into_inner().map(parse_ndb).collect()),
+            Section::NDBs(pair.into_inner().filter_map(|pair| {
+                if let Rule::color_definition = pair.as_rule() {
+                    store_color(colors, pair);
+                    None
+                } else {
+                    Some(parse_ndb(pair))
+                }
+            }).collect()),
         ),
+
         Rule::vor_section => (
             SectionName::VORs,
-            Section::VORs(pair.into_inner().map(parse_vor).collect()),
+            Section::VORs(pair.into_inner().filter_map(|pair| {
+                if let Rule::color_definition = pair.as_rule() {
+                    store_color(colors, pair);
+                    None
+                } else {
+                    Some(parse_vor(pair))
+                }
+            }).collect()),
         ),
+
         Rule::runway_section => (
             SectionName::Runways,
-            Section::Runways(pair.into_inner().map(parse_runway).collect()),
+            Section::Runways(pair.into_inner().filter_map(|pair| {
+                if let Rule::color_definition = pair.as_rule() {
+                    store_color(colors, pair);
+                    None
+                } else {
+                    Some(parse_runway(pair))
+                }
+            }).collect()),
         ),
+
         _ => (SectionName::Unsupported, Section::Unsupported),
     }
 }
@@ -216,12 +274,20 @@ fn parse_section(pair: Pair<Rule>) -> (SectionName, Section) {
 impl Sct {
     pub fn parse(content: &[u8]) -> SctResult {
         let unparsed_file = read_to_string(content)?;
+        let mut colors = HashMap::new();
         let mut sections = SctParser::parse(Rule::sct, &unparsed_file).map(|mut pairs| {
             pairs
                 .next()
                 .unwrap()
                 .into_inner()
-                .map(parse_section)
+                .filter_map(|pair| {
+                    if let Rule::color_definition = pair.as_rule() {
+                        store_color(&mut colors, pair);
+                        None
+                    } else {
+                        Some(parse_section(pair, &mut colors))
+                    }
+                })
                 .collect::<HashMap<_, _>>()
         })?;
         let airports = match sections.remove_entry(&SectionName::Airport) {
