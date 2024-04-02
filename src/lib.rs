@@ -21,7 +21,7 @@ fn read_to_string(contents: &[u8]) -> Result<String, io::Error> {
 }
 
 type DegMinSec = (f64, f64, f64);
-#[derive(Copy, Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Reflect, Serialize, PartialEq)]
 pub struct Coordinate {
     pub lat: f64,
     pub lng: f64,
