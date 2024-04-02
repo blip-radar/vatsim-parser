@@ -10,7 +10,7 @@ license = "LGPL-3.0-or-later"
 [dependencies]
 bevy_reflect = "0.13.1"
 encoding_rs = "0.8.33"
-pest = "2.7.8"
+pest = "2.7.9"
 pest_derive = "2.7.8"
 phf = { version = "0.11.2", features = ["macros"] }
 serde = { version = "1.0.197", features = ["derive"] }
