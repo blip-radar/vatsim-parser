@@ -33,7 +33,7 @@ folder = { "FOLDER:" ~ name }
 
 color = { "COLOR:" ~ name }
 
-asrdata = { "ASRDATA:" ~ (wildcard | (name ~ ("," ~ name)*)) }
+asrdata = { "ASRDATA:" ~ (wildcard | names) }
 
 active = { "ACTIVE:" ~ (active_sched | active_id | active_rwy_with_excludes | active_rwy | active_always ) }
 andactive = { "AND_ACTIVE:" ~ (active_sched | active_id | active_rwy_with_excludes | active_rwy | active_always ) }
@@ -118,7 +118,8 @@ pixel = { "SETPIXEL:" ~ point }
 // TODO: SCTDATA
 
 name = @{ (!(NL | ":") ~ ANY)+ }
-names = { name ~ ("," ~ name)* }
+name_no_comma = @{ (!(NL | ":" | ",") ~ ANY)+ }
+names = { name_no_comma ~ ("," ~ name_no_comma)* }
 wildcard = { "*" }
 
 coordinate = { coord_part ~ ":" ~ coord_part }

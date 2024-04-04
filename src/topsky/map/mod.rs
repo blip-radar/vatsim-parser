@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use crate::{read_to_string, Color, Coordinate, DegMinSec};
 
-pub use self::active::{Active, ActiveIdType, ActiveIds, ActiveRunways, ActiveRunwaysType};
+pub use self::active::{Active, ActiveIds, ActiveRunways};
 
 use super::{
     parse_point,
@@ -284,7 +284,7 @@ impl MapLine {
 pub enum MapRule {
     Folder(String),
     Color(String),
-    AsrData,
+    AsrData(Option<Vec<String>>),
     Active(Active),
     Global,
     ScreenSpecific,
@@ -309,7 +309,21 @@ impl MapRule {
                     Rule::color => Some(MapRule::Color(
                         pair.into_inner().next().unwrap().as_str().to_string(),
                     )),
-                    Rule::asrdata => Some(MapRule::AsrData), // TODO
+                    Rule::asrdata => Some(MapRule::AsrData({
+                        let data = pair.into_inner().next().unwrap();
+                        match data.as_rule() {
+                            Rule::wildcard => None,
+                            Rule::names => Some(
+                                data.into_inner()
+                                    .map(|pair| pair.as_str().to_string())
+                                    .collect(),
+                            ),
+                            _ => {
+                                eprintln!("unhandled {ruletype:?}");
+                                unreachable!()
+                            }
+                        }
+                    })),
                     Rule::active => Some(MapRule::Active(Active::parse(pair))),
                     Rule::layer => Some(MapRule::Layer(
                         pair.into_inner().next().unwrap().as_str().parse().unwrap(),
@@ -514,13 +528,12 @@ pub(super) fn parse_topsky_maps(
 #[cfg(test)]
 mod test {
     use crate::topsky::map::{
-        parse_topsky_maps, Active, ActiveIdType, ActiveIds, ActiveRunways, ActiveRunwaysType,
-        MapRule, Runway,
+        parse_topsky_maps, Active, ActiveIds, ActiveRunways, MapRule, Runway,
     };
 
     #[test]
     fn test_active() {
-        let symbols_str = br#"
+        let maps_str = br#"
 MAP:SYMBOLS
 FOLDER:FIXES
 COLOR:Active_Map_Type_20
@@ -541,7 +554,7 @@ ZOOM:9
 COLOR:Active_Map_Type_20
 ACTIVE:RWY:ARR:EDMO22:DEP:*
 "#;
-        let (mut maps, ..) = parse_topsky_maps(symbols_str).unwrap();
+        let (mut maps, ..) = parse_topsky_maps(maps_str).unwrap();
 
         assert_eq!(
             maps.remove("SYMBOLS")
@@ -562,16 +575,16 @@ ACTIVE:RWY:ARR:EDMO22:DEP:*
                 .collect::<Vec<_>>(),
             vec![
                 MapRule::Active(Active::Id(ActiveIds {
-                    own: ActiveIdType::Wildcard,
-                    own_excludes: ActiveIdType::Wildcard,
-                    online: ActiveIdType::Defined(vec!["IGL".to_string()]),
-                    online_excludes: ActiveIdType::Wildcard
+                    own: None,
+                    own_excludes: None,
+                    online: Some(vec!["IGL".to_string()]),
+                    online_excludes: None,
                 })),
                 MapRule::Active(Active::Id(ActiveIds {
-                    own: ActiveIdType::Defined(vec!["IGL".to_string()]),
-                    own_excludes: ActiveIdType::Wildcard,
-                    online: ActiveIdType::Wildcard,
-                    online_excludes: ActiveIdType::Wildcard
+                    own: Some(vec!["IGL".to_string()]),
+                    own_excludes: None,
+                    online: None,
+                    online_excludes: None,
                 }))
             ]
         );
@@ -584,14 +597,76 @@ ACTIVE:RWY:ARR:EDMO22:DEP:*
                 .filter(|rule| matches!(rule, MapRule::Active(_)))
                 .collect::<Vec<_>>(),
             vec![MapRule::Active(Active::Runway(ActiveRunways {
-                arrival: ActiveRunwaysType::Active(vec![Runway {
+                arrival: Some(vec![Runway {
                     icao: "EDMO".to_string(),
                     designator: "22".to_string()
                 }]),
-                arrival_excludes: ActiveRunwaysType::Wildcard,
-                departure: ActiveRunwaysType::Wildcard,
-                departure_excludes: ActiveRunwaysType::Wildcard
+                arrival_excludes: None,
+                departure: None,
+                departure_excludes: None,
             }))]
+        );
+    }
+
+    #[test]
+    fn test_asrdata() {
+        let maps_str = br#"
+MAP:SYMBOLS
+FOLDER:FIXES
+COLOR:Active_Map_Type_20
+ACTIVE:1
+
+MAP:AOR ALTMUEHL
+FOLDER:SECTORLINES
+COLOR:Active_Map_Type_20
+ASRDATA:CTR,EDDM_APP
+STYLE:Dot:1
+LAYER:-2
+ACTIVE:ID:*:*:IGL:*
+ACTIVE:ID:IGL:*:*:*
+
+MAP:EDMO_RNP22
+ASRDATA:APP,CTR
+ZOOM:9
+COLOR:Active_Map_Type_20
+ACTIVE:RWY:ARR:EDMO22:DEP:*
+"#;
+        let (mut maps, ..) = parse_topsky_maps(maps_str).unwrap();
+
+        assert_eq!(
+            maps.remove("SYMBOLS")
+                .unwrap()
+                .rules
+                .into_iter()
+                .filter(|rule| matches!(rule, MapRule::AsrData(_)))
+                .collect::<Vec<_>>(),
+            vec![]
+        );
+
+        assert_eq!(
+            maps.remove("AOR ALTMUEHL")
+                .unwrap()
+                .rules
+                .into_iter()
+                .filter(|rule| matches!(rule, MapRule::AsrData(_)))
+                .collect::<Vec<_>>(),
+            vec![MapRule::AsrData(Some(vec![
+                "CTR".to_string(),
+                "EDDM_APP".to_string()
+            ]))]
+        );
+
+        assert_eq!(
+            maps.remove("EDMO_RNP22")
+                .unwrap()
+                .rules
+                .into_iter()
+                .filter(|rule| matches!(rule, MapRule::AsrData(_)))
+                .collect::<Vec<_>>(),
+            vec![MapRule::AsrData(Some(vec![
+                "APP".to_string(),
+                "CTR".to_string()
+            ]))]
         );
     }
 }

@@ -7,15 +7,32 @@ use crate::topsky::Rule;
 use super::Runway;
 
 #[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub enum ActiveIdType {
-    Wildcard,
-    Defined(Vec<String>),
+pub struct ActiveIds {
+    pub own: Option<Vec<String>>,
+    pub own_excludes: Option<Vec<String>>,
+    pub online: Option<Vec<String>>,
+    pub online_excludes: Option<Vec<String>>,
 }
-impl ActiveIdType {
+
+impl ActiveIds {
     fn parse(pair: Pair<Rule>) -> Self {
+        let mut active = pair.into_inner();
+        let own = Self::parse_value(active.next().unwrap());
+        let own_excludes = Self::parse_value(active.next().unwrap());
+        let online = Self::parse_value(active.next().unwrap());
+        let online_excludes = Self::parse_value(active.next().unwrap());
+        Self {
+            own,
+            own_excludes,
+            online,
+            online_excludes,
+        }
+    }
+
+    fn parse_value(pair: Pair<Rule>) -> Option<Vec<String>> {
         match pair.as_rule() {
-            Rule::wildcard => Self::Wildcard,
-            Rule::names => Self::Defined(
+            Rule::wildcard => None,
+            Rule::names => Some(
                 pair.into_inner()
                     .map(|pair| pair.as_str().to_string())
                     .collect(),
@@ -29,81 +46,48 @@ impl ActiveIdType {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub struct ActiveIds {
-    pub own: ActiveIdType,
-    pub own_excludes: ActiveIdType,
-    pub online: ActiveIdType,
-    pub online_excludes: ActiveIdType,
-}
-
-impl ActiveIds {
-    fn parse(pair: Pair<Rule>) -> Self {
-        let mut active = pair.into_inner();
-        let own = ActiveIdType::parse(active.next().unwrap());
-        let own_excludes = ActiveIdType::parse(active.next().unwrap());
-        let online = ActiveIdType::parse(active.next().unwrap());
-        let online_excludes = ActiveIdType::parse(active.next().unwrap());
-        Self {
-            own,
-            own_excludes,
-            online,
-            online_excludes,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub enum ActiveRunwaysType {
-    Wildcard,
-    Active(Vec<Runway>),
-}
-impl ActiveRunwaysType {
-    fn parse(pair: Pair<Rule>) -> Self {
-        match pair.as_rule() {
-            Rule::wildcard => ActiveRunwaysType::Wildcard,
-            Rule::runways => {
-                ActiveRunwaysType::Active(pair.into_inner().map(Runway::parse).collect())
-            }
-            rule => {
-                eprintln!("{rule:?}");
-                unreachable!()
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
 pub struct ActiveRunways {
-    pub arrival: ActiveRunwaysType,
-    pub arrival_excludes: ActiveRunwaysType,
-    pub departure: ActiveRunwaysType,
-    pub departure_excludes: ActiveRunwaysType,
+    pub arrival: Option<Vec<Runway>>,
+    pub arrival_excludes: Option<Vec<Runway>>,
+    pub departure: Option<Vec<Runway>>,
+    pub departure_excludes: Option<Vec<Runway>>,
 }
 
 impl ActiveRunways {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut active = pair.into_inner();
-        let arrival = ActiveRunwaysType::parse(active.next().unwrap());
-        let departure = ActiveRunwaysType::parse(active.next().unwrap());
+        let arrival = Self::parse_value(active.next().unwrap());
+        let departure = Self::parse_value(active.next().unwrap());
         Self {
             arrival,
-            arrival_excludes: ActiveRunwaysType::Wildcard,
+            arrival_excludes: None,
             departure,
-            departure_excludes: ActiveRunwaysType::Wildcard,
+            departure_excludes: None,
         }
     }
 
     fn parse_with_excludes(pair: Pair<Rule>) -> Self {
         let mut active = pair.into_inner();
-        let arrival = ActiveRunwaysType::parse(active.next().unwrap());
-        let arrival_excludes = ActiveRunwaysType::parse(active.next().unwrap());
-        let departure = ActiveRunwaysType::parse(active.next().unwrap());
-        let departure_excludes = ActiveRunwaysType::parse(active.next().unwrap());
+        let arrival = Self::parse_value(active.next().unwrap());
+        let arrival_excludes = Self::parse_value(active.next().unwrap());
+        let departure = Self::parse_value(active.next().unwrap());
+        let departure_excludes = Self::parse_value(active.next().unwrap());
         Self {
             arrival,
             arrival_excludes,
             departure,
             departure_excludes,
+        }
+    }
+
+    fn parse_value(pair: Pair<Rule>) -> Option<Vec<Runway>> {
+        match pair.as_rule() {
+            Rule::wildcard => None,
+            Rule::runways => Some(pair.into_inner().map(Runway::parse).collect()),
+            rule => {
+                eprintln!("{rule:?}");
+                unreachable!()
+            }
         }
     }
 }
