@@ -396,8 +396,10 @@ impl Sct {
 
 #[cfg(test)]
 mod test {
-    use crate::sct::{Airport, Fix, Runway, Sct, NDB, VOR};
-    use crate::Coordinate;
+    use std::collections::HashMap;
+
+    use crate::sct::{Airport, Fix, Runway, Sct, SctInfo, NDB, VOR};
+    use crate::{Color, Coordinate};
 
     #[test]
     fn test_sct() {
@@ -570,6 +572,45 @@ A4         N048.17.25.569 E018.03.02.300 N048.37.03.248 E017.32.28.201
 A4         N048.42.56.998 E017.23.09.999 N048.51.11.520 E017.10.04.238
         ";
         let sct = Sct::parse(sct_bytes);
+        assert_eq!(
+            sct.as_ref().unwrap().info,
+            SctInfo {
+                name: "AeroNav München 2401/1-1 EDMM 20240125".to_string(),
+                default_callsign: "AERO_NAV".to_string(),
+                default_airport: "ZZZZ".to_string(),
+                centre_point: Coordinate {
+                    lat: 48.35378277777778,
+                    lng: 11.786085833333333
+                },
+                miles_per_deg_lat: 60.0,
+                miles_per_deg_lng: 39.0,
+                magnetic_variation: -3.0,
+                scale_factor: 1.0,
+            }
+        );
+        assert_eq!(
+            sct.as_ref().unwrap().colors,
+            HashMap::from([
+                (
+                    "COLOR_APP".to_string(),
+                    Color {
+                        r: 0,
+                        g: 0,
+                        b: 255,
+                        a: 255
+                    }
+                ),
+                (
+                    "COLOR_AirspaceA".to_string(),
+                    Color {
+                        r: 0,
+                        g: 128,
+                        b: 128,
+                        a: 255
+                    }
+                )
+            ])
+        );
         assert_eq!(
             sct.as_ref().unwrap().ndbs,
             vec![
