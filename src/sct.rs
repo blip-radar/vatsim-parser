@@ -60,6 +60,7 @@ pub struct Runway {
 #[derive(Debug, Serialize, PartialEq)]
 pub struct Sct {
     pub info: SctInfo,
+    pub colors: HashMap<String, Color>,
     pub airports: Vec<Airport>,
     pub fixes: Vec<Fix>,
     pub ndbs: Vec<NDB>,
@@ -383,6 +384,7 @@ impl Sct {
 
         Ok(Sct {
             info,
+            colors,
             airports,
             fixes,
             ndbs,
