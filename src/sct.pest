@@ -17,10 +17,10 @@ line = _{ broken ~ NL }
 section_header = _{ "[" ~ header_name ~ "]" }
 
 info_section = { "[INFO]" ~ NL ~ (color_definition ~ NL)* ~ sector_name ~ NL ~ sector_callsign ~ NL ~ designator ~ NL ~ coord_part ~ NL ~ coord_part ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ (color_definition ~ NL)* }
-vor_section = { "[VOR]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL)* ~ (color_definition ~ NL)* }
-ndb_section = { "[NDB]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL)* ~ (color_definition ~ NL)* }
-fixes_section = { "[FIXES]" ~ NL ~ (color_definition ~ NL)* ~ ((fix | broken) ~ NL)* ~ (color_definition ~ NL)* }
-airport_section = { "[AIRPORT]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL)* ~ (color_definition ~ NL)* }
+vor_section = { "[VOR]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL?)* ~ (color_definition | COMMENT)* }
+ndb_section = { "[NDB]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL?)* ~ (color_definition | COMMENT)* }
+fixes_section = { "[FIXES]" ~ NL ~ (color_definition ~ NL)* ~ ((fix | broken) ~ NL)* ~ (color_definition | COMMENT)* }
+airport_section = { "[AIRPORT]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL?)* ~ (color_definition | COMMENT)* }
 runway_section = { "[RUNWAY]" ~ NL ~ (color_definition ~ NL)* ~ (runway ~ NL)* ~ (color_definition ~ NL)* }
 high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ (color_definition ~ NL)* ~(airway ~ NL)* ~ (color_definition ~ NL)* }
 low_airway_section = { "[LOW AIRWAY]" ~ NL ~ (color_definition ~ NL)* ~ (airway ~ NL)* ~ (color_definition ~ NL)* }
@@ -36,11 +36,12 @@ color_value = @{ ASCII_DIGIT+ }
 
 fix = { fix_designator ~ coordinate }
 location = { designator ~ frequency ~ coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G")? }
-runway = { runway_designator ~ runway_designator ~ degrees ~ degrees ~ coordinate ~ coordinate ~ designator }
-airway = { designator ~ coordinate ~ coordinate }
+runway = { runway_designator ~ runway_designator ~ degrees ~ degrees ~ coordinate ~ coordinate ~ designator ~ (LETTER)+? }
+airway = { designator ~ (coordinate | airway_fix) ~ (coordinate|airway_fix) }
 // EDGG has invalid WPT with spaces
 broken = @{ !("[" | "#") ~ (!NL ~ ANY)* }
 
+airway_fix = { (designator ~ designator) }
 coordinate = { coord_part ~ coord_part }
 degrees = @{ ASCII_DIGIT+ }
 frequency = @{ DECIMAL }
