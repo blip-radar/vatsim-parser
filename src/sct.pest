@@ -36,8 +36,8 @@ color_value = @{ ASCII_DIGIT+ }
 
 fix = { fix_designator ~ coordinate }
 location = { designator ~ frequency ~ coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G")? }
-runway = { runway_designator ~ runway_designator ~ degrees ~ degrees ~ coordinate ~ coordinate ~ designator ~ (LETTER)+? }
-airway = { designator ~ (coordinate | airway_fix) ~ (coordinate | airway_fix) }
+runway = { runway_designator ~ runway_designator ~ degrees ~ degrees ~ coordinate ~ coordinate ~ designator ~ (!NEWLINE ~ ANY)* }
+airway = { fix_designator ~ (coordinate | airway_fix) ~ (coordinate | airway_fix) }
 // EDGG has invalid WPT with spaces
 broken = @{ !("[" | "#") ~ (!NL ~ ANY)* }
 
@@ -45,7 +45,7 @@ airway_fix = { (designator ~ designator) }
 coordinate = { coord_part ~ coord_part }
 degrees = @{ ASCII_DIGIT+ }
 frequency = @{ DECIMAL }
-runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R")? }
+runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 
 coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 
