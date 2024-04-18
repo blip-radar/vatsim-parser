@@ -24,7 +24,7 @@ map_setting = _{
   (" " | "\t")* ~ (
     folder | color | asrdata | active | layer | mapsymbol | fontstyle
     | fontsize | zoom | style | mapline | text | global | screen_specific
-    | circle | coordline | coordpoly | coord
+    | circle | coordline | coordpoly | coord | textalign | override_sct
   )
   ~ NL?
 }
@@ -35,12 +35,15 @@ color = { "COLOR:" ~ name }
 
 asrdata = { "ASRDATA:" ~ (wildcard | names) }
 
-active = { "ACTIVE:" ~ (active_sched | active_id | active_rwy_with_excludes | active_rwy | active_always ) }
-andactive = { "AND_ACTIVE:" ~ (active_sched | active_id | active_rwy_with_excludes | active_rwy | active_always ) }
+active = { "ACTIVE:" ~ (active_sched | active_id | active_area | active_rwy_with_excludes | active_rwy | active_always ) }
+andactive = { "AND_ACTIVE:" ~ (active_sched | active_id | active_area | active_rwy_with_excludes | active_rwy | active_always ) }
 active_always = { "1" }
 active_id = {
   "ID:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":"
   ~ (wildcard | names) ~ ":" ~ (wildcard | names)
+}
+active_area = {
+  "AREA:" ~ name
 }
 active_rwy = {
   "RWY:ARR:" ~ (wildcard | runways) ~ ":DEP:" ~ (wildcard | runways)
@@ -54,7 +57,7 @@ active_sched = { (ymd | md) ~ ":" ~ (ymd | md) ~ ":" ~ ASCII_DIGIT+ ~ ":" ~ hm ~
 
 layer = { "LAYER:" ~ number }
 
-mapsymbol = { "SYMBOL" ~ ("/" ~ textalign)? ~ ":" ~ name ~ ":" ~ (coordinate | name) ~ (":" ~ mapsymbollabel)? }
+mapsymbol = { "SYMBOL" ~ ("/" ~ textalign_config)? ~ ":" ~ name ~ ":" ~ (coordinate | name) ~ (":" ~ mapsymbollabel)? }
 mapsymbollabel = { name ~ ":" ~ point }
 
 fontstyle = { "FONTSTYLE:" ~ (fontstyle_set | fontstyle_default) }
@@ -72,9 +75,11 @@ mapline = { ("LINE:" ~ (maplinecoordinates | maplinewpts) ~ NL)+ }
 maplinecoordinates = { coordinate ~ ":" ~ coordinate }
 maplinewpts = { name ~ ":" ~ name }
 
-text = { "TEXT" ~ ("/" ~ textalign)? ~ ":" ~ (coordinate | name) ~ ":" ~ text_content }
+text = { "TEXT" ~ ("/" ~ textalign_config)? ~ ":" ~ (coordinate | name) ~ ":" ~ text_content }
 text_content = { (!NL ~ ANY)+ }
-textalign = { horizontalalign ~ verticalalign? }
+
+textalign = { "TEXTALIGN:" ~ textalign_config }
+textalign_config = { horizontalalign? ~ verticalalign? }
 horizontalalign = { "L" | "C" | "R" }
 verticalalign = { "T" | "C" | "B" }
 
@@ -83,7 +88,7 @@ global = { "GLOBAL" }
 
 circle = { "CIRCLE:" ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
 
-coord = { "COORD:" ~ coordinate }
+coord = { "COORD:" ~ (coordinate | name) }
 
 coordline = { "COORDLINE" }
 coordpoly = { "COORDPOLY:" | number }
@@ -145,4 +150,4 @@ boolean = { "0" | "1" }
 NL = _{ ((" " | "\t")* ~ NEWLINE)+ }
 // per documentation only "//" but ";" is used quite often and apparently ignored
 // in the ES topsky plugin
-COMMENT = _{ (" " | "\t")* ~ ("//" | ";") ~ (!NL ~ ANY)* ~ NL }
+COMMENT = _{ (" " | "\t")* ~ ("//" | ";") ~ (!NL ~ ANY)* }

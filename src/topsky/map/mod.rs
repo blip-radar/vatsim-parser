@@ -85,7 +85,10 @@ impl Location {
         match pair.as_rule() {
             Rule::name => Self::Fix(pair.as_str().to_string()),
             Rule::coordinate => Self::Coordinate(Coordinate::parse(pair)),
-            _ => unreachable!(),
+            ruletype => {
+                eprintln!("unhandled {ruletype:?}");
+                unreachable!()
+            }
         }
     }
 }
@@ -108,7 +111,7 @@ impl MapSymbol {
         let mut symbol = pair.into_inner();
         let label_alignment_or_name = symbol.next().unwrap();
         let (label_alignment, name) =
-            if matches!(label_alignment_or_name.as_rule(), Rule::textalign) {
+            if matches!(label_alignment_or_name.as_rule(), Rule::textalign_config) {
                 // FIXME parse alignment
                 (None, symbol.next().unwrap().as_str().to_string())
             } else {
@@ -161,7 +164,7 @@ impl Text {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut text = pair.into_inner();
         let mut name_or_location = text.next().unwrap();
-        let alignment = if name_or_location.as_rule() == Rule::textalign {
+        let alignment = if name_or_location.as_rule() == Rule::textalign_config {
             // FIXME parse alignment
             name_or_location = text.next().unwrap();
             None
@@ -338,6 +341,8 @@ impl MapRule {
                     Rule::coord => None,
                     Rule::coordpoly => None,
                     Rule::fontstyle => None,
+                    Rule::textalign => None,
+                    Rule::override_sct => None,
                     _ => {
                         eprintln!("unhandled {ruletype:?}");
                         unreachable!()

@@ -96,6 +96,7 @@ impl ActiveRunways {
 pub enum Active {
     True,
     Schedule,
+    Area(String),
     Id(ActiveIds),
     Runway(ActiveRunways),
 }
@@ -105,8 +106,11 @@ impl Active {
         let active = pair.into_inner().next().unwrap();
         match active.as_rule() {
             Rule::active_always => Self::True,
-            Rule::active_id => Self::Id(ActiveIds::parse(active)), // TODO
-            Rule::active_sched => Self::Schedule,                  // TODO
+            Rule::active_id => Self::Id(ActiveIds::parse(active)),
+            Rule::active_area => {
+                Self::Area(active.into_inner().next().unwrap().as_str().to_string())
+            }
+            Rule::active_sched => Self::Schedule, // TODO
             Rule::active_rwy => Self::Runway(ActiveRunways::parse(active)),
             Rule::active_rwy_with_excludes => {
                 Self::Runway(ActiveRunways::parse_with_excludes(active))

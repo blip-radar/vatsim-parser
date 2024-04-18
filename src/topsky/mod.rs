@@ -222,7 +222,8 @@ pub type TopskyResult = Result<Topsky, TopskyError>;
 impl Topsky {
     pub fn parse(path: PathBuf) -> TopskyResult {
         let mut colors = parse_topsky_settings(path.join("TopSkySettings.txt"))?;
-        let mut symbols = parse_topsky_symbols(&fs::read(path.join("TopSkySymbols.txt"))?)?;
+        let mut symbols = fs::read(path.join("TopSkySymbols.txt"))
+            .map_or_else(|_| Ok(HashMap::new()), |bytes| parse_topsky_symbols(&bytes))?;
         let (maps, mapsymbols, mapcolors, overrides) =
             parse_topsky_maps(&fs::read(path.join("TopSkyMaps.txt"))?)?;
         symbols.extend(mapsymbols);
