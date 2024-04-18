@@ -97,7 +97,7 @@ mod test {
 
     #[test]
     fn test_symbology() {
-        let symbology_bytes = br#"
+        let symbology_bytes = br"
 SYMBOLOGY
 SYMBOLSIZE
 Sector:msaw:32768:2.0:0:2:7
@@ -117,7 +117,7 @@ SYMBOLITEM:MOVETO -4 3
 SYMBOLITEM:LINETO 0 -4
 SYMBOLITEM:LINETO 4 3
 SYMBOLITEM:LINETO -4 3
-        "#;
+        ";
         let symbology = Symbology::parse(symbology_bytes);
         assert_eq!(
             symbology

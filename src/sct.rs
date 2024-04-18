@@ -174,12 +174,11 @@ fn parse_airway(pair: Pair<Rule>) -> Option<Airway> {
     let mut airway = pair.into_inner();
     let designator = airway.next().unwrap().as_str().to_string();
 
-    let (start, end) = match (airway.next(), airway.next()) {
-        (Some(start), Some(end)) => (parse_or_fix(start), parse_or_fix(end)),
-        _ => {
-            eprintln!("broken airway (initial parse): {:?}", airway);
-            return None;
-        }
+    let (start, end) = if let (Some(start), Some(end)) = (airway.next(), airway.next()) {
+        (parse_or_fix(start), parse_or_fix(end))
+    } else {
+        eprintln!("broken airway (initial parse): {airway:?}");
+        return None;
     };
 
     Some(Airway {
@@ -190,42 +189,36 @@ fn parse_airway(pair: Pair<Rule>) -> Option<Airway> {
 }
 
 fn parse_fix(pair: Pair<Rule>) -> Option<Fix> {
-    match pair.as_rule() {
-        Rule::fix => {
-            let mut fix = pair.into_inner();
-            let designator = fix.next().unwrap().as_str().to_string();
-            let coordinate = parse_coordinate(fix.next().unwrap());
+    if let Rule::fix = pair.as_rule() {
+        let mut fix = pair.into_inner();
+        let designator = fix.next().unwrap().as_str().to_string();
+        let coordinate = parse_coordinate(fix.next().unwrap());
 
-            Some(Fix {
-                designator,
-                coordinate,
-            })
-        }
-        _ => {
-            eprintln!("broken fix: {:?}", pair);
-            None
-        }
+        Some(Fix {
+            designator,
+            coordinate,
+        })
+    } else {
+        eprintln!("broken fix: {pair:?}");
+        None
     }
 }
 
 fn parse_ndb(pair: Pair<Rule>) -> Option<NDB> {
-    match pair.as_rule() {
-        Rule::location => {
-            let mut location = pair.into_inner();
-            let designator = location.next().unwrap().as_str().to_string();
-            let frequency = location.next().unwrap().as_str().to_string();
-            let coordinate = parse_coordinate(location.next().unwrap());
+    if let Rule::location = pair.as_rule() {
+        let mut location = pair.into_inner();
+        let designator = location.next().unwrap().as_str().to_string();
+        let frequency = location.next().unwrap().as_str().to_string();
+        let coordinate = parse_coordinate(location.next().unwrap());
 
-            Some(NDB {
-                designator,
-                frequency,
-                coordinate,
-            })
-        }
-        _ => {
-            eprintln!("broken ndb: {:?}", pair);
-            None
-        }
+        Some(NDB {
+            designator,
+            frequency,
+            coordinate,
+        })
+    } else {
+        eprintln!("broken ndb: {pair:?}");
+        None
     }
 }
 
@@ -688,8 +681,8 @@ A5         RTT RTT NUB NUB
                 default_callsign: "AERO_NAV".to_string(),
                 default_airport: "ZZZZ".to_string(),
                 centre_point: Coordinate {
-                    lat: 48.35378277777778,
-                    lng: 11.786085833333333
+                    lat: 48.353_782_777_777_78,
+                    lng: 11.786_085_833_333_333
                 },
                 miles_per_deg_lat: 60.0,
                 miles_per_deg_lng: 39.0,
@@ -736,16 +729,16 @@ A5         RTT RTT NUB NUB
                     designator: "MIQ".to_string(),
                     frequency: "426.000".to_string(),
                     coordinate: Coordinate {
-                        lat: 48.570225,
-                        lng: 11.597502777777779,
+                        lat: 48.570_225,
+                        lng: 11.597_502_777_777_779,
                     }
                 },
                 NDB {
                     designator: "RTT".to_string(),
                     frequency: "303.000".to_string(),
                     coordinate: Coordinate {
-                        lat: 47.43092194444444,
-                        lng: 11.940052777777778
+                        lat: 47.430_921_944_444_44,
+                        lng: 11.940_052_777_777_778
                     }
                 }
             ]
@@ -757,7 +750,7 @@ A5         RTT RTT NUB NUB
                     designator: "NUB".to_string(),
                     frequency: "115.750".to_string(),
                     coordinate: Coordinate {
-                        lat: 49.502918888888885,
+                        lat: 49.502_918_888_888_885,
                         lng: 11.035
                     }
                 },
@@ -765,8 +758,8 @@ A5         RTT RTT NUB NUB
                     designator: "OTT".to_string(),
                     frequency: "112.300".to_string(),
                     coordinate: Coordinate {
-                        lat: 48.18039388888889,
-                        lng: 11.816535833333335
+                        lat: 48.180_393_888_888_89,
+                        lng: 11.816_535_833_333_335
                     }
                 }
             ]
@@ -777,22 +770,22 @@ A5         RTT RTT NUB NUB
                 Airport {
                     designator: "EDDM".to_string(),
                     coordinate: Coordinate {
-                        lat: 48.35378277777778,
-                        lng: 11.786085833333333
+                        lat: 48.353_782_777_777_78,
+                        lng: 11.786_085_833_333_333
                     }
                 },
                 Airport {
                     designator: "EDNX".to_string(),
                     coordinate: Coordinate {
-                        lat: 48.238999722222225,
-                        lng: 11.559166944444446
+                        lat: 48.238_999_722_222_225,
+                        lng: 11.559_166_944_444_446
                     }
                 },
                 Airport {
                     designator: "LIPB".to_string(),
                     coordinate: Coordinate {
-                        lat: 46.46027777777778,
-                        lng: 11.32638888888889
+                        lat: 46.460_277_777_777_78,
+                        lng: 11.326_388_888_888_89
                     }
                 }
             ]
@@ -803,50 +796,50 @@ A5         RTT RTT NUB NUB
                 Fix {
                     designator: "(FM-C)".to_string(),
                     coordinate: Coordinate {
-                        lat: 49.51833305555555,
+                        lat: 49.518_333_055_555_55,
                         lng: 8.445
                     }
                 },
                 Fix {
                     designator: "ARMUT".to_string(),
                     coordinate: Coordinate {
-                        lat: 49.722499722222224,
-                        lng: 12.323332777777777
+                        lat: 49.722_499_722_222_224,
+                        lng: 12.323_332_777_777_777
                     }
                 },
                 Fix {
                     designator: "GEDSO".to_string(),
                     coordinate: Coordinate {
-                        lat: 47.080555833333335,
-                        lng: 11.870277777777778
+                        lat: 47.080_555_833_333_335,
+                        lng: 11.870_277_777_777_778
                     }
                 },
                 Fix {
                     designator: "INBED".to_string(),
                     coordinate: Coordinate {
                         lat: 49.3875,
-                        lng: 10.941666944444444
+                        lng: 10.941_666_944_444_444
                     }
                 },
                 Fix {
                     designator: "NAXAV".to_string(),
                     coordinate: Coordinate {
-                        lat: 46.463855833333334,
-                        lng: 11.322182777777778
+                        lat: 46.463_855_833_333_334,
+                        lng: 11.322_182_777_777_778
                     }
                 },
                 Fix {
                     designator: "UNKUL".to_string(),
                     coordinate: Coordinate {
-                        lat: 49.13722194444444,
-                        lng: 11.459721944444444
+                        lat: 49.137_221_944_444_44,
+                        lng: 11.459_721_944_444_444
                     }
                 },
                 Fix {
                     designator: "VEMUT".to_string(),
                     coordinate: Coordinate {
-                        lat: 49.81074388888889,
-                        lng: 12.461246944444444
+                        lat: 49.810_743_888_888_89,
+                        lng: 12.461_246_944_444_444
                     }
                 }
             ]
@@ -859,12 +852,12 @@ A5         RTT RTT NUB NUB
                     headings: (80, 260),
                     location: (
                         Coordinate {
-                            lat: 48.34066888888889,
-                            lng: 11.751016944444444
+                            lat: 48.340_668_888_888_89,
+                            lng: 11.751_016_944_444_444
                         },
                         Coordinate {
-                            lat: 48.34479694444445,
-                            lng: 11.80461388888889
+                            lat: 48.344_796_944_444_45,
+                            lng: 11.804_613_888_888_89
                         }
                     ),
                     aerodrome: "EDDM".to_string()
@@ -874,12 +867,12 @@ A5         RTT RTT NUB NUB
                     headings: (80, 260),
                     location: (
                         Coordinate {
-                            lat: 48.362766944444445,
-                            lng: 11.767549722222222
+                            lat: 48.362_766_944_444_445,
+                            lng: 11.767_549_722_222_222
                         },
                         Coordinate {
-                            lat: 48.366885833333335,
-                            lng: 11.821171944444444
+                            lat: 48.366_885_833_333_335,
+                            lng: 11.821_171_944_444_444
                         }
                     ),
                     aerodrome: "EDDM".to_string()
@@ -889,12 +882,12 @@ A5         RTT RTT NUB NUB
                     headings: (71, 251),
                     location: (
                         Coordinate {
-                            lat: 48.23825277777778,
-                            lng: 11.55391388888889
+                            lat: 48.238_252_777_777_78,
+                            lng: 11.553_913_888_888_89
                         },
                         Coordinate {
-                            lat: 48.24010777777778,
-                            lng: 11.56444388888889
+                            lat: 48.240_107_777_777_78,
+                            lng: 11.564_443_888_888_89
                         }
                     ),
                     aerodrome: "EDNX".to_string()
@@ -904,12 +897,12 @@ A5         RTT RTT NUB NUB
                     headings: (37, 217),
                     location: (
                         Coordinate {
-                            lat: 54.61203888888889,
-                            lng: -5.879761111111112
+                            lat: 54.612_038_888_888_89,
+                            lng: -5.879_761_111_111_112
                         },
                         Coordinate {
-                            lat: 54.624855555555555,
-                            lng: -5.864430555555555
+                            lat: 54.624_855_555_555_555,
+                            lng: -5.864_430_555_555_555
                         }
                     ),
                     aerodrome: "EGAC".to_string()
@@ -922,34 +915,34 @@ A5         RTT RTT NUB NUB
                 Airway {
                     designator: "B73".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 54.91277777777778,
-                        lng: 18.958332777777777
+                        lat: 54.912_777_777_777_78,
+                        lng: 18.958_332_777_777_777
                     }),
                     end: Location::Coordinate(Coordinate {
-                        lat: 55.603610833333335,
-                        lng: 19.838305833333333
+                        lat: 55.603_610_833_333_335,
+                        lng: 19.838_305_833_333_333
                     })
                 },
                 Airway {
                     designator: "B74".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 55.20138888888889,
-                        lng: 19.634166944444445
+                        lat: 55.201_388_888_888_89,
+                        lng: 19.634_166_944_444_445
                     }),
                     end: Location::Coordinate(Coordinate {
-                        lat: 55.603610833333335,
-                        lng: 19.838305833333333
+                        lat: 55.603_610_833_333_335,
+                        lng: 19.838_305_833_333_333
                     })
                 },
                 Airway {
                     designator: "B74".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 54.63777777777778,
-                        lng: 19.355555833333334
+                        lat: 54.637_777_777_777_78,
+                        lng: 19.355_555_833_333_334
                     }),
                     end: Location::Coordinate(Coordinate {
-                        lat: 55.20138888888889,
-                        lng: 19.634166944444445
+                        lat: 55.201_388_888_888_89,
+                        lng: 19.634_166_944_444_445
                     })
                 },
                 Airway {
@@ -970,56 +963,56 @@ A5         RTT RTT NUB NUB
                 Airway {
                     designator: "A361".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 48.939166944444445,
-                        lng: 0.9530558333333333
+                        lat: 48.939_166_944_444_445,
+                        lng: 0.953_055_833_333_333_3
                     }),
                     end: Location::Coordinate(Coordinate {
-                        lat: 48.79061083333333,
-                        lng: 0.5302777777777778
+                        lat: 48.790_610_833_333_33,
+                        lng: 0.530_277_777_777_777_8
                     })
                 },
                 Airway {
                     designator: "A361".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 49.028527777777775,
-                        lng: 1.2140558333333333
+                        lat: 49.028_527_777_777_775,
+                        lng: 1.214_055_833_333_333_3
                     }),
                     end: Location::Coordinate(Coordinate {
-                        lat: 48.939166944444445,
-                        lng: 0.9530558333333333
+                        lat: 48.939_166_944_444_445,
+                        lng: 0.953_055_833_333_333_3
                     })
                 },
                 Airway {
                     designator: "A4".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 48.61756888888889,
-                        lng: 17.541166944444445
+                        lat: 48.617_568_888_888_89,
+                        lng: 17.541_166_944_444_445
                     }),
                     end: Location::Coordinate(Coordinate {
-                        lat: 48.71583277777778,
-                        lng: 17.386110833333333
+                        lat: 48.715_832_777_777_78,
+                        lng: 17.386_110_833_333_333
                     })
                 },
                 Airway {
                     designator: "A4".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 48.29043583333333,
-                        lng: 18.05063888888889
+                        lat: 48.290_435_833_333_33,
+                        lng: 18.050_638_888_888_89
                     }),
                     end: Location::Coordinate(Coordinate {
-                        lat: 48.61756888888889,
-                        lng: 17.541166944444445
+                        lat: 48.617_568_888_888_89,
+                        lng: 17.541_166_944_444_445
                     })
                 },
                 Airway {
                     designator: "A4".to_string(),
                     start: Location::Coordinate(Coordinate {
-                        lat: 48.71583277777778,
-                        lng: 17.386110833333333
+                        lat: 48.715_832_777_777_78,
+                        lng: 17.386_110_833_333_333
                     }),
                     end: Location::Coordinate(Coordinate {
                         lat: 48.8532,
-                        lng: 17.16784388888889
+                        lng: 17.167_843_888_888_89
                     })
                 },
                 Airway {
@@ -1066,6 +1059,6 @@ EDQD STAR ALL LONLIxZ                    N050.04.29.060 E011.13.34.989 N049.53.5
         ";
         let sct = Sct::parse(sct_bytes);
 
-        assert!(sct.is_ok())
+        assert!(sct.is_ok());
     }
 }

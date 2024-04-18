@@ -78,7 +78,7 @@ where
     where
         S: Serializer,
     {
-        let key = |k1, k2| format!("{}:{}", k1, k2);
+        let key = |k1, k2| format!("{k1}:{k2}");
         serializer.collect_map(self.0.iter().map(|(k, v)| (key(&k.0, &k.1), v)))
     }
 }

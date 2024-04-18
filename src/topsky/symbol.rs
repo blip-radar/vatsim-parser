@@ -136,7 +136,7 @@ mod test {
 
     #[test]
     fn test_symbols() {
-        let symbols_str = br#"
+        let symbols_str = br"
 SYMBOL:AIRPORT
 MOVETO:-3.2:-3
 LINETO:3:-3
@@ -163,7 +163,7 @@ ARC:0:0:6:2:0:360
 
 SYMBOL:NODAPS_DIV
 POLYGON:-4:0:0:-4:4:0:0:4
-ARC:0:0:8:0:0"#;
+ARC:0:0:8:0:0";
         let symbols = parse_topsky_symbols(symbols_str).unwrap();
 
         assert_eq!(

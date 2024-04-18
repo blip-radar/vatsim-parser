@@ -172,8 +172,8 @@ impl Text {
         let content = text.next().unwrap().as_str().to_string();
 
         Self {
-            content,
             location,
+            content,
             alignment,
         }
     }
@@ -459,9 +459,7 @@ pub enum MapDefinition {
     Symbol(SymbolDef),
     Override(OverrideSct),
 }
-pub(super) fn parse_topsky_maps(
-    file_contents: &[u8],
-) -> Result<
+type ParseMapResult = Result<
     (
         HashMap<String, Map>,
         HashMap<String, SymbolDef>,
@@ -469,7 +467,8 @@ pub(super) fn parse_topsky_maps(
         Vec<OverrideSct>,
     ),
     TopskyError,
-> {
+>;
+pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
     TopskyParser::parse(Rule::maps, &read_to_string(file_contents)?)
         .map(|mut pairs| {
             pairs
@@ -516,7 +515,7 @@ pub(super) fn parse_topsky_maps(
                     },
                 )
         })
-        .map_err(|e| e.into())
+        .map_err(Into::into)
 }
 
 #[cfg(test)]
@@ -527,7 +526,7 @@ mod test {
 
     #[test]
     fn test_active() {
-        let maps_str = br#"
+        let maps_str = br"
 MAP:SYMBOLS
 FOLDER:FIXES
 COLOR:Active_Map_Type_20
@@ -547,7 +546,7 @@ ASRDATA:APP,CTR
 ZOOM:9
 COLOR:Active_Map_Type_20
 ACTIVE:RWY:ARR:EDMO22:DEP:*
-"#;
+";
         let (mut maps, ..) = parse_topsky_maps(maps_str).unwrap();
 
         assert_eq!(
@@ -604,7 +603,7 @@ ACTIVE:RWY:ARR:EDMO22:DEP:*
 
     #[test]
     fn test_asrdata() {
-        let maps_str = br#"
+        let maps_str = br"
 MAP:SYMBOLS
 FOLDER:FIXES
 COLOR:Active_Map_Type_20
@@ -624,7 +623,7 @@ ASRDATA:APP,CTR
 ZOOM:9
 COLOR:Active_Map_Type_20
 ACTIVE:RWY:ARR:EDMO22:DEP:*
-"#;
+";
         let (mut maps, ..) = parse_topsky_maps(maps_str).unwrap();
 
         assert_eq!(

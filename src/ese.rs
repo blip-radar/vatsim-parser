@@ -381,29 +381,29 @@ fn collect_sectors(
     match rule {
         SectorRule::Cop(cop) => {
             if let Some(sct) = sectors.get_mut(&cop.entry_sector) {
-                sct.copns.push(cop.clone())
+                sct.copns.push(cop.clone());
             }
             if let Some(sct) = sectors.get_mut(&cop.exit_sector) {
-                sct.copxs.push(cop)
+                sct.copxs.push(cop);
             }
         }
         SectorRule::FirCop(cop) => {
             if let Some(sct) = sectors.get_mut(&cop.entry_sector) {
-                sct.fir_copns.push(cop.clone())
+                sct.fir_copns.push(cop.clone());
             }
             if let Some(sct) = sectors.get_mut(&cop.exit_sector) {
-                sct.fir_copxs.push(cop)
+                sct.fir_copxs.push(cop);
             }
         }
         SectorRule::SectorLine((id, sector_line)) => {
             if let Some(_overwritten) = sector_lines.insert(id.clone(), sector_line) {
-                eprintln!("duplicate sector_line: {}", id)
+                eprintln!("duplicate sector_line: {id}");
             }
         }
         SectorRule::Sector((border, sector)) => {
             borders.insert(sector.id.clone(), border);
             if let Some(overwritten) = sectors.insert(sector.id.clone(), sector) {
-                eprintln!("duplicate sector: {}", overwritten.id)
+                eprintln!("duplicate sector: {}", overwritten.id);
             }
         }
         // TODO
@@ -516,7 +516,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         frequency: "123.130".to_string(),
                         identifier: "MX".to_string(),
                         prefix: "EDDM".to_string(),
-                        middle: "".to_string(),
+                        middle: String::new(),
                         suffix: "ATIS".to_string(),
                         squawk_range: (0, 0),
                         visibility_points: vec![],
@@ -534,8 +534,8 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         suffix: "CTR".to_string(),
                         squawk_range: (2354, 2367),
                         visibility_points: vec![Coordinate {
-                            lat: 49.04013916666666,
-                            lng: 12.526625000000001
+                            lat: 49.040_139_166_666_66,
+                            lng: 12.526_625_000_000_001
                         }],
                     }
                 ),
@@ -551,8 +551,8 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         suffix: "CTR".to_string(),
                         squawk_range: (2354, 2367),
                         visibility_points: vec![Coordinate {
-                            lat: 48.180394166666666,
-                            lng: 11.816536111111112
+                            lat: 48.180_394_166_666_666,
+                            lng: 11.816_536_111_111_112
                         }],
                     }
                 ),
@@ -569,12 +569,12 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         squawk_range: (2001, 2577),
                         visibility_points: vec![
                             Coordinate {
-                                lat: 49.44759277777777,
-                                lng: 10.218426666666668
+                                lat: 49.447_592_777_777_77,
+                                lng: 10.218_426_666_666_668
                             },
                             Coordinate {
-                                lat: 52.46913638888889,
-                                lng: 10.870221111111112
+                                lat: 52.469_136_388_888_89,
+                                lng: 10.870_221_111_111_112
                             }
                         ],
                     }
@@ -911,11 +911,11 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     points: vec![
                         Coordinate {
                             lat: 48.6675,
-                            lng: 11.794166666666667
+                            lng: 11.794_166_666_666_667
                         },
                         Coordinate {
-                            lat: 49.166666666666664,
-                            lng: 11.966666666666667
+                            lat: 49.166_666_666_666_664,
+                            lng: 11.966_666_666_666_667
                         }
                     ]
                 },
@@ -923,38 +923,38 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     points: vec![
                         Coordinate {
                             lat: 48.6675,
-                            lng: 11.794166666666667
+                            lng: 11.794_166_666_666_667
                         },
                         Coordinate {
-                            lat: 48.66777777777777,
-                            lng: 11.511666666666667
+                            lat: 48.667_777_777_777_77,
+                            lng: 11.511_666_666_666_667
                         },
                         Coordinate {
-                            lat: 48.66777777777777,
-                            lng: 11.320833333333333
+                            lat: 48.667_777_777_777_77,
+                            lng: 11.320_833_333_333_333
                         }
                     ]
                 },
                 SectorLine {
                     points: vec![
                         Coordinate {
-                            lat: 48.66777777777777,
-                            lng: 11.320833333333333
+                            lat: 48.667_777_777_777_77,
+                            lng: 11.320_833_333_333_333
                         },
                         Coordinate {
-                            lat: 49.11944444444445,
-                            lng: 10.67361111111111
+                            lat: 49.119_444_444_444_45,
+                            lng: 10.673_611_111_111_11
                         }
                     ]
                 },
                 SectorLine {
                     points: vec![
                         Coordinate {
-                            lat: 49.11944444444445,
-                            lng: 10.67361111111111
+                            lat: 49.119_444_444_444_45,
+                            lng: 10.673_611_111_111_11
                         },
                         Coordinate {
-                            lat: 49.13805555555555,
+                            lat: 49.138_055_555_555_55,
                             lng: 11.1325
                         }
                     ]
@@ -962,12 +962,12 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                 SectorLine {
                     points: vec![
                         Coordinate {
-                            lat: 49.13805555555555,
+                            lat: 49.138_055_555_555_55,
                             lng: 11.1325
                         },
                         Coordinate {
-                            lat: 49.166666666666664,
-                            lng: 11.966666666666667
+                            lat: 49.166_666_666_666_664,
+                            lng: 11.966_666_666_666_667
                         }
                     ]
                 }

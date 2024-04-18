@@ -346,7 +346,7 @@ impl Asr {
                     None
                 }
             })
-            .unwrap_or("".to_string());
+            .unwrap_or(String::new());
         let sector_title = sections
             .iter()
             .find_map(|data| {
@@ -356,7 +356,7 @@ impl Asr {
                     None
                 }
             })
-            .unwrap_or("".to_string());
+            .unwrap_or(String::new());
         let show_leader = sections
             .iter()
             .find_map(|data| {
@@ -428,12 +428,12 @@ impl Asr {
             })
             .unwrap_or((
                 Coordinate {
-                    lat: 46.529122,
-                    lng: 6.678287,
+                    lat: 46.529_122,
+                    lng: 6.678_287,
                 },
                 Coordinate {
-                    lat: 50.105536,
-                    lng: 16.599900,
+                    lat: 50.105_536,
+                    lng: 16.599_900,
                 },
             ));
         let plugin_settings = TwoKeyMap(
@@ -491,8 +491,8 @@ mod test {
         assert_eq!(asr.display_type, DisplayType::Radar);
         assert!(asr.display_type_need_radar_content);
         assert!(asr.display_type_geo_referenced);
-        assert_eq!(asr.sector_file, "".to_string());
-        assert_eq!(asr.sector_title, "".to_string());
+        assert_eq!(asr.sector_file, String::new());
+        assert_eq!(asr.sector_title, String::new());
         // TODO runways
         assert!(asr.show_c);
         assert!(!asr.show_standby);
@@ -511,12 +511,12 @@ mod test {
             asr.window_area,
             (
                 Coordinate {
-                    lat: 47.687116,
-                    lng: 9.936633
+                    lat: 47.687_116,
+                    lng: 9.936_633
                 },
                 Coordinate {
-                    lat: 49.020449,
-                    lng: 13.635539
+                    lat: 49.020_449,
+                    lng: 13.635_539
                 }
             )
         );
@@ -533,6 +533,6 @@ mod test {
                     "APP,EDDM_APP".to_string()
                 ),
             ]))
-        )
+        );
     }
 }

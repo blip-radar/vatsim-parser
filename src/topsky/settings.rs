@@ -65,13 +65,13 @@ mod test {
 
     #[test]
     fn test_settings_colors() {
-        let settings_str = r#"
+        let settings_str = r"
 Color_Active_Map_Type_16=160,160,160
 Color_Active_Map_Type_17=255,255,255
 Color_Active_Map_Type_18=0,160,0 //MVA - light gray
 Color_Active_Map_Type_19=225,225,225 //Airspace C TMZ and AWYs
 Color_Active_Map_Type_20=140,140,140 //Sectorlines and Labels
-        "#;
+        ";
         let colors = TopskySettingsParser::parse(Rule::settings, settings_str).map(|mut pairs| {
             pairs
                 .next()
