@@ -261,7 +261,9 @@ impl MapLine {
             if let Some(last_line) = acc.last_mut() {
                 if let Some(last_loc) = last_line.points.last() {
                     if *last_loc == start {
-                        last_line.points.push(end);
+                        if *last_loc != end {
+                            last_line.points.push(end);
+                        }
 
                         return acc;
                     }
@@ -269,7 +271,11 @@ impl MapLine {
             }
 
             acc.push(Self {
-                points: vec![start, end],
+                points: if start == end {
+                    vec![start]
+                } else {
+                    vec![start, end]
+                },
             });
 
             acc
