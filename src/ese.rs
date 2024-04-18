@@ -35,6 +35,22 @@ pub struct Position {
 }
 
 #[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+pub struct MSAW {
+    pub altitude: u32,
+    pub points: Vec<Coordinate>,
+}
+impl MSAW {
+    fn parse(pair: Pair<Rule>) -> (String, Self) {
+        let mut msaw = pair.into_inner();
+        let id = msaw.next().unwrap().as_str().to_string();
+        let altitude = msaw.next().unwrap().as_str().parse().unwrap();
+        let points = msaw.map(parse_coordinate).collect();
+
+        (id, Self { altitude, points })
+    }
+}
+
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub struct SectorLine {
     pub points: Vec<Coordinate>,
     // TODO
@@ -54,6 +70,23 @@ impl SectorLine {
                 points: coords.into_iter().map(parse_coordinate).collect(),
             },
         )
+    }
+}
+
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+pub struct CircleSectorLine {
+    pub center: String,
+    pub radius: f32,
+}
+impl CircleSectorLine {
+    fn parse(pair: Pair<Rule>) -> (String, Self) {
+        let mut circle_sectorline = pair.into_inner();
+        let id = circle_sectorline.next().unwrap().as_str().to_string();
+        let center = circle_sectorline.next().unwrap().as_str().to_string();
+        let radius = circle_sectorline.next().unwrap().as_str().parse().unwrap();
+        // TODO _display
+
+        (id, Self { center, radius })
     }
 }
 
@@ -321,7 +354,9 @@ enum SectorRule {
     SectorLine((String, SectorLine)),
     FirCop(Cop),
     Cop(Cop),
+    CircleSectorLine((String, CircleSectorLine)),
     DisplaySectorline,
+    MSAW((String, MSAW)),
 }
 
 fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
@@ -331,6 +366,8 @@ fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
         Rule::cop => SectorRule::Cop(Cop::parse(pair)),
         Rule::fir_cop => SectorRule::FirCop(Cop::parse(pair)),
         Rule::display_sectorline => SectorRule::DisplaySectorline,
+        Rule::circle_sectorline => SectorRule::CircleSectorLine(CircleSectorLine::parse(pair)),
+        Rule::msaw => SectorRule::MSAW(MSAW::parse(pair)),
         rule => {
             eprintln!("{rule:?}");
             unreachable!()
@@ -382,11 +419,12 @@ fn parse_position(pair: Pair<Rule>) -> (String, Position) {
 
 type SectorsLinesBorders = (
     HashMap<String, Sector>,
+    HashMap<String, CircleSectorLine>,
     HashMap<String, SectorLine>,
     HashMap<String, Vec<String>>,
 );
 fn collect_sectors(
-    (mut sectors, mut sector_lines, mut borders): SectorsLinesBorders,
+    (mut sectors, mut circle_sector_lines, mut sector_lines, mut borders): SectorsLinesBorders,
     rule: SectorRule,
 ) -> SectorsLinesBorders {
     match rule {
@@ -411,6 +449,11 @@ fn collect_sectors(
                 eprintln!("duplicate sector_line: {id}");
             }
         }
+        SectorRule::CircleSectorLine((id, circle_sector_line)) => {
+            if let Some(_overwritten) = circle_sector_lines.insert(id.clone(), circle_sector_line) {
+                eprintln!("duplicate cirle_sector_line: {id}");
+            }
+        }
         SectorRule::Sector((border, sector)) => {
             borders.insert(sector.id.clone(), border);
             if let Some(overwritten) = sectors.insert(sector.id.clone(), sector) {
@@ -418,14 +461,16 @@ fn collect_sectors(
             }
         }
         // TODO
+        SectorRule::MSAW(_) => (),
         SectorRule::DisplaySectorline => (),
     }
-    (sectors, sector_lines, borders)
+    (sectors, circle_sector_lines, sector_lines, borders)
 }
 
 fn combine_sectors_with_borders(
-    (sectors, lines, borders): SectorsLinesBorders,
+    (sectors, _circle_sector_lines, lines, borders): SectorsLinesBorders,
 ) -> HashMap<String, Sector> {
+    // TODO circle_sector_lines
     sectors
         .into_iter()
         .map(|(id, mut sector)| {
@@ -458,7 +503,12 @@ fn parse_section(pair: Pair<Rule>) -> (SectionName, Section) {
                         .map(parse_airspace)
                         // TODO combine sectors with lines
                         .fold(
-                            (HashMap::new(), HashMap::new(), HashMap::new()),
+                            (
+                                HashMap::new(),
+                                HashMap::new(),
+                                HashMap::new(),
+                                HashMap::new(),
+                            ),
                             collect_sectors,
                         ),
                 )

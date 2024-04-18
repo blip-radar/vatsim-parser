@@ -11,7 +11,7 @@ line = _{ broken ~ NL }
 section_header = _{ "[" ~ header_name ~ "]" }
 
 position_section = { "[POSITIONS]" ~ NL ~ (position ~ NL)* }
-airspace_section = { "[AIRSPACE]" ~ NL ~ (sectorline | display_sectorline | sector | cop | fir_cop)* }
+airspace_section = { "[AIRSPACE]" ~ NL ~ (sectorline | circle_sectorline | display_sectorline | sector | cop | fir_cop | msaw)* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 position = {
@@ -40,9 +40,13 @@ alt_clb = _{ wildcard | INTEGER }
 alt_des = _{ wildcard | INTEGER }
 cop_description = _{ text }
 
-sectorline = { "SECTORLINE:" ~ text ~ NL ~ ((display | sectorline_coord) ~ NL)* }
+sectorline = { "SECTORLINE:" ~ text ~ NL ~ ((display | coord) ~ NL)* }
 display = { "DISPLAY:" ~ text ~ ":" ~ text ~ ":" ~ text }
-sectorline_coord = _{ "COORD:" ~ coordinate }
+
+circle_sectorline = {
+  "CIRCLE_SECTORLINE:" ~ text ~ ":" ~ fix_designator ~ ":" ~ DECIMAL ~ NL
+  ~ (display ~ NL)*
+}
 
 display_sectorline = { "DISPLAY_SECTORLINE:" ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ text ~ NL }
 
@@ -59,14 +63,18 @@ sct = _{ text }
 adep = _{ wildcard | designator }
 ades = _{ wildcard | designator }
 
+msaw = { "MSAW:" ~ text ~ ":" ~ INTEGER ~ NL ~ (coord ~ NL)+ }
+
 wildcard = { "*" }
 
 broken = @{ !("[") ~ (!NL ~ ANY)* }
 
+coord = _{ "COORD:" ~ coordinate }
 coordinate = { coord_part ~ ":" ~ coord_part }
+coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
+
 frequency = @{ DECIMAL }
 
-coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 
 fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | ".")+ }
 designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
@@ -80,7 +88,7 @@ min = @{ ASCII_DIGIT+ }
 sec = @{ DECIMAL }
 hemi = @{ "N" | "n" | "S" | "s" | "W" | "w" | "E" | "e" }
 
-DECIMAL = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+DECIMAL = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 INTEGER = @{ ASCII_DIGIT+ }
 
 NL = _{ NEWLINE+ }
