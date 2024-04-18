@@ -1,4 +1,4 @@
-sct = { SOI ~ NL? ~ (color_definition ~ NL)* ~ section+ ~ EOI}
+sct = { SOI ~ NL? ~ section+ ~ EOI}
 
 section = _{
   info_section
@@ -10,32 +10,38 @@ section = _{
   | high_airway_section
   | low_airway_section
   | unparsed_section
+  | color_definition
 }
 
 line = _{ broken ~ NL }
 
 section_header = _{ "[" ~ header_name ~ "]" }
 
-info_section = { "[INFO]" ~ NL ~ (color_definition ~ NL)* ~ sector_name ~ NL ~ sector_callsign ~ NL ~ designator ~ NL ~ coord_part ~ NL ~ coord_part ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ (color_definition ~ NL)* }
-vor_section = { "[VOR]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL?)* ~ (color_definition | COMMENT)* }
-ndb_section = { "[NDB]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL?)* ~ (color_definition | COMMENT)* }
-fixes_section = { "[FIXES]" ~ NL ~ (color_definition ~ NL)* ~ ((fix | broken) ~ NL)* ~ (color_definition | COMMENT)* }
-airport_section = { "[AIRPORT]" ~ NL ~ (color_definition ~ NL)* ~ (location ~ NL?)* ~ (color_definition | COMMENT)* }
-runway_section = { "[RUNWAY]" ~ NL ~ (color_definition ~ NL)* ~ (runway ~ NL)* ~ (color_definition ~ NL)* }
-high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ (color_definition ~ NL)* ~(airway ~ NL)* ~ (color_definition ~ NL)* }
-low_airway_section = { "[LOW AIRWAY]" ~ NL ~ (color_definition ~ NL)* ~ (airway ~ NL)* ~ (color_definition ~ NL)* }
+info_section = {
+  "[INFO]" ~ NL ~ color_definition* ~ sector_name ~ NL ~ sector_callsign ~ NL ~ designator ~ NL
+  ~ coord_part ~ NL ~ coord_part ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL
+  ~ (MAYBE_DECIMAL ~ NL)? ~ color_definition*
+}
+vor_section = { "[VOR]" ~ NL ~ color_definition* ~ (location ~ NL?)* ~ color_definition* }
+ndb_section = { "[NDB]" ~ NL ~ color_definition* ~ ((location | broken) ~ NL)* ~ color_definition* }
+fixes_section = { "[FIXES]" ~ NL ~ color_definition* ~ ((fix | broken) ~ NL)* ~ color_definition* }
+airport_section = { "[AIRPORT]" ~ NL ~ color_definition* ~ (aerodrome ~ NL?)* ~ color_definition* }
+runway_section = { "[RUNWAY]" ~ NL ~ color_definition* ~ (runway ~ NL)* ~ color_definition* }
+high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ color_definition* ~ (airway ~ NL)* ~ color_definition* }
+low_airway_section = { "[LOW AIRWAY]" ~ NL ~ color_definition* ~ (airway ~ NL)* ~ color_definition* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 sector_name = @{ (LETTER | ASCII_DIGIT | "\t" | ' '..'~')+ }
 sector_callsign = @{ (ASCII_ALPHANUMERIC | "_")+ }
 
 
-color_definition = { "#define" ~ color_name ~ color_value }
+color_definition = { "#define" ~ color_name ~ color_value ~ NL }
 color_name = @{ (ASCII_ALPHANUMERIC | "-" | "_")+ }
 color_value = @{ ASCII_DIGIT+ }
 
 fix = { fix_designator ~ coordinate }
-location = { designator ~ frequency ~ coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G")? }
+aerodrome = { designator ~ (frequency | ".")? ~ coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G") }
+location = { designator ~ frequency ~ coordinate }
 runway = { runway_designator ~ runway_designator ~ degrees ~ degrees ~ coordinate ~ coordinate ~ designator ~ (!NEWLINE ~ ANY)* }
 airway = { fix_designator ~ (coordinate | airway_fix) ~ (coordinate | airway_fix) }
 // EDGG has invalid WPT with spaces
@@ -44,12 +50,12 @@ broken = @{ !("[" | "#") ~ (!NL ~ ANY)* }
 airway_fix = { (designator ~ designator) }
 coordinate = { coord_part ~ coord_part }
 degrees = @{ ASCII_DIGIT+ }
-frequency = @{ DECIMAL }
+frequency = @{ MAYBE_DECIMAL }
 runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 
 coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 
-fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | ".")+ }
+fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | "." | "[" | "]")+ }
 designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
 
 header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }
@@ -63,5 +69,5 @@ DECIMAL = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 MAYBE_DECIMAL = @{ "-"? ~ (DECIMAL | ASCII_DIGIT+) }
 
 NL = _{ NEWLINE+ }
-COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* ~ NL }
+COMMENT = _{ (";" | "//") ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " | "\t" }

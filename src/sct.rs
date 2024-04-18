@@ -147,7 +147,11 @@ fn parse_coordinate(pair: Pair<Rule>) -> Coordinate {
 fn parse_airport(pair: Pair<Rule>) -> Airport {
     let mut location = pair.into_inner();
     let designator = location.next().unwrap().as_str().to_string();
-    let coordinate = parse_coordinate(location.nth(1).unwrap());
+    let coordinate = parse_coordinate(
+        location
+            .find(|pair| matches!(pair.as_rule(), Rule::coordinate))
+            .unwrap(),
+    );
 
     Airport {
         designator,
@@ -204,16 +208,24 @@ fn parse_fix(pair: Pair<Rule>) -> Option<Fix> {
     }
 }
 
-fn parse_ndb(pair: Pair<Rule>) -> NDB {
-    let mut location = pair.into_inner();
-    let designator = location.next().unwrap().as_str().to_string();
-    let frequency = location.next().unwrap().as_str().to_string();
-    let coordinate = parse_coordinate(location.next().unwrap());
+fn parse_ndb(pair: Pair<Rule>) -> Option<NDB> {
+    match pair.as_rule() {
+        Rule::location => {
+            let mut location = pair.into_inner();
+            let designator = location.next().unwrap().as_str().to_string();
+            let frequency = location.next().unwrap().as_str().to_string();
+            let coordinate = parse_coordinate(location.next().unwrap());
 
-    NDB {
-        designator,
-        frequency,
-        coordinate,
+            Some(NDB {
+                designator,
+                frequency,
+                coordinate,
+            })
+        }
+        _ => {
+            eprintln!("broken ndb: {:?}", pair);
+            None
+        }
     }
 }
 
@@ -341,7 +353,7 @@ fn parse_independent_section(
                             store_color(colors, pair);
                             None
                         } else {
-                            Some(parse_ndb(pair))
+                            parse_ndb(pair)
                         }
                     })
                     .collect(),
@@ -510,6 +522,7 @@ E011.47.09.909
 
 #define COLOR_APP       16711680
 #define COLOR_AirspaceA  8421376
+#define prohibitcolor 7697781		; 117,117,117	Prohibited areas
 
 [VOR]
 NUB  115.750 N049.30.10.508 E011.02.06.000 ; NUB Comment Test
@@ -537,6 +550,7 @@ LIPB 000.000 N046.27.37.000 E011.19.35.000 D
 08R 26L 080 260 N048.20.26.408 E011.45.03.661 N048.20.41.269 E011.48.16.610 EDDM
 08L 26R 080 260 N048.21.45.961 E011.46.03.179 N048.22.00.789 E011.49.16.219 EDDM
 07  25  071 251 N048.14.17.710 E011.33.14.090 N048.14.24.388 E011.33.51.998 EDNX
+04 22 037 217 N054.36.43.340 W005.52.47.140 N054.37.29.480 W005.51.51.950 EGAC Belfast/City
 
 [SID]
 EDDM SID 26L BIBAGxS                     N048.20.25.315 E011.44.49.465 N048.20.15.608 E011.42.33.951
@@ -701,6 +715,15 @@ A5         RTT RTT NUB NUB
                         r: 0,
                         g: 128,
                         b: 128,
+                        a: 255
+                    }
+                ),
+                (
+                    "prohibitcolor".to_string(),
+                    Color {
+                        r: 117,
+                        g: 117,
+                        b: 117,
                         a: 255
                     }
                 )
@@ -875,6 +898,21 @@ A5         RTT RTT NUB NUB
                         }
                     ),
                     aerodrome: "EDNX".to_string()
+                },
+                Runway {
+                    designators: ("04".to_string(), "22".to_string()),
+                    headings: (37, 217),
+                    location: (
+                        Coordinate {
+                            lat: 54.61203888888889,
+                            lng: -5.879761111111112
+                        },
+                        Coordinate {
+                            lat: 54.624855555555555,
+                            lng: -5.864430555555555
+                        }
+                    ),
+                    aerodrome: "EGAC".to_string()
                 }
             ]
         );
