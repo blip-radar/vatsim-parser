@@ -217,6 +217,20 @@ fn parse_setting(pair: Pair<Rule>) -> Option<AsrData> {
         }
         // TODO
         Rule::runways => None,
+        Rule::airports => None,
+        Rule::fixes => None,
+        Rule::ndbs => None,
+        Rule::vors => None,
+        Rule::sids => None,
+        Rule::stars => None,
+        Rule::low_airways => None,
+        Rule::free_text => None,
+        Rule::artcc_boundary => None,
+        Rule::artcc_high_boundary => None,
+        Rule::artcc_low_boundary => None,
+        Rule::geo => None,
+        Rule::ground_network => None,
+        Rule::regions => None,
         Rule::EOI => None,
         _ => {
             eprintln!("Unhandled rule: {rule:?}");

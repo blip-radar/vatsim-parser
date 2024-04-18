@@ -30,7 +30,7 @@ pub struct Position {
     pub prefix: String,
     pub middle: String,
     pub suffix: String,
-    pub squawk_range: (u16, u16),
+    pub squawk_range: Option<(u16, u16)>,
     pub visibility_points: Vec<Coordinate>,
 }
 
@@ -338,6 +338,18 @@ fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
     }
 }
 
+fn parse_squawk_range(maybe_pair: Option<Pair<Rule>>) -> Option<(u16, u16)> {
+    maybe_pair.and_then(|pair| match pair.as_rule() {
+        Rule::squawk_range => {
+            let mut squawk_range = pair.into_inner();
+            let squawk_begin = squawk_range.next().unwrap().as_str().parse().unwrap();
+            let squawk_end = squawk_range.next().unwrap().as_str().parse().unwrap();
+            Some((squawk_begin, squawk_end))
+        }
+        _ => None,
+    })
+}
+
 fn parse_position(pair: Pair<Rule>) -> (String, Position) {
     let mut position = pair.into_inner();
     let name = position.next().unwrap().as_str().to_string();
@@ -349,8 +361,7 @@ fn parse_position(pair: Pair<Rule>) -> (String, Position) {
     let suffix = position.next().unwrap().as_str().to_string();
     // skip unused fields
     let mut position = position.skip(2);
-    let squawk_begin = position.next().unwrap().as_str().parse().unwrap();
-    let squawk_end = position.next().unwrap().as_str().parse().unwrap();
+    let squawk_range = parse_squawk_range(position.next());
     let visibility_points = position.map(parse_coordinate).collect();
 
     (
@@ -363,7 +374,7 @@ fn parse_position(pair: Pair<Rule>) -> (String, Position) {
             prefix,
             middle,
             suffix,
-            squawk_range: (squawk_begin, squawk_end),
+            squawk_range,
             visibility_points,
         },
     )
@@ -498,6 +509,7 @@ EDDM_ATIS:Muenchen ATIS:123.130:MX::EDDM:ATIS:::0000:0000
 EDMM_ALB_CTR:Muenchen Radar:129.100:ALB:ALB:EDMM:CTR:::2354:2367:N049.02.24.501:E012.31.35.850
 EDMM_TEG_CTR:Muenchen Radar:133.680:TEG:TEG:EDMM:CTR:::2354:2367:N048.10.49.419:E011.48.59.530
 EDXX_FIS_CTR:Langen Information:128.950:GIXX:FIS:EDXX:CTR:::2001:2577:N049.26.51.334:E010.13.06.336:N052.28.08.891:E010.52.12.796
+EGBB_ATIS:Birmingham ATIS:136.030:BBI:B:EGBB:ATIS:-:-::
 
 [SIDSSTARS]
 STAR:EDDN:28:UPALA1V:UPALA DN463 DN462 DN461 DN452 DN453 DN454 DN455 DN456 DN457 DN458 DN459 DN439 DN438 DN437 OSNUB NGD32
@@ -518,7 +530,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         prefix: "EDDM".to_string(),
                         middle: String::new(),
                         suffix: "ATIS".to_string(),
-                        squawk_range: (0, 0),
+                        squawk_range: Some((0, 0)),
                         visibility_points: vec![],
                     }
                 ),
@@ -532,7 +544,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         prefix: "EDMM".to_string(),
                         middle: "ALB".to_string(),
                         suffix: "CTR".to_string(),
-                        squawk_range: (2354, 2367),
+                        squawk_range: Some((2354, 2367)),
                         visibility_points: vec![Coordinate {
                             lat: 49.040_139_166_666_66,
                             lng: 12.526_625_000_000_001
@@ -549,7 +561,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         prefix: "EDMM".to_string(),
                         middle: "TEG".to_string(),
                         suffix: "CTR".to_string(),
-                        squawk_range: (2354, 2367),
+                        squawk_range: Some((2354, 2367)),
                         visibility_points: vec![Coordinate {
                             lat: 48.180_394_166_666_666,
                             lng: 11.816_536_111_111_112
@@ -566,7 +578,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         prefix: "EDXX".to_string(),
                         middle: "FIS".to_string(),
                         suffix: "CTR".to_string(),
-                        squawk_range: (2001, 2577),
+                        squawk_range: Some((2001, 2577)),
                         visibility_points: vec![
                             Coordinate {
                                 lat: 49.447_592_777_777_77,
@@ -577,6 +589,20 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                                 lng: 10.870_221_111_111_112
                             }
                         ],
+                    }
+                ),
+                (
+                    "BBI".to_string(),
+                    Position {
+                        name: "EGBB_ATIS".to_string(),
+                        callsign: "Birmingham ATIS".to_string(),
+                        frequency: "136.030".to_string(),
+                        identifier: "BBI".to_string(),
+                        prefix: "EGBB".to_string(),
+                        middle: "B".to_string(),
+                        suffix: "ATIS".to_string(),
+                        squawk_range: None,
+                        visibility_points: vec![]
                     }
                 )
             ])
@@ -589,7 +615,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
 [AIRSPACE]
 
 SECTORLINE:109
-COORD:N049.08.17.000:E011.07.57.000
+COORD:N049.08.17.000:E011.07.57.000 ; inline comment
 COORD:N049.10.00.000:E011.58.00.000
 DISPLAY:EDMM\xb7ETSIA\xb7000\xb7075:EDMM\xb7ETSIA\xb7000\xb7075:EDMM\xb7EDMMALB\xb7000\xb7105
 DISPLAY:EDMM\xb7ETSIA\xb7000\xb7075:EDMM\xb7ETSIA\xb7000\xb7075:EDMM\xb7EDMMFRK\xb7000\xb7135

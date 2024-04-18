@@ -16,9 +16,10 @@ unparsed_section = { (section_header ~ NL ~ line*) }
 
 position = {
   text ~ ":" ~ text ~ ":" ~ frequency ~ ":" ~ text ~ ":" ~ text ~ ":" ~ text ~ ":"
-  ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ INTEGER ~ ":" ~ INTEGER
-  ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)?
+  ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ squawk_range? ~ ":"?
+  ~ coordinate? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)?
 }
+squawk_range = { INTEGER ~ ":" ~ INTEGER }
 
 cop = {
   "COPX:" ~ prev ~ ":" ~ dep_rwy ~ ":" ~ cop_def ~ ":" ~ after ~ ":" ~ arr_rwy ~ ":" ~ sctx ~ ":"
@@ -83,5 +84,5 @@ DECIMAL = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 INTEGER = @{ ASCII_DIGIT+ }
 
 NL = _{ NEWLINE+ }
-COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* ~ NL }
+COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " | "\t" }

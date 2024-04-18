@@ -12,7 +12,6 @@ setting = _{
   | history_dots
   | leader
   | plugin
-  | runways
   | sector_file
   | sector_title
   | show_leader
@@ -21,8 +20,23 @@ setting = _{
   | simulation_mode
   | tag_family
   | turn_leader
-  | window_area)
-  ~ NL
+  | window_area
+  | free_text
+  | airports
+  | fixes
+  | ndbs
+  | vors
+  | low_airways
+  | sids
+  | stars
+  | geo
+  | ground_network
+  | regions
+  | artcc_boundary
+  | artcc_low_boundary
+  | artcc_high_boundary
+  | runways)
+  ~ NL?
 }
 
 above = { "ABOVE:" ~ INTEGER }
@@ -46,7 +60,22 @@ turn_leader = { "TURNLEADER:" ~ BOOL }
 window_area = { "WINDOWAREA:" ~ coordinate ~ ":" ~ coordinate }
 
 plugin = { "PLUGIN:" ~ multivalue ~ ":" ~ multivalue ~ ":" ~ value }
+
 runways = { "Runways:" ~ multivalue ~ ":" ~ value }
+free_text = { "Free Text:" ~ multivalue ~ ":" ~ value }
+airports = { "Airports:" ~ multivalue ~ ":" ~ value }
+ndbs = { "NDBs:" ~ multivalue ~ ":" ~ value }
+vors = { "VORs:" ~ multivalue ~ ":" ~ value }
+fixes = { "Fixes:" ~ multivalue ~ ":" ~ value }
+low_airways = { "Low airways:" ~ multivalue ~ ":" ~ value }
+sids = { "Sids:" ~ multivalue ~ ":" ~ value }
+stars = { "Stars:" ~ multivalue ~ ":" ~ value }
+geo = { "Geo:" ~ multivalue ~ ":" ~ value }
+ground_network = { "Ground Network:" ~ multivalue ~ ":" ~ value }
+regions = { "Regions:" ~ multivalue ~ ":" ~ value }
+artcc_boundary = { "ARTCC boundary:" ~ multivalue ~ ":" ~ value }
+artcc_low_boundary = { "ARTCC low boundary:" ~ multivalue ~ ":" ~ value }
+artcc_high_boundary = { "ARTCC high boundary:" ~ multivalue ~ ":" ~ value }
 
 // EDGG has invalid WPT with spaces
 broken = @{ !("[") ~ (!NL ~ ANY)* }
@@ -64,7 +93,7 @@ sec = @{ DECIMAL }
 hemi = @{ "N" | "S" | "W" | "E" }
 
 INTEGER = @{ "-"? ~ ASCII_DIGIT+ }
-DECIMAL = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+DECIMAL = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 BOOL = { "0" | "1" }
 
 NL = _{ NEWLINE+ }
