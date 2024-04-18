@@ -37,6 +37,12 @@ impl Coordinate {
     }
 }
 
+#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+pub enum Location {
+    Fix(String),
+    Coordinate(Coordinate),
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Reflect)]
 pub struct Color {
     pub r: u8,

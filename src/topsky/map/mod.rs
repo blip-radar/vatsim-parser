@@ -9,7 +9,7 @@ use pest::{
 };
 use serde::Serialize;
 
-use crate::{read_to_string, Color, Coordinate, DegMinSec};
+use crate::{read_to_string, Color, Coordinate, DegMinSec, Location};
 
 pub use self::active::{Active, ActiveIds, ActiveRunways};
 
@@ -79,12 +79,6 @@ impl Coordinate {
             _ => panic!("Consistency!"),
         }
     }
-}
-
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
-pub enum Location {
-    Fix(String),
-    Coordinate(Coordinate),
 }
 impl Location {
     fn parse(pair: Pair<Rule>) -> Self {

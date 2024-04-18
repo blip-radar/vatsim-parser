@@ -6,7 +6,7 @@ use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::Color;
+use crate::{Color, Location};
 
 use super::{read_to_string, Coordinate, DegMinSec};
 
@@ -32,6 +32,13 @@ pub struct Airport {
 pub struct Fix {
     pub designator: String,
     pub coordinate: Coordinate,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Airway {
+    pub designator: String,
+    pub start: Location,
+    pub end: Location,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -66,6 +73,8 @@ pub struct Sct {
     pub ndbs: Vec<NDB>,
     pub vors: Vec<VOR>,
     pub runways: Vec<Runway>,
+    pub high_airways: Vec<Airway>,
+    pub low_airways: Vec<Airway>,
 }
 
 #[derive(Debug, Default, Serialize, PartialEq)]
@@ -87,6 +96,8 @@ enum Section {
     Info(SctInfo),
     Airport(Vec<Airport>),
     Fixes(Vec<Fix>),
+    HighAirways(Vec<Airway>),
+    LowAirways(Vec<Airway>),
     NDBs(Vec<NDB>),
     VORs(Vec<VOR>),
     Runways(Vec<Runway>),
@@ -97,6 +108,8 @@ enum Section {
 enum SectionName {
     Info,
     Airport,
+    HighAirway,
+    LowAirway,
     Fixes,
     NDBs,
     VORs,
@@ -140,6 +153,36 @@ fn parse_airport(pair: Pair<Rule>) -> Airport {
         designator,
         coordinate,
     }
+}
+
+fn parse_or_fix(pair: Pair<Rule>) -> Location {
+    match pair.as_rule() {
+        Rule::coordinate => Location::Coordinate(parse_coordinate(pair)),
+        Rule::airway_fix => Location::Fix(pair.into_inner().next().unwrap().as_str().to_string()),
+        rule => {
+            eprintln!("{rule:?}");
+            unreachable!()
+        }
+    }
+}
+
+fn parse_airway(pair: Pair<Rule>) -> Option<Airway> {
+    let mut airway = pair.into_inner();
+    let designator = airway.next().unwrap().as_str().to_string();
+
+    let (start, end) = match (airway.next(), airway.next()) {
+        (Some(start), Some(end)) => (parse_or_fix(start), parse_or_fix(end)),
+        _ => {
+            eprintln!("broken airway (initial parse): {:?}", airway);
+            return None;
+        }
+    };
+
+    Some(Airway {
+        designator,
+        start,
+        end,
+    })
 }
 
 fn parse_fix(pair: Pair<Rule>) -> Option<Fix> {
@@ -248,7 +291,10 @@ fn store_color(colors: &mut HashMap<String, Color>, pair: Pair<Rule>) {
     colors.insert(color_name, color);
 }
 
-fn parse_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> (SectionName, Section) {
+fn parse_independent_section(
+    pair: Pair<Rule>,
+    colors: &mut HashMap<String, Color>,
+) -> (SectionName, Section) {
     match pair.as_rule() {
         Rule::info_section => (
             SectionName::Info,
@@ -333,6 +379,37 @@ fn parse_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> (Sect
                     .collect(),
             ),
         ),
+        Rule::high_airway_section => (
+            SectionName::HighAirway,
+            Section::HighAirways(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::color_definition = pair.as_rule() {
+                            store_color(colors, pair);
+                            None
+                        } else {
+                            parse_airway(pair)
+                        }
+                    })
+                    .collect(),
+            ),
+        ),
+
+        Rule::low_airway_section => (
+            SectionName::LowAirway,
+            Section::LowAirways(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::color_definition = pair.as_rule() {
+                            store_color(colors, pair);
+                            None
+                        } else {
+                            parse_airway(pair)
+                        }
+                    })
+                    .collect(),
+            ),
+        ),
 
         _ => (SectionName::Unsupported, Section::Unsupported),
     }
@@ -342,7 +419,8 @@ impl Sct {
     pub fn parse(content: &[u8]) -> SctResult {
         let unparsed_file = read_to_string(content)?;
         let mut colors = HashMap::new();
-        let mut sections = SctParser::parse(Rule::sct, &unparsed_file).map(|mut pairs| {
+        let sct_parse = SctParser::parse(Rule::sct, &unparsed_file);
+        let mut sections = sct_parse.map(|mut pairs| {
             pairs
                 .next()
                 .unwrap()
@@ -352,11 +430,12 @@ impl Sct {
                         store_color(&mut colors, pair);
                         None
                     } else {
-                        Some(parse_section(pair, &mut colors))
+                        Some(parse_independent_section(pair, &mut colors))
                     }
                 })
                 .collect::<HashMap<_, _>>()
         })?;
+
         let info = match sections.remove_entry(&SectionName::Info) {
             Some((_, Section::Info(sct_info))) => sct_info,
             _ => SctInfo::default(),
@@ -381,16 +460,28 @@ impl Sct {
             Some((_, Section::Runways(runways))) => runways,
             _ => vec![],
         };
+        let high_airways = match sections.remove_entry(&SectionName::HighAirway) {
+            Some((_, Section::HighAirways(high_airways))) => high_airways,
+            _ => vec![],
+        };
+        let low_airways = match sections.remove_entry(&SectionName::LowAirway) {
+            Some((_, Section::LowAirways(low_airways))) => low_airways,
+            _ => vec![],
+        };
 
-        Ok(Sct {
+        let sct = Sct {
             info,
-            colors,
             airports,
+            colors: colors.clone(),
             fixes,
             ndbs,
             vors,
             runways,
-        })
+            high_airways,
+            low_airways,
+        };
+
+        Ok(sct)
     }
 }
 
@@ -398,8 +489,8 @@ impl Sct {
 mod test {
     use std::collections::HashMap;
 
-    use crate::sct::{Airport, Fix, Runway, Sct, SctInfo, NDB, VOR};
-    use crate::{Color, Coordinate};
+    use crate::sct::{Airport, Airway, Fix, Runway, Sct, SctInfo, NDB, VOR};
+    use crate::{Color, Coordinate, Location};
 
     #[test]
     fn test_sct() {
@@ -421,11 +512,11 @@ E011.47.09.909
 #define COLOR_AirspaceA  8421376
 
 [VOR]
-NUB  115.750 N049.30.10.508 E011.02.06.000
+NUB  115.750 N049.30.10.508 E011.02.06.000 ; NUB Comment Test
 OTT  112.300 N048.10.49.418 E011.48.59.529
 
 [NDB]
-MIQ  426.000 N048.34.12.810 E011.35.51.010
+MIQ  426.000 N048.34.12.810 E011.35.51.010 ;MIQ Comment Test
 RTT  303.000 N047.25.51.319 E011.56.24.190
 
 [FIXES]
@@ -563,6 +654,8 @@ COLOR_HardSurface1         N048.04.25.470 E011.16.20.093
 B73        N054.54.46.000 E018.57.29.998 N055.36.12.999 E019.50.17.901
 B74        N055.12.05.000 E019.38.03.001 N055.36.12.999 E019.50.17.901
 B74        N054.38.16.000 E019.21.20.001 N055.12.05.000 E019.38.03.001
+B75        ARMUT ARMUT VEMUT VEMUT
+B76        ARMUT ARMUT RTT RTT
 
 [LOW AIRWAY]
 A361       N048.56.21.001 E000.57.11.001 N048.47.26.199 E000.31.49.000
@@ -570,6 +663,8 @@ A361       N049.01.42.700 E001.12.50.601 N048.56.21.001 E000.57.11.001
 A4         N048.37.03.248 E017.32.28.201 N048.42.56.998 E017.23.09.999
 A4         N048.17.25.569 E018.03.02.300 N048.37.03.248 E017.32.28.201
 A4         N048.42.56.998 E017.23.09.999 N048.51.11.520 E017.10.04.238
+A5         RTT RTT NUB NUB
+
         ";
         let sct = Sct::parse(sct_bytes);
         assert_eq!(
@@ -780,6 +875,119 @@ A4         N048.42.56.998 E017.23.09.999 N048.51.11.520 E017.10.04.238
                         }
                     ),
                     aerodrome: "EDNX".to_string()
+                }
+            ]
+        );
+        assert_eq!(
+            sct.as_ref().unwrap().high_airways,
+            vec![
+                Airway {
+                    designator: "B73".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 54.91277777777778,
+                        lng: 18.958332777777777
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 55.603610833333335,
+                        lng: 19.838305833333333
+                    })
+                },
+                Airway {
+                    designator: "B74".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 55.20138888888889,
+                        lng: 19.634166944444445
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 55.603610833333335,
+                        lng: 19.838305833333333
+                    })
+                },
+                Airway {
+                    designator: "B74".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 54.63777777777778,
+                        lng: 19.355555833333334
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 55.20138888888889,
+                        lng: 19.634166944444445
+                    })
+                },
+                Airway {
+                    designator: "B75".to_string(),
+                    start: Location::Fix("ARMUT".to_string()),
+                    end: Location::Fix("VEMUT".to_string())
+                },
+                Airway {
+                    designator: "B76".to_string(),
+                    start: Location::Fix("ARMUT".to_string()),
+                    end: Location::Fix("RTT".to_string())
+                },
+            ]
+        );
+        assert_eq!(
+            sct.as_ref().unwrap().low_airways,
+            vec![
+                Airway {
+                    designator: "A361".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 48.939166944444445,
+                        lng: 0.9530558333333333
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 48.79061083333333,
+                        lng: 0.5302777777777778
+                    })
+                },
+                Airway {
+                    designator: "A361".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 49.028527777777775,
+                        lng: 1.2140558333333333
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 48.939166944444445,
+                        lng: 0.9530558333333333
+                    })
+                },
+                Airway {
+                    designator: "A4".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 48.61756888888889,
+                        lng: 17.541166944444445
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 48.71583277777778,
+                        lng: 17.386110833333333
+                    })
+                },
+                Airway {
+                    designator: "A4".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 48.29043583333333,
+                        lng: 18.05063888888889
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 48.61756888888889,
+                        lng: 17.541166944444445
+                    })
+                },
+                Airway {
+                    designator: "A4".to_string(),
+                    start: Location::Coordinate(Coordinate {
+                        lat: 48.71583277777778,
+                        lng: 17.386110833333333
+                    }),
+                    end: Location::Coordinate(Coordinate {
+                        lat: 48.8532,
+                        lng: 17.16784388888889
+                    })
+                },
+                Airway {
+                    designator: "A5".to_string(),
+                    start: Location::Fix("RTT".to_string()),
+                    end: Location::Fix("NUB".to_string())
                 }
             ]
         );
