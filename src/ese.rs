@@ -356,7 +356,7 @@ enum SectorRule {
     Cop(Cop),
     CircleSectorLine((String, CircleSectorLine)),
     DisplaySectorline,
-    MSAW((String, MSAW)),
+    Msaw((String, MSAW)),
 }
 
 fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
@@ -367,7 +367,7 @@ fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
         Rule::fir_cop => SectorRule::FirCop(Cop::parse(pair)),
         Rule::display_sectorline => SectorRule::DisplaySectorline,
         Rule::circle_sectorline => SectorRule::CircleSectorLine(CircleSectorLine::parse(pair)),
-        Rule::msaw => SectorRule::MSAW(MSAW::parse(pair)),
+        Rule::msaw => SectorRule::Msaw(MSAW::parse(pair)),
         rule => {
             eprintln!("{rule:?}");
             unreachable!()
@@ -461,7 +461,7 @@ fn collect_sectors(
             }
         }
         // TODO
-        SectorRule::MSAW(_) => (),
+        SectorRule::Msaw(_) => (),
         SectorRule::DisplaySectorline => (),
     }
     (sectors, circle_sector_lines, sector_lines, borders)

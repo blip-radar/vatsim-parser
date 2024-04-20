@@ -1,0 +1,32 @@
+airways = { SOI ~ NL? ~ airway+ ~ EOI}
+
+airway = {
+  designator ~ "\t" ~ coord ~ "\t" ~ "14" ~ "\t" ~ designator ~ "\t" ~ ("B" | "H" | "L")
+  ~ (no_neighbour | neighbour)
+  ~ (no_neighbour | neighbour) ~ NL
+}
+
+neighbour = {
+   "\t" ~ designator ~ "\t" ~ coord ~ "\t" ~ level ~ "\t" ~ bool
+}
+no_neighbour = {
+  "\t"{5} ~ "N"
+}
+
+empty_coord = { empty ~ "\t" ~ empty }
+bool = _{ TRUE | FALSE }
+level = { ASCII_DIGIT+ }
+empty = { "" }
+
+designator = { (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
+
+TRUE = { "Y" }
+FALSE = { "N" }
+
+coord = { coord_part ~ "\t" ~ coord_part }
+coord_part = ${ DECIMAL }
+
+DECIMAL = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+
+NL = _{ NEWLINE+ }
+COMMENT = _{ (";" | "//") ~ (!NEWLINE ~ ANY)* }

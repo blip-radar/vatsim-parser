@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Display, hash::Hash, io};
 use bevy_reflect::Reflect;
 use serde::{Serialize, Serializer};
 
+pub mod airway;
 pub mod asr;
 pub mod ese;
 pub mod prf;
