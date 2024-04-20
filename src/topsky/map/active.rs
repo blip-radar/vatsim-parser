@@ -93,10 +93,55 @@ impl ActiveRunways {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
+pub struct ActiveAreas {
+    pub areas: Vec<String>,
+    pub area_excludes: Option<Vec<String>>,
+}
+impl ActiveAreas {
+    fn parse(pair: Pair<Rule>) -> Self {
+        let mut active = pair.into_inner();
+        let areas = active
+            .next()
+            .unwrap()
+            .into_inner()
+            .map(|pair| pair.as_str().to_string())
+            .collect();
+        Self {
+            areas,
+            area_excludes: None,
+        }
+    }
+
+    fn parse_with_excludes(pair: Pair<Rule>) -> Self {
+        let mut active = pair.into_inner();
+        let areas = active
+            .next()
+            .unwrap()
+            .into_inner()
+            .map(|pair| pair.as_str().to_string())
+            .collect();
+        let area_excludes = Some(
+            active
+                .next()
+                .unwrap()
+                .into_inner()
+                .map(|pair| pair.as_str().to_string())
+                .collect(),
+        );
+        Self {
+            areas,
+            area_excludes,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
 pub enum Active {
     True,
     Schedule,
-    Area(String),
+    Aup(Vec<String>),
+    Notam(String, Vec<String>),
+    Area(ActiveAreas),
     Id(ActiveIds),
     Runway(ActiveRunways),
 }
@@ -107,9 +152,21 @@ impl Active {
         match active.as_rule() {
             Rule::active_always => Self::True,
             Rule::active_id => Self::Id(ActiveIds::parse(active)),
-            Rule::active_area => {
-                Self::Area(active.into_inner().next().unwrap().as_str().to_string())
+            Rule::active_aup => Self::Aup(
+                active
+                    .into_inner()
+                    .map(|pair| pair.as_str().to_string())
+                    .collect(),
+            ),
+            Rule::active_notam => {
+                let mut active_notam = active.into_inner();
+                Self::Notam(
+                    active_notam.next().unwrap().as_str().to_string(),
+                    active_notam.map(|pair| pair.as_str().to_string()).collect(),
+                )
             }
+            Rule::active_area => Self::Area(ActiveAreas::parse(active)),
+            Rule::active_area_with_excludes => Self::Area(ActiveAreas::parse_with_excludes(active)),
             Rule::active_sched => Self::Schedule, // TODO
             Rule::active_rwy => Self::Runway(ActiveRunways::parse(active)),
             Rule::active_rwy_with_excludes => {

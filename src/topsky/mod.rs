@@ -14,7 +14,7 @@ use phf::phf_map;
 use serde::Serialize;
 use thiserror::Error;
 
-use self::map::{parse_topsky_maps, ColorDef, Map, OverrideSct};
+use self::map::{parse_topsky_maps, ColorDef, LineStyleDef, Map, OverrideSct};
 use self::settings::parse_topsky_settings;
 use self::symbol::{parse_topsky_symbols, SymbolDef};
 
@@ -208,6 +208,7 @@ pub struct Topsky {
     pub symbols: HashMap<String, SymbolDef>,
     pub maps: HashMap<String, Map>,
     pub colors: HashMap<String, ColorDef>,
+    pub line_styles: HashMap<String, LineStyleDef>,
     pub overrides: Vec<OverrideSct>,
 }
 
@@ -224,7 +225,7 @@ impl Topsky {
         let mut colors = parse_topsky_settings(path.join("TopSkySettings.txt"))?;
         let mut symbols = fs::read(path.join("TopSkySymbols.txt"))
             .map_or_else(|_| Ok(HashMap::new()), |bytes| parse_topsky_symbols(&bytes))?;
-        let (maps, mapsymbols, mapcolors, overrides) =
+        let (maps, mapsymbols, mapcolors, line_styles, overrides) =
             parse_topsky_maps(&fs::read(path.join("TopSkyMaps.txt"))?)?;
         symbols.extend(mapsymbols);
         colors.extend(mapcolors);
@@ -233,6 +234,7 @@ impl Topsky {
             symbols,
             maps,
             colors,
+            line_styles,
             overrides,
         })
     }

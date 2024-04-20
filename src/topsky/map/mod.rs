@@ -52,8 +52,8 @@ impl CoordinatePart {
                     .parse::<f64>()
                     .unwrap()
                     * match hemi {
-                        "N" | "E" => 1.0,
-                        "S" | "W" => -1.0,
+                        "N" | "n" | "E" | "e" => 1.0,
+                        "S" | "s" | "W" | "w" => -1.0,
                         _ => unreachable!(),
                     };
                 let min = sct_coord_part.next().unwrap().as_str().parse().unwrap();
@@ -289,6 +289,7 @@ pub enum MapRule {
     Color(String),
     AsrData(Option<Vec<String>>),
     Active(Active),
+    AndActive(Active),
     Global,
     ScreenSpecific,
     Layer(i32),
@@ -328,6 +329,7 @@ impl MapRule {
                         }
                     })),
                     Rule::active => Some(MapRule::Active(Active::parse(pair))),
+                    Rule::andactive => Some(MapRule::AndActive(Active::parse(pair))),
                     Rule::layer => Some(MapRule::Layer(
                         pair.into_inner().next().unwrap().as_str().parse().unwrap(),
                     )),
@@ -379,6 +381,14 @@ pub struct ColorDef {
     pub color: Color,
 }
 
+#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
+pub struct LineStyleDef {
+    pub name: String,
+    pub brush: String,
+    pub hatch: String,
+    pub dash_lengths: Vec<i32>,
+}
+
 pub(super) fn parse_map(pair: Pair<Rule>) -> Option<Map> {
     match pair.as_rule() {
         Rule::map => {
@@ -415,6 +425,29 @@ pub(super) fn parse_map(pair: Pair<Rule>) -> Option<Map> {
         Rule::EOI => None,
         _ => {
             eprintln!("{:?}", pair.as_rule());
+            unreachable!()
+        }
+    }
+}
+
+pub(super) fn parse_linestyle(pair: Pair<Rule>) -> Option<LineStyleDef> {
+    match pair.as_rule() {
+        Rule::linestyledef => {
+            let mut color = pair.into_inner();
+            let name = color.next().unwrap().as_str().to_string();
+            let brush = color.next().unwrap().as_str().to_string();
+            let hatch = color.next().unwrap().as_str().to_string();
+            let dash_lengths = color.map(|pair| pair.as_str().parse().unwrap()).collect();
+            Some(LineStyleDef {
+                name,
+                brush,
+                hatch,
+                dash_lengths,
+            })
+        }
+        Rule::EOI => None,
+        rule => {
+            eprintln!("{rule:?}");
             unreachable!()
         }
     }
@@ -469,12 +502,14 @@ pub enum MapDefinition {
     Color(ColorDef),
     Symbol(SymbolDef),
     Override(OverrideSct),
+    LineStyle(LineStyleDef),
 }
 type ParseMapResult = Result<
     (
         HashMap<String, Map>,
         HashMap<String, SymbolDef>,
         HashMap<String, ColorDef>,
+        HashMap<String, LineStyleDef>,
         Vec<OverrideSct>,
     ),
     TopskyError,
@@ -490,6 +525,7 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                     Rule::map => parse_map(pair).map(MapDefinition::Map),
                     Rule::colordef => parse_color(pair).map(MapDefinition::Color),
                     Rule::symboldef => parse_symbol(pair).map(MapDefinition::Symbol),
+                    Rule::linestyledef => parse_linestyle(pair).map(MapDefinition::LineStyle),
                     Rule::override_sct => parse_override(pair).map(MapDefinition::Override),
                     Rule::EOI => None,
                     _ => {
@@ -498,8 +534,14 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                     }
                 })
                 .fold(
-                    (HashMap::new(), HashMap::new(), HashMap::new(), vec![]),
-                    |(mut maps, mut symbols, mut colors, mut overrides), def| {
+                    (
+                        HashMap::new(),
+                        HashMap::new(),
+                        HashMap::new(),
+                        HashMap::new(),
+                        vec![],
+                    ),
+                    |(mut maps, mut symbols, mut colors, mut line_styles, mut overrides), def| {
                         match def {
                             MapDefinition::Map(mut map) => {
                                 if maps.contains_key(&map.name) {
@@ -518,11 +560,14 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                             MapDefinition::Symbol(symbol) => {
                                 symbols.insert(symbol.name.clone(), symbol);
                             }
+                            MapDefinition::LineStyle(line_style) => {
+                                line_styles.insert(line_style.name.clone(), line_style);
+                            }
                             MapDefinition::Override(override_sct) => {
                                 overrides.push(override_sct);
                             }
                         };
-                        (maps, symbols, colors, overrides)
+                        (maps, symbols, colors, line_styles, overrides)
                     },
                 )
         })

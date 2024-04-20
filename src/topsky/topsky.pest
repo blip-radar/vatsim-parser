@@ -1,5 +1,5 @@
 symbols = { SOI ~ NL? ~ symbol+ ~ EOI}
-maps = { SOI ~ NL? ~ (map | symboldef | colordef | override_sct)+ ~ EOI }
+maps = { SOI ~ NL? ~ (map | symboldef | colordef | linestyledef | override_sct)+ ~ EOI }
 
 symbol = {
   "SYMBOL:" ~ name ~ NL ~ symbolrule+
@@ -12,6 +12,10 @@ colordef = {
   "COLORDEF:" ~ name ~ ":" ~ number ~ ":" ~ number ~ ":" ~ number ~ NL?
 }
 
+linestyledef = {
+  "LINESTYLEDEF:" ~ name ~ ":" ~ name ~ ":" ~ name ~ (":" ~ (number ~ ("," ~ number)*))? ~ NL?
+}
+
 override_sct = { "OVERRIDE_SCT_MAP:" ~ override_folder ~ name ~ NL? }
 override_folder = { ((!("\\" | NL) ~ ANY)+ ~ "\\")? }
 
@@ -22,7 +26,7 @@ map = { "MAP:" ~ name ~ NL ~ map_setting+ }
 // MAP
 map_setting = _{
   (" " | "\t")* ~ (
-    folder | color | asrdata | active | layer | mapsymbol | fontstyle
+    folder | color | asrdata | active | andactive | layer | mapsymbol | fontstyle
     | fontsize | zoom | style | mapline | text | global | screen_specific
     | circle | coordline | coordpoly | coord | textalign | override_sct
   )
@@ -35,15 +39,28 @@ color = { "COLOR:" ~ name }
 
 asrdata = { "ASRDATA:" ~ (wildcard | names) }
 
-active = { "ACTIVE:" ~ (active_sched | active_id | active_area | active_rwy_with_excludes | active_rwy | active_always ) }
-andactive = { "AND_ACTIVE:" ~ (active_sched | active_id | active_area | active_rwy_with_excludes | active_rwy | active_always ) }
+active = { "ACTIVE:" ~ active_options }
+andactive = { "AND_ACTIVE:" ~ active_options }
+active_options = _{
+  active_sched | active_id | active_notam | active_aup | active_area_with_excludes
+  | active_area | active_rwy_with_excludes | active_rwy | active_always
+}
 active_always = { "1" }
 active_id = {
   "ID:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":"
   ~ (wildcard | names) ~ ":" ~ (wildcard | names)
 }
 active_area = {
-  "AREA:" ~ name
+  "AREA:" ~ names
+}
+active_area_with_excludes = {
+  "AREA:" ~ names ~ ":" ~ names
+}
+active_aup = {
+  "AUP:" ~ names
+}
+active_notam = {
+  "NOTAM:" ~ icao ~ ":" ~ names
 }
 active_rwy = {
   "RWY:ARR:" ~ (wildcard | runways) ~ ":DEP:" ~ (wildcard | runways)
@@ -123,17 +140,17 @@ pixel = { "SETPIXEL:" ~ point }
 // TODO: SCTDATA
 
 name = @{ (!(NL | ":") ~ ANY)+ }
-name_no_comma = @{ (!(NL | ":" | ",") ~ ANY)+ }
+name_no_comma = @{ (!(NL | ":" | ",") ~ ANY)* }
 names = { name_no_comma ~ ("," ~ name_no_comma)* }
 wildcard = { "*" }
 
 coordinate = { coord_part ~ ":" ~ coord_part }
-coord_part = { decimal | sct_coord_part }
+coord_part = { sct_coord_part | decimal }
 sct_coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 deg = @{ ASCII_DIGIT+ }
 min = @{ ASCII_DIGIT+ }
 sec = @{ decimal }
-hemi = @{ "N" | "S" | "W" | "E" }
+hemi = @{ "N" | "S" | "W" | "E" | "n" | "s" | "w" | "e" }
 
 md = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 ymd = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
@@ -141,10 +158,10 @@ hm = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 
 runway = { icao ~ rwy_designator }
 icao = { ASCII_ALPHA_UPPER{4} }
-rwy_designator = { ASCII_DIGIT{2} ~ ("L" | "C" | "R")? }
+rwy_designator = { ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 point = { decimal ~ ":" ~ decimal }
 number = @{ ("-"|"+")? ~ ASCII_DIGIT+ }
-decimal = @{ ("-"|"+")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+decimal = @{ ("-"|"+")? ~ ((ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+) | ASCII_DIGIT+) }
 boolean = { "0" | "1" }
 
 NL = _{ ((" " | "\t")* ~ NEWLINE)+ }
