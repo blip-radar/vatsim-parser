@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io;
 
+use bevy_reflect::Reflect;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -22,20 +23,20 @@ pub enum AirwayError {
 
 /// conceptionally HashMap<Fix, HashMap<Airway, AirwayNeighbours>>
 pub type FixAirwayMap = HashMap<String, AirwayNeighbourssOfFix>;
-#[derive(Debug, Default, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
 pub struct AirwayNeighbourssOfFix {
     fix: String,
     airway_neighbours: HashMap<String, AirwayNeighbours>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
 struct AirwayNeighbours {
     airway: String,
     previous: Option<AirwayFix>,
     next: Option<AirwayFix>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
 struct AirwayFix {
     name: String,
     valid_direction: bool,

@@ -25,7 +25,7 @@ pub enum PrfError {
 #[grammar = "prf.pest"]
 pub struct PrfParser;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Prf {
     settings: TwoKeyMap<String, String, String>,
     path: PathBuf,
@@ -54,6 +54,13 @@ impl Prf {
                 .replace(".sct", ".ese"),
         );
         self.path.parent().unwrap().join(ese_path)
+    }
+
+    #[must_use]
+    pub fn airways_path(&self) -> PathBuf {
+        let airways_path =
+            from_prf_path(&self.settings.0[&("Settings".to_string(), "airways".to_string())]);
+        self.path.parent().unwrap().join(airways_path)
     }
 
     #[must_use]
