@@ -25,22 +25,22 @@ pub enum AirwayError {
 pub type FixAirwayMap = HashMap<String, AirwayNeighbourssOfFix>;
 #[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
 pub struct AirwayNeighbourssOfFix {
-    fix: String,
-    airway_neighbours: HashMap<String, AirwayNeighbours>,
+    pub fix: String,
+    pub airway_neighbours: HashMap<String, AirwayNeighbours>,
 }
 
 #[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
-struct AirwayNeighbours {
-    airway: String,
-    previous: Option<AirwayFix>,
-    next: Option<AirwayFix>,
+pub struct AirwayNeighbours {
+    pub airway: String,
+    pub previous: Option<AirwayFix>,
+    pub next: Option<AirwayFix>,
 }
 
 #[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
-struct AirwayFix {
-    name: String,
-    valid_direction: bool,
-    minimum_level: u32,
+pub struct AirwayFix {
+    pub name: String,
+    pub valid_direction: bool,
+    pub minimum_level: u32,
 }
 impl AirwayFix {
     fn parse(pair: Pair<Rule>) -> Option<Self> {
