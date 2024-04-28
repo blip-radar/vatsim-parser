@@ -461,7 +461,7 @@ fn collect_sectors(
             }
         }
         // TODO
-        SectorRule::Msaw(_) => (),
+        SectorRule::Msaw((_sector, _level)) => (),
         SectorRule::DisplaySectorline => (),
     }
     (sectors, circle_sector_lines, sector_lines, borders)
