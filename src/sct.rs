@@ -488,6 +488,39 @@ impl Sct {
 
         Ok(sct)
     }
+
+    pub fn get_wpt_coordinate(&self, wpt: &str) -> Option<Coordinate> {
+        self.vors
+            .iter()
+            .find_map(|vor| {
+                if vor.designator == wpt {
+                    Some(vor.coordinate)
+                } else {
+                    None
+                }
+            })
+            .or(self.ndbs.iter().find_map(|ndb| {
+                if ndb.designator == wpt {
+                    Some(ndb.coordinate)
+                } else {
+                    None
+                }
+            }))
+            .or(self.fixes.iter().find_map(|fix| {
+                if fix.designator == wpt {
+                    Some(fix.coordinate)
+                } else {
+                    None
+                }
+            }))
+            .or(self.airports.iter().find_map(|airport| {
+                if airport.designator == wpt {
+                    Some(airport.coordinate)
+                } else {
+                    None
+                }
+            }))
+    }
 }
 
 #[cfg(test)]
@@ -1060,5 +1093,81 @@ EDQD STAR ALL LONLIxZ                    N050.04.29.060 E011.13.34.989 N049.53.5
         let sct = Sct::parse(sct_bytes);
 
         assert!(sct.is_ok());
+    }
+
+    #[test]
+    fn test_get_by_wpt() {
+        let sct_bytes = b"
+;=========================================================================================================================;
+
+[INFO]
+AeroNav M\xfcnchen 2401/1-1 EDMM 20240125
+AERO_NAV
+ZZZZ
+N048.21.13.618
+E011.47.09.909
+60
+39
+-3
+1
+
+#define COLOR_APP       16711680
+#define COLOR_AirspaceA  8421376
+#define prohibitcolor 7697781		; 117,117,117	Prohibited areas
+
+[VOR]
+NUB  115.750 N049.30.10.508 E011.02.06.000 ; NUB Comment Test
+OTT  112.300 N048.10.49.418 E011.48.59.529
+
+[NDB]
+MIQ  426.000 N048.34.12.810 E011.35.51.010 ;MIQ Comment Test
+RTT  303.000 N047.25.51.319 E011.56.24.190
+
+[FIXES]
+(FM-C) N049.31.05.999 E008.26.42.000
+ARMUT N049.43.20.999 E012.19.23.998
+GEDSO N047.04.50.001 E011.52.13.000
+INBED N049.23.15.000 E010.56.30.001
+NAXAV N046.27.49.881 E011.19.19.858
+UNKUL N049.08.13.999 E011.27.34.999
+VEMUT N049.48.38.678 E012.27.40.489
+
+[AIRPORT]
+EDDM 000.000 N048.21.13.618 E011.47.09.909 D
+EDNX 000.000 N048.14.20.399 E011.33.33.001 D
+LIPB 000.000 N046.27.37.000 E011.19.35.000 D
+";
+
+        let sct = Sct::parse(sct_bytes);
+
+        assert_eq!(
+            sct.as_ref().unwrap().get_wpt_coordinate("MIQ").unwrap(),
+            Coordinate {
+                lat: 48.570_225,
+                lng: 11.597_502_777_777_779,
+            }
+        );
+        assert_eq!(
+            sct.as_ref().unwrap().get_wpt_coordinate("OTT").unwrap(),
+            Coordinate {
+                lat: 48.180_393_888_888_89,
+                lng: 11.816_535_833_333_335
+            }
+        );
+        assert_eq!(
+            sct.as_ref().unwrap().get_wpt_coordinate("EDDM").unwrap(),
+            Coordinate {
+                lat: 48.353_782_777_777_78,
+                lng: 11.786_085_833_333_333
+            }
+        );
+        assert_eq!(
+            sct.as_ref().unwrap().get_wpt_coordinate("ARMUT").unwrap(),
+            Coordinate {
+                lat: 49.722_499_722_222_224,
+                lng: 12.323_332_777_777_777
+            }
+        );
+        assert_eq!(sct.as_ref().unwrap().get_wpt_coordinate("OZE"), None);
     }
 }
