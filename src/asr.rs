@@ -1,5 +1,6 @@
 use std::io;
 
+use geo_types::Coord;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -7,7 +8,7 @@ use thiserror::Error;
 
 use crate::TwoKeyMap;
 
-use super::{read_to_string, Coordinate};
+use super::read_to_string;
 
 #[derive(Parser)]
 #[grammar = "asr.pest"]
@@ -59,7 +60,7 @@ enum AsrData {
     SimulationMode(SimulationMode),
     TagFamily(String),
     TurnLeader(bool),
-    WindowArea((Coordinate, Coordinate)),
+    WindowArea((Coord, Coord)),
     PluginSetting((String, String, String)),
 }
 
@@ -103,7 +104,7 @@ pub struct Asr {
     /// TURNLEADER – It indicates a route following leader line.
     pub turn_leader: bool,
     /// WINDOWAREA – param1:param2:param3:param4 – The geographic coordinates in degrees of the bottom left corner and of the top right corner of the scope. It is important that even if you do not change any settings, just zoom in and out and pan, this value is most likely to be updated. In this way it is quite normal that you will be prompted at nearly all ASR close to decide weather to save or cancel the update of the area.
-    pub window_area: (Coordinate, Coordinate),
+    pub window_area: (Coord, Coord),
     /// plugin name, key -> value (Euroscope example: PLUGIN:TopSky plugin:HideMapData:TWR)
     pub plugin_settings: TwoKeyMap<String, String, String>,
 }
@@ -199,14 +200,8 @@ fn parse_setting(pair: Pair<Rule>) -> Option<AsrData> {
             let lat2 = inner.next().unwrap().as_str().parse().unwrap();
             let lng2 = inner.next().unwrap().as_str().parse().unwrap();
             Some(AsrData::WindowArea((
-                Coordinate {
-                    lat: lat1,
-                    lng: lng1,
-                },
-                Coordinate {
-                    lat: lat2,
-                    lng: lng2,
-                },
+                Coord { x: lng1, y: lat1 },
+                Coord { x: lng2, y: lat2 },
             )))
         }
         Rule::plugin => {
@@ -441,13 +436,13 @@ impl Asr {
                 }
             })
             .unwrap_or((
-                Coordinate {
-                    lat: 46.529_122,
-                    lng: 6.678_287,
+                Coord {
+                    x: 6.678_287,
+                    y: 46.529_122,
                 },
-                Coordinate {
-                    lat: 50.105_536,
-                    lng: 16.599_900,
+                Coord {
+                    x: 16.599_900,
+                    y: 50.105_536,
                 },
             ));
         let plugin_settings = TwoKeyMap(
@@ -491,9 +486,11 @@ impl Asr {
 mod test {
     use std::{collections::HashMap, fs};
 
+    use geo_types::Coord;
+
     use crate::{
         asr::{DisplayType, Leader, SimulationMode},
-        Coordinate, TwoKeyMap,
+        TwoKeyMap,
     };
 
     use super::Asr;
@@ -524,13 +521,13 @@ mod test {
         assert_eq!(
             asr.window_area,
             (
-                Coordinate {
-                    lat: 47.687_116,
-                    lng: 9.936_633
+                Coord {
+                    x: 9.936_633,
+                    y: 47.687_116,
                 },
-                Coordinate {
-                    lat: 49.020_449,
-                    lng: 13.635_539
+                Coord {
+                    x: 13.635_539,
+                    y: 49.020_449,
                 }
             )
         );

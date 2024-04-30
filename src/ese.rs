@@ -2,12 +2,15 @@ use std::collections::HashMap;
 use std::io;
 
 use bevy_reflect::Reflect;
+use geo_types::{Coord, LineString};
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use super::{read_to_string, Coordinate, DegMinSec};
+use crate::{DegMinSec, FromDegMinSec};
+
+use super::read_to_string;
 
 #[derive(Parser)]
 #[grammar = "ese.pest"]
@@ -31,13 +34,15 @@ pub struct Position {
     pub middle: String,
     pub suffix: String,
     pub squawk_range: Option<(u16, u16)>,
-    pub visibility_points: Vec<Coordinate>,
+    #[reflect(ignore)]
+    pub visibility_points: Vec<Coord>,
 }
 
 #[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub struct MSAW {
     pub altitude: u32,
-    pub points: Vec<Coordinate>,
+    #[reflect(ignore)]
+    pub points: Vec<Coord>,
 }
 impl MSAW {
     fn parse(pair: Pair<Rule>) -> (String, Self) {
@@ -50,9 +55,9 @@ impl MSAW {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct SectorLine {
-    pub points: Vec<Coordinate>,
+    pub points: LineString,
     // TODO
     // pub display_config: Vec<(String, String, String)>,
 }
@@ -102,7 +107,7 @@ enum SectorSubsetting {
     Guest,
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Sector {
     pub id: String,
     pub bottom: u32,
@@ -299,7 +304,7 @@ impl Cop {
     }
 }
 
-#[derive(Debug, Default, Reflect, Serialize, PartialEq)]
+#[derive(Debug, Default, Serialize, PartialEq)]
 pub struct Ese {
     pub positions: HashMap<String, Position>,
     pub sectors: HashMap<String, Sector>,
@@ -342,11 +347,11 @@ fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
 }
 
 // TODO generalise this and other similar into trait
-fn parse_coordinate(pair: Pair<Rule>) -> Coordinate {
+fn parse_coordinate(pair: Pair<Rule>) -> Coord {
     let mut coordinate = pair.into_inner();
     let lat = parse_coordinate_part(coordinate.next().unwrap());
     let lng = parse_coordinate_part(coordinate.next().unwrap());
-    Coordinate::from_deg_min_sec(lat, lng)
+    Coord::from_deg_min_sec(lat, lng)
 }
 
 enum SectorRule {
@@ -546,9 +551,11 @@ impl Ese {
 mod test {
     use std::collections::HashMap;
 
+    use geo_types::line_string;
+
     use crate::{
         ese::{Cop, Ese, Position, SectorLine},
-        Coordinate,
+        Coord,
     };
 
     #[test]
@@ -595,9 +602,9 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         middle: "ALB".to_string(),
                         suffix: "CTR".to_string(),
                         squawk_range: Some((2354, 2367)),
-                        visibility_points: vec![Coordinate {
-                            lat: 49.040_139_166_666_66,
-                            lng: 12.526_625_000_000_001
+                        visibility_points: vec![Coord {
+                            y: 49.040_139_166_666_66,
+                            x: 12.526_625_000_000_001
                         }],
                     }
                 ),
@@ -612,9 +619,9 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         middle: "TEG".to_string(),
                         suffix: "CTR".to_string(),
                         squawk_range: Some((2354, 2367)),
-                        visibility_points: vec![Coordinate {
-                            lat: 48.180_394_166_666_666,
-                            lng: 11.816_536_111_111_112
+                        visibility_points: vec![Coord {
+                            y: 48.180_394_166_666_666,
+                            x: 11.816_536_111_111_112
                         }],
                     }
                 ),
@@ -630,13 +637,13 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                         suffix: "CTR".to_string(),
                         squawk_range: Some((2001, 2577)),
                         visibility_points: vec![
-                            Coordinate {
-                                lat: 49.447_592_777_777_77,
-                                lng: 10.218_426_666_666_668
+                            Coord {
+                                y: 49.447_592_777_777_77,
+                                x: 10.218_426_666_666_668
                             },
-                            Coordinate {
-                                lat: 52.469_136_388_888_89,
-                                lng: 10.870_221_111_111_112
+                            Coord {
+                                y: 52.469_136_388_888_89,
+                                x: 10.870_221_111_111_112
                             }
                         ],
                     }
@@ -984,67 +991,67 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
             alb_0_105.border,
             vec![
                 SectorLine {
-                    points: vec![
-                        Coordinate {
-                            lat: 48.6675,
-                            lng: 11.794_166_666_666_667
-                        },
-                        Coordinate {
-                            lat: 49.166_666_666_666_664,
-                            lng: 11.966_666_666_666_667
-                        }
+                    points: line_string![
+                        (
+                            x: 11.794_166_666_666_667,
+                            y: 48.6675,
+                        ),
+                        (
+                            x: 11.966_666_666_666_667,
+                            y: 49.166_666_666_666_664,
+                        )
                     ]
                 },
                 SectorLine {
-                    points: vec![
-                        Coordinate {
-                            lat: 48.6675,
-                            lng: 11.794_166_666_666_667
-                        },
-                        Coordinate {
-                            lat: 48.667_777_777_777_77,
-                            lng: 11.511_666_666_666_667
-                        },
-                        Coordinate {
-                            lat: 48.667_777_777_777_77,
-                            lng: 11.320_833_333_333_333
-                        }
+                    points: line_string![
+                        (
+                            x: 11.794_166_666_666_667,
+                            y: 48.6675,
+                        ),
+                        (
+                            x: 11.511_666_666_666_667,
+                            y: 48.667_777_777_777_77,
+                        ),
+                        (
+                            x: 11.320_833_333_333_333,
+                            y: 48.667_777_777_777_77,
+                        )
                     ]
                 },
                 SectorLine {
-                    points: vec![
-                        Coordinate {
-                            lat: 48.667_777_777_777_77,
-                            lng: 11.320_833_333_333_333
-                        },
-                        Coordinate {
-                            lat: 49.119_444_444_444_45,
-                            lng: 10.673_611_111_111_11
-                        }
+                    points: line_string![
+                        (
+                            x: 11.320_833_333_333_333,
+                            y: 48.667_777_777_777_77,
+                        ),
+                        (
+                            x: 10.673_611_111_111_11,
+                            y: 49.119_444_444_444_45,
+                        )
                     ]
                 },
                 SectorLine {
-                    points: vec![
-                        Coordinate {
-                            lat: 49.119_444_444_444_45,
-                            lng: 10.673_611_111_111_11
-                        },
-                        Coordinate {
-                            lat: 49.138_055_555_555_55,
-                            lng: 11.1325
-                        }
+                    points: line_string![
+                        (
+                            x: 10.673_611_111_111_11,
+                            y: 49.119_444_444_444_45,
+                        ),
+                        (
+                            x: 11.1325,
+                            y: 49.138_055_555_555_55,
+                        )
                     ]
                 },
                 SectorLine {
-                    points: vec![
-                        Coordinate {
-                            lat: 49.138_055_555_555_55,
-                            lng: 11.1325
-                        },
-                        Coordinate {
-                            lat: 49.166_666_666_666_664,
-                            lng: 11.966_666_666_666_667
-                        }
+                    points: line_string![
+                        (
+                            x: 11.1325,
+                            y: 49.138_055_555_555_55,
+                        ),
+                        (
+                            x: 11.966_666_666_666_667,
+                            y: 49.166_666_666_666_664,
+                        )
                     ]
                 }
             ]

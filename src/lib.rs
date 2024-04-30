@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, io};
 
 use bevy_reflect::Reflect;
+use geo_types::Coord;
 use serde::{Serialize, Serializer};
 
 pub mod airway;
@@ -22,26 +23,25 @@ fn read_to_string(contents: &[u8]) -> Result<String, io::Error> {
 }
 
 type DegMinSec = (f64, f64, f64);
-#[derive(Copy, Clone, Debug, Default, Reflect, Serialize, PartialEq)]
-pub struct Coordinate {
-    pub lat: f64,
-    pub lng: f64,
-}
-impl Coordinate {
-    pub const ZERO: Self = Self { lat: 0.0, lng: 0.0 };
 
-    pub fn from_deg_min_sec(lat: (f64, f64, f64), lng: (f64, f64, f64)) -> Self {
+trait FromDegMinSec {
+    fn from_deg_min_sec(lat: DegMinSec, lng: DegMinSec) -> Self;
+}
+
+impl FromDegMinSec for Coord {
+    fn from_deg_min_sec(lat: DegMinSec, lng: DegMinSec) -> Self {
         Self {
-            lat: lat.0 + lat.0.signum() * lat.1 / 60.0 + lat.0.signum() * lat.2 / 3600.0,
-            lng: lng.0 + lng.0.signum() * lng.1 / 60.0 + lng.0.signum() * lng.2 / 3600.0,
+            y: lat.0 + lat.0.signum() * lat.1 / 60.0 + lat.0.signum() * lat.2 / 3600.0,
+            x: lng.0 + lng.0.signum() * lng.1 / 60.0 + lng.0.signum() * lng.2 / 3600.0,
         }
     }
 }
 
 #[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[reflect(Debug)]
 pub enum Location {
     Fix(String),
-    Coordinate(Coordinate),
+    Coordinate(#[reflect(ignore)] Coord),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Reflect)]

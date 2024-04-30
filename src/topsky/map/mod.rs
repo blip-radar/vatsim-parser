@@ -3,13 +3,14 @@ mod active;
 use std::collections::HashMap;
 
 use bevy_reflect::Reflect;
+use geo_types::Coord;
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
 };
 use serde::Serialize;
 
-use crate::{read_to_string, Color, Coordinate, DegMinSec, Location};
+use crate::{read_to_string, Color, DegMinSec, FromDegMinSec, Location};
 
 pub use self::active::{Active, ActiveIds, ActiveRunways};
 
@@ -66,25 +67,24 @@ impl CoordinatePart {
     }
 }
 
-impl Coordinate {
-    fn parse(pair: Pair<Rule>) -> Coordinate {
-        let mut coordinate = pair.into_inner();
-        let lat = CoordinatePart::parse(coordinate.next().unwrap());
-        let lng = CoordinatePart::parse(coordinate.next().unwrap());
-        match (lat, lng) {
-            (CoordinatePart::Decimal(lat), CoordinatePart::Decimal(lng)) => Coordinate { lat, lng },
-            (CoordinatePart::DegMinSec(lat), CoordinatePart::DegMinSec(lng)) => {
-                Coordinate::from_deg_min_sec(lat, lng)
-            }
-            _ => panic!("Consistency!"),
+fn parse_coord(pair: Pair<Rule>) -> Coord {
+    let mut coordinate = pair.into_inner();
+    let lat = CoordinatePart::parse(coordinate.next().unwrap());
+    let lng = CoordinatePart::parse(coordinate.next().unwrap());
+    match (lat, lng) {
+        (CoordinatePart::Decimal(y), CoordinatePart::Decimal(x)) => Coord { x, y },
+        (CoordinatePart::DegMinSec(lat), CoordinatePart::DegMinSec(lng)) => {
+            Coord::from_deg_min_sec(lat, lng)
         }
+        _ => panic!("Consistency!"),
     }
 }
+
 impl Location {
     fn parse(pair: Pair<Rule>) -> Self {
         match pair.as_rule() {
             Rule::name => Self::Fix(pair.as_str().to_string()),
-            Rule::coordinate => Self::Coordinate(Coordinate::parse(pair)),
+            Rule::coordinate => Self::Coordinate(parse_coord(pair)),
             ruletype => {
                 eprintln!("unhandled {ruletype:?}");
                 unreachable!()
