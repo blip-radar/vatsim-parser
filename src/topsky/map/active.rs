@@ -136,6 +136,12 @@ impl ActiveAreas {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
+pub enum ActiveMapOperator {
+    Same,
+    Opposite,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
 pub enum Active {
     True,
     Schedule,
@@ -143,7 +149,10 @@ pub enum Active {
     Notam(String, Vec<String>),
     Area(ActiveAreas),
     Id(ActiveIds),
+    Callsign(ActiveIds),
     Runway(ActiveRunways),
+    /// Same or Opposite as Map in Folder, Name
+    Map(ActiveMapOperator, String, String),
 }
 
 impl Active {
@@ -152,6 +161,7 @@ impl Active {
         match active.as_rule() {
             Rule::active_always => Self::True,
             Rule::active_id => Self::Id(ActiveIds::parse(active)),
+            Rule::active_callsign => Self::Callsign(ActiveIds::parse(active)),
             Rule::active_aup => Self::Aup(
                 active
                     .into_inner()
@@ -171,6 +181,22 @@ impl Active {
             Rule::active_rwy => Self::Runway(ActiveRunways::parse(active)),
             Rule::active_rwy_with_excludes => {
                 Self::Runway(ActiveRunways::parse_with_excludes(active))
+            }
+            Rule::active_map => {
+                let mut active_map = active.into_inner();
+                let op = match active_map.next().unwrap().as_str() {
+                    "!" => ActiveMapOperator::Opposite,
+                    "=" => ActiveMapOperator::Same,
+                    op => {
+                        eprintln!("Unknown active_map operator: {op}");
+                        unreachable!()
+                    }
+                };
+                Self::Map(
+                    op,
+                    active_map.next().unwrap().as_str().to_string(),
+                    active_map.next().unwrap().as_str().to_string(),
+                )
             }
             rule => {
                 eprintln!("{rule:?}");

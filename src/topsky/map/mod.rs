@@ -349,6 +349,7 @@ impl MapRule {
                     Rule::coord => None,
                     Rule::coordpoly => None,
                     Rule::fontstyle => None,
+                    Rule::hidden => None,
                     Rule::textalign => None,
                     Rule::override_sct => None,
                     _ => {

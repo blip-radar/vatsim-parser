@@ -29,6 +29,7 @@ map_setting = _{
     folder | color | asrdata | active | andactive | layer | mapsymbol | fontstyle
     | fontsize | zoom | style | mapline | text | global | screen_specific
     | circle | coordline | coordpoly | coord | textalign | override_sct
+    | hidden
   )
   ~ NL?
 }
@@ -43,11 +44,16 @@ active = { "ACTIVE:" ~ active_options }
 andactive = { "AND_ACTIVE:" ~ active_options }
 active_options = _{
   active_sched | active_id | active_notam | active_aup | active_area_with_excludes
-  | active_area | active_rwy_with_excludes | active_rwy | active_always
+  | active_area | active_callsign | active_rwy_with_excludes | active_rwy | active_always
+  | active_map
 }
 active_always = { "1" }
 active_id = {
   "ID:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":"
+  ~ (wildcard | names) ~ ":" ~ (wildcard | names)
+}
+active_callsign = {
+  "CALLSIGN:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":"
   ~ (wildcard | names) ~ ":" ~ (wildcard | names)
 }
 active_area = {
@@ -58,6 +64,9 @@ active_area_with_excludes = {
 }
 active_aup = {
   "AUP:" ~ names
+}
+active_map = {
+  "MAP:" ~ active_map_operator ~ ":" ~ name_no_backslash ~ "\\" ~ name
 }
 active_notam = {
   "NOTAM:" ~ icao ~ ":" ~ names
@@ -71,6 +80,7 @@ active_rwy_with_excludes = {
 }
 runways = { runway ~ ("," ~ runway)* }
 active_sched = { (ymd | md) ~ ":" ~ (ymd | md) ~ ":" ~ ASCII_DIGIT+ ~ ":" ~ hm ~ ":" ~ hm }
+active_map_operator = { "!" | "=" }
 
 layer = { "LAYER:" ~ number }
 
@@ -102,6 +112,8 @@ verticalalign = { "T" | "C" | "B" }
 
 screen_specific = { "SCREEN-SPECIFIC" }
 global = { "GLOBAL" }
+
+hidden = { "HIDDEN" }
 
 circle = { "CIRCLE:" ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
 
@@ -141,6 +153,7 @@ pixel = { "SETPIXEL:" ~ point }
 
 name = @{ (!(NL | ":") ~ ANY)+ }
 name_no_comma = @{ (!(NL | ":" | ",") ~ ANY)* }
+name_no_backslash = @{ (!(NL | "\\") ~ ANY)* }
 names = { name_no_comma ~ ("," ~ name_no_comma)* }
 wildcard = { "*" }
 
