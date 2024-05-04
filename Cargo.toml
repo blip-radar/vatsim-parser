@@ -11,7 +11,7 @@ license = "LGPL-3.0-or-later"
 bevy_reflect = "0.13.2"
 encoding_rs = "0.8.34"
 geo-types = { version =  "0.7.13", features = [ "serde" ] }
-pest = "2.7.9"
+pest = "2.7.10"
 pest_derive = "2.7.9"
 phf = { version = "0.11.2", features = ["macros"] }
 serde = { version = "1.0.199", features = ["derive"] }
