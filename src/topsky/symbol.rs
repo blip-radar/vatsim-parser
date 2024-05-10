@@ -87,6 +87,11 @@ fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
                     let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
                     SymbolRule::FilledEllipticArc(pos, radius_x, radius_y, 0, 0)
                 }
+                Rule::fillrect => {
+                    let (x1, y1) = parse_point(symbolrule.next().unwrap());
+                    let (x2, y2) = parse_point(symbolrule.next().unwrap());
+                    SymbolRule::Polygon(vec![(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+                }
                 Rule::polygon => SymbolRule::Polygon(symbolrule.map(parse_point).collect()),
                 _ => {
                     unreachable!()

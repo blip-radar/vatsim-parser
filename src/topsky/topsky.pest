@@ -125,6 +125,7 @@ coordpoly = { "COORDPOLY:" | number }
 // SYMBOLDEF
 symbolrule = _{ (
   moveto | line | fillarc_ellipse | fillarc | arc_ellipse | arc | polygon | pixel | ellipse | ellipse_circle
+  moveto | line | fillarc_ellipse | fillarc | arc_ellipse | arc | polygon | pixel | ellipse | ellipse_circle | fillrect
 ) ~ NL? }
 moveto = { "MOVETO:" ~ point }
 line = { "LINETO:" ~ point }
@@ -148,6 +149,9 @@ ellipse_circle = {
 }
 polygon = { "POLYGON" ~ (":" ~ point)+ }
 pixel = { "SETPIXEL:" ~ point }
+fillrect = {
+  "FILLRECT:" ~ point ~ ":" ~ point
+}
 
 // TODO: SCTDATA
 
