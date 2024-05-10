@@ -1,16 +1,19 @@
-settings = { SOI ~ NL? ~ setting+ ~ EOI}
+settings = { SOI ~ NL? ~ setting+ ~ section* ~ EOI}
 
 setting = _{
-  (color_setting | ignored_setting) ~ NL?
+  (colour_setting | other_setting) ~ NL?
 }
-color_setting = {
-  "Color_" ~ name ~ ("=" ~ color_setting_rgb)?
+colour_setting = {
+  "Color_" ~ name ~ ("=" ~ colour_setting_rgb)?
 }
-color_setting_rgb = { number ~ "," ~ number ~ "," ~ number }
-ignored_setting = { (!NL ~ ANY)+ }
+colour_setting_rgb = { number ~ "," ~ number ~ "," ~ number }
+other_setting = { name ~ "=" ~ setting_value }
+
+section = { "[" ~ name ~ "]" ~ NL ~ setting+ }
 
 name = @{ ("_" | ASCII_ALPHA | ASCII_DIGIT)+ }
 number = @{ ASCII_DIGIT+ }
+setting_value = { (!NL ~ ANY)+ }
 
 WHITESPACE = _{ (" " | "\t") }
 NL = _{ NEWLINE+ }

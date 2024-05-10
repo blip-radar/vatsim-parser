@@ -10,7 +10,7 @@ section = _{
   | high_airway_section
   | low_airway_section
   | unparsed_section
-  | color_definition
+  | colour_definition
 }
 
 line = _{ broken ~ NL }
@@ -18,26 +18,26 @@ line = _{ broken ~ NL }
 section_header = _{ "[" ~ header_name ~ "]" }
 
 info_section = {
-  "[INFO]" ~ NL ~ color_definition* ~ sector_name ~ NL ~ sector_callsign ~ NL ~ designator ~ NL
+  "[INFO]" ~ NL ~ colour_definition* ~ sector_name ~ NL ~ sector_callsign ~ NL ~ designator ~ NL
   ~ coord_part ~ NL ~ coord_part ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL
-  ~ (MAYBE_DECIMAL ~ NL)? ~ color_definition*
+  ~ (MAYBE_DECIMAL ~ NL)? ~ colour_definition*
 }
-vor_section = { "[VOR]" ~ NL ~ color_definition* ~ (location ~ NL?)* ~ color_definition* }
-ndb_section = { "[NDB]" ~ NL ~ color_definition* ~ ((location | broken) ~ NL)* ~ color_definition* }
-fixes_section = { "[FIXES]" ~ NL ~ color_definition* ~ ((fix | broken) ~ NL)* ~ color_definition* }
-airport_section = { "[AIRPORT]" ~ NL ~ color_definition* ~ (aerodrome ~ NL?)* ~ color_definition* }
-runway_section = { "[RUNWAY]" ~ NL ~ color_definition* ~ (runway ~ NL)* ~ color_definition* }
-high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ color_definition* ~ (airway ~ NL)* ~ color_definition* }
-low_airway_section = { "[LOW AIRWAY]" ~ NL ~ color_definition* ~ (airway ~ NL)* ~ color_definition* }
+vor_section = { "[VOR]" ~ NL ~ colour_definition* ~ (location ~ NL?)* ~ colour_definition* }
+ndb_section = { "[NDB]" ~ NL ~ colour_definition* ~ ((location | broken) ~ NL)* ~ colour_definition* }
+fixes_section = { "[FIXES]" ~ NL ~ colour_definition* ~ ((fix | broken) ~ NL)* ~ colour_definition* }
+airport_section = { "[AIRPORT]" ~ NL ~ colour_definition* ~ (aerodrome ~ NL?)* ~ colour_definition* }
+runway_section = { "[RUNWAY]" ~ NL ~ colour_definition* ~ (runway ~ NL)* ~ colour_definition* }
+high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ colour_definition* ~ (airway ~ NL)* ~ colour_definition* }
+low_airway_section = { "[LOW AIRWAY]" ~ NL ~ colour_definition* ~ (airway ~ NL)* ~ colour_definition* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 sector_name = @{ (LETTER | ASCII_DIGIT | "\t" | ' '..'~')+ }
 sector_callsign = @{ (ASCII_ALPHANUMERIC | "_")+ }
 
 
-color_definition = { "#define" ~ color_name ~ color_value ~ NL }
-color_name = @{ (ASCII_ALPHANUMERIC | "-" | "_")+ }
-color_value = @{ ASCII_DIGIT+ }
+colour_definition = { "#define" ~ colour_name ~ colour_value ~ NL }
+colour_name = @{ (ASCII_ALPHANUMERIC | "-" | "_")+ }
+colour_value = @{ ASCII_DIGIT+ }
 
 fix = { fix_designator ~ coordinate }
 aerodrome = { designator ~ (frequency | ".")? ~ coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G") }

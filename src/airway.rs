@@ -1,10 +1,13 @@
 use geo_types::Coord;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
-use serde::Serialize;
 use std::collections::HashMap;
 use std::io;
 use thiserror::Error;
+
+use crate::adaptation::locations::airways::{
+    AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix, FixAirwayMap,
+};
 
 use super::read_to_string;
 
@@ -20,34 +23,11 @@ pub enum AirwayError {
     FileRead(#[from] io::Error),
 }
 
-/// conceptionally HashMap<Fix, HashMap<Airway, AirwayNeighbours>>
-pub type FixAirwayMap = HashMap<String, AirwayNeighbourssOfFix>;
-#[derive(Clone, Debug, Default, Serialize, PartialEq)]
-pub struct AirwayNeighbourssOfFix {
-    pub fix: String,
-    pub airway_neighbours: HashMap<String, AirwayNeighbours>,
-}
-
 fn parse_coord(pair: Pair<Rule>) -> Coord {
     let mut coord = pair.into_inner();
     let lat = coord.next().unwrap().as_str().parse().unwrap();
     let lng = coord.next().unwrap().as_str().parse().unwrap();
     Coord { x: lng, y: lat }
-}
-
-#[derive(Clone, Debug, Default, Serialize, PartialEq)]
-pub struct AirwayNeighbours {
-    pub airway: String,
-    pub previous: Option<AirwayFix>,
-    pub next: Option<AirwayFix>,
-}
-
-#[derive(Clone, Debug, Default, Serialize, PartialEq)]
-pub struct AirwayFix {
-    pub name: String,
-    pub coord: Coord,
-    pub valid_direction: bool,
-    pub minimum_level: u32,
 }
 impl AirwayFix {
     fn parse(pair: Pair<Rule>) -> Option<Self> {
@@ -96,7 +76,7 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                     let next = AirwayFix::parse(airway_line.next().unwrap());
 
                     acc.entry(fix.clone())
-                        .and_modify(|neighbours: &mut AirwayNeighbourssOfFix| {
+                        .and_modify(|neighbours: &mut AirwayNeighboursOfFix| {
                             neighbours
                                 .airway_neighbours
                                 .entry(airway.clone())
@@ -119,7 +99,7 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                                     next: next.clone(),
                                 });
                         })
-                        .or_insert(AirwayNeighbourssOfFix {
+                        .or_insert(AirwayNeighboursOfFix {
                             fix,
                             airway_neighbours: HashMap::from([(
                                 airway.clone(),
@@ -144,7 +124,7 @@ mod test {
     use geo_types::Coord;
     use pretty_assertions_sorted::assert_eq_sorted;
 
-    use crate::airway::{AirwayFix, AirwayNeighbours, AirwayNeighbourssOfFix};
+    use crate::airway::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix};
 
     use super::parse_airway_txt;
 
@@ -168,7 +148,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
             HashMap::from([
                 (
                     "ASPAT".to_string(),
-                    AirwayNeighbourssOfFix {
+                    AirwayNeighboursOfFix {
                         fix: "ASPAT".to_string(),
                         airway_neighbours: HashMap::from([(
                             "T161".to_owned(),
@@ -198,7 +178,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 ),
                 (
                     "DEBHI".to_string(),
-                    AirwayNeighbourssOfFix {
+                    AirwayNeighboursOfFix {
                         fix: "DEBHI".to_string(),
                         airway_neighbours: HashMap::from([(
                             "T161".to_owned(),
@@ -228,7 +208,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 ),
                 (
                     "ERNAS".to_string(),
-                    AirwayNeighbourssOfFix {
+                    AirwayNeighboursOfFix {
                         fix: "ERNAS".to_string(),
                         airway_neighbours: HashMap::from([
                             (
@@ -284,7 +264,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 ),
                 (
                     "GIVMI".to_string(),
-                    AirwayNeighbourssOfFix {
+                    AirwayNeighboursOfFix {
                         fix: "GIVMI".to_string(),
                         airway_neighbours: HashMap::from([(
                             "Y101".to_owned(),
@@ -306,7 +286,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 ),
                 (
                     "GOLMO".to_string(),
-                    AirwayNeighbourssOfFix {
+                    AirwayNeighboursOfFix {
                         fix: "GOLMO".to_string(),
                         airway_neighbours: HashMap::from([(
                             "T161".to_owned(),
@@ -336,7 +316,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 ),
                 (
                     "REDNI".to_string(),
-                    AirwayNeighbourssOfFix {
+                    AirwayNeighboursOfFix {
                         fix: "REDNI".to_string(),
                         airway_neighbours: HashMap::from([(
                             "T161".to_owned(),

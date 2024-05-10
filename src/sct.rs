@@ -7,7 +7,13 @@ use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::{Color, DegMinSec, FromDegMinSec, Location};
+use crate::{
+    adaptation::{
+        colours::Colour,
+        locations::{Fix, Runway, NDB, VOR},
+    },
+    DegMinSec, FromDegMinSec, Location,
+};
 
 use super::read_to_string;
 
@@ -30,45 +36,17 @@ pub struct Airport {
 }
 
 #[derive(Debug, Serialize, PartialEq)]
-pub struct Fix {
-    pub designator: String,
-    pub coordinate: Coord,
-}
-
-#[derive(Debug, Serialize, PartialEq)]
 pub struct Airway {
     pub designator: String,
     pub start: Location,
     pub end: Location,
 }
 
-#[derive(Debug, Serialize, PartialEq)]
-pub struct NDB {
-    pub designator: String,
-    pub frequency: String,
-    pub coordinate: Coord,
-}
-
-#[derive(Debug, Serialize, PartialEq)]
-pub struct VOR {
-    pub designator: String,
-    pub frequency: String,
-    pub coordinate: Coord,
-}
-
-#[derive(Debug, Serialize, PartialEq)]
-pub struct Runway {
-    pub designators: (String, String),
-    pub headings: (u32, u32),
-    pub location: (Coord, Coord),
-    pub aerodrome: String,
-}
-
 // TODO GEO, REGIONS, ARTCC, SID, STAR, AIRWAY
 #[derive(Debug, Serialize, PartialEq)]
 pub struct Sct {
     pub info: SctInfo,
-    pub colors: HashMap<String, Color>,
+    pub colours: HashMap<String, Colour>,
     pub airports: Vec<Airport>,
     pub fixes: Vec<Fix>,
     pub ndbs: Vec<NDB>,
@@ -254,14 +232,14 @@ fn parse_runway(pair: Pair<Rule>) -> Runway {
     }
 }
 
-fn parse_info_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> SctInfo {
+fn parse_info_section(pair: Pair<Rule>, colours: &mut HashMap<String, Colour>) -> SctInfo {
     let mut sct_info = SctInfo::default();
     let mut i = 0;
     let mut y = DegMinSec::default();
 
     for pair in pair.into_inner() {
-        if let Rule::color_definition = pair.as_rule() {
-            store_color(colors, pair);
+        if let Rule::colour_definition = pair.as_rule() {
+            store_colour(colours, pair);
         } else {
             match i {
                 0 => sct_info.name = pair.as_str().to_string(),
@@ -284,35 +262,35 @@ fn parse_info_section(pair: Pair<Rule>, colors: &mut HashMap<String, Color>) -> 
     sct_info
 }
 
-fn parse_color_definition(pair: Pair<Rule>) -> (String, Color) {
+fn parse_colour_definition(pair: Pair<Rule>) -> (String, Colour) {
     let mut pairs = pair.into_inner();
-    let color_name = pairs.next().unwrap().as_str().to_string();
-    let color_value = Color::from_euroscope(pairs.next().unwrap().as_str().parse().unwrap());
-    (color_name, color_value)
+    let colour_name = pairs.next().unwrap().as_str().to_string();
+    let colour_value = Colour::from_euroscope(pairs.next().unwrap().as_str().parse().unwrap());
+    (colour_name, colour_value)
 }
 
 #[inline]
-fn store_color(colors: &mut HashMap<String, Color>, pair: Pair<Rule>) {
-    let (color_name, color) = parse_color_definition(pair);
-    colors.insert(color_name, color);
+fn store_colour(colours: &mut HashMap<String, Colour>, pair: Pair<Rule>) {
+    let (colour_name, colour) = parse_colour_definition(pair);
+    colours.insert(colour_name, colour);
 }
 
 fn parse_independent_section(
     pair: Pair<Rule>,
-    colors: &mut HashMap<String, Color>,
+    colours: &mut HashMap<String, Colour>,
 ) -> (SectionName, Section) {
     match pair.as_rule() {
         Rule::info_section => (
             SectionName::Info,
-            Section::Info(parse_info_section(pair, colors)),
+            Section::Info(parse_info_section(pair, colours)),
         ),
         Rule::airport_section => (
             SectionName::Airport,
             Section::Airport(
                 pair.into_inner()
                     .filter_map(|pair| {
-                        if let Rule::color_definition = pair.as_rule() {
-                            store_color(colors, pair);
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
                             None
                         } else {
                             Some(parse_airport(pair))
@@ -327,8 +305,8 @@ fn parse_independent_section(
             Section::Fixes(
                 pair.into_inner()
                     .filter_map(|pair| {
-                        if let Rule::color_definition = pair.as_rule() {
-                            store_color(colors, pair);
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
                             None
                         } else {
                             parse_fix(pair)
@@ -343,8 +321,8 @@ fn parse_independent_section(
             Section::NDBs(
                 pair.into_inner()
                     .filter_map(|pair| {
-                        if let Rule::color_definition = pair.as_rule() {
-                            store_color(colors, pair);
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
                             None
                         } else {
                             parse_ndb(pair)
@@ -359,8 +337,8 @@ fn parse_independent_section(
             Section::VORs(
                 pair.into_inner()
                     .filter_map(|pair| {
-                        if let Rule::color_definition = pair.as_rule() {
-                            store_color(colors, pair);
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
                             None
                         } else {
                             Some(parse_vor(pair))
@@ -375,8 +353,8 @@ fn parse_independent_section(
             Section::Runways(
                 pair.into_inner()
                     .filter_map(|pair| {
-                        if let Rule::color_definition = pair.as_rule() {
-                            store_color(colors, pair);
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
                             None
                         } else {
                             Some(parse_runway(pair))
@@ -390,8 +368,8 @@ fn parse_independent_section(
             Section::HighAirways(
                 pair.into_inner()
                     .filter_map(|pair| {
-                        if let Rule::color_definition = pair.as_rule() {
-                            store_color(colors, pair);
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
                             None
                         } else {
                             parse_airway(pair)
@@ -406,8 +384,8 @@ fn parse_independent_section(
             Section::LowAirways(
                 pair.into_inner()
                     .filter_map(|pair| {
-                        if let Rule::color_definition = pair.as_rule() {
-                            store_color(colors, pair);
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
                             None
                         } else {
                             parse_airway(pair)
@@ -424,7 +402,7 @@ fn parse_independent_section(
 impl Sct {
     pub fn parse(content: &[u8]) -> SctResult {
         let unparsed_file = read_to_string(content)?;
-        let mut colors = HashMap::new();
+        let mut colours = HashMap::new();
         let sct_parse = SctParser::parse(Rule::sct, &unparsed_file);
         let mut sections = sct_parse.map(|mut pairs| {
             pairs
@@ -432,11 +410,11 @@ impl Sct {
                 .unwrap()
                 .into_inner()
                 .filter_map(|pair| {
-                    if let Rule::color_definition = pair.as_rule() {
-                        store_color(&mut colors, pair);
+                    if let Rule::colour_definition = pair.as_rule() {
+                        store_colour(&mut colours, pair);
                         None
                     } else {
-                        Some(parse_independent_section(pair, &mut colors))
+                        Some(parse_independent_section(pair, &mut colours))
                     }
                 })
                 .collect::<HashMap<_, _>>()
@@ -478,7 +456,7 @@ impl Sct {
         let sct = Sct {
             info,
             airports,
-            colors: colors.clone(),
+            colours: colours.clone(),
             fixes,
             ndbs,
             vors,
@@ -489,39 +467,6 @@ impl Sct {
 
         Ok(sct)
     }
-
-    pub fn get_wpt_coordinate(&self, wpt: &str) -> Option<Coord> {
-        self.vors
-            .iter()
-            .find_map(|vor| {
-                if vor.designator == wpt {
-                    Some(vor.coordinate)
-                } else {
-                    None
-                }
-            })
-            .or(self.ndbs.iter().find_map(|ndb| {
-                if ndb.designator == wpt {
-                    Some(ndb.coordinate)
-                } else {
-                    None
-                }
-            }))
-            .or(self.fixes.iter().find_map(|fix| {
-                if fix.designator == wpt {
-                    Some(fix.coordinate)
-                } else {
-                    None
-                }
-            }))
-            .or(self.airports.iter().find_map(|airport| {
-                if airport.designator == wpt {
-                    Some(airport.coordinate)
-                } else {
-                    None
-                }
-            }))
-    }
 }
 
 #[cfg(test)]
@@ -530,8 +475,14 @@ mod test {
 
     use geo_types::Coord;
 
-    use crate::sct::{Airport, Airway, Fix, Runway, Sct, SctInfo, NDB, VOR};
-    use crate::{Color, Location};
+    use crate::{
+        adaptation::{
+            colours::Colour,
+            locations::{Fix, NDB, VOR},
+        },
+        sct::{Airport, Airway, Runway, Sct, SctInfo},
+        Location,
+    };
 
     #[test]
     fn test_sct() {
@@ -549,9 +500,9 @@ E011.47.09.909
 -3
 1
 
-#define COLOR_APP       16711680
-#define COLOR_AirspaceA  8421376
-#define prohibitcolor 7697781		; 117,117,117	Prohibited areas
+#define colour_APP       16711680
+#define colour_AirspaceA  8421376
+#define prohibitcolour 7697781		; 117,117,117	Prohibited areas
 
 [VOR]
 NUB  115.750 N049.30.10.508 E011.02.06.000 ; NUB Comment Test
@@ -593,13 +544,13 @@ EDDN SID 28 BOLSIxG                      N049.30.02.914 E011.03.23.507 N049.30.4
                                          N049.27.44.369 E010.45.45.219 N049.13.54.559 E010.45.30.628
 
 [STAR]
-EDDM TRAN RNP26R LANDU26                 N048.35.46.899 E012.16.26.140 N048.32.16.501 E011.30.05.529 COLOR_APP
-                                         N048.32.16.501 E011.30.05.529 N048.25.44.061 E011.31.15.931 COLOR_APP
-                                         N048.25.44.061 E011.31.15.931 N048.29.36.319 E012.22.42.409 COLOR_APP
-                                         N048.29.36.319 E012.22.42.409 N048.30.47.361 E012.37.38.952 COLOR_APP
+EDDM TRAN RNP26R LANDU26                 N048.35.46.899 E012.16.26.140 N048.32.16.501 E011.30.05.529 colour_APP
+                                         N048.32.16.501 E011.30.05.529 N048.25.44.061 E011.31.15.931 colour_APP
+                                         N048.25.44.061 E011.31.15.931 N048.29.36.319 E012.22.42.409 colour_APP
+                                         N048.29.36.319 E012.22.42.409 N048.30.47.361 E012.37.38.952 colour_APP
 
-EDDN TRAN ILS10 DN430                    N049.33.11.289 E010.30.33.379 N049.32.37.168 E010.36.38.149 COLOR_APP
-                                         N049.32.37.168 E010.36.38.149 N049.32.02.731 E010.42.42.681 COLOR_APP
+EDDN TRAN ILS10 DN430                    N049.33.11.289 E010.30.33.379 N049.32.37.168 E010.36.38.149 colour_APP
+                                         N049.32.37.168 E010.36.38.149 N049.32.02.731 E010.42.42.681 colour_APP
 
 EDQD STAR ALL LONLIxZ                    N050.04.29.060 E011.13.34.989 N049.53.50.819 E011.24.28.540
 
@@ -618,9 +569,9 @@ EDJA_ILR_APP                             N048.10.28.000 E009.34.15.000 N048.18.0
                                          N047.53.24.000 E009.33.00.000 N047.58.24.000 E009.33.00.000
                                          N047.58.24.000 E009.33.00.000 N048.10.00.000 E009.33.00.000
 
-Release line EDMM ARBAX Window           N049.26.33.000 E012.52.22.000 N049.35.18.000 E013.00.24.000 COLOR_Releaseline
-                                         N049.35.18.000 E013.00.24.000 N049.27.45.000 E013.17.13.000 COLOR_Releaseline
-                                         N049.27.45.000 E013.17.13.000 N049.12.42.000 E013.13.14.000 COLOR_Releaseline
+Release line EDMM ARBAX Window           N049.26.33.000 E012.52.22.000 N049.35.18.000 E013.00.24.000 colour_Releaseline
+                                         N049.35.18.000 E013.00.24.000 N049.27.45.000 E013.17.13.000 colour_Releaseline
+                                         N049.27.45.000 E013.17.13.000 N049.12.42.000 E013.13.14.000 colour_Releaseline
 [ARTCC]
 EDMM_ALB_CTR                             N049.08.17.000 E011.07.57.000 N049.10.00.000 E011.58.00.000
                                          N048.40.03.000 E011.47.39.000 N049.10.00.000 E011.58.00.000
@@ -649,46 +600,46 @@ EDMM_WLD_CTR                             N048.40.00.000 E010.58.00.000 N048.40.1
 
 
 [ARTCC LOW]
-RMZ EDMS                                 N048.57.40.000 E012.23.34.000 N048.56.22.000 E012.39.38.000 COLOR_RMZ
-                                         N048.56.22.000 E012.39.38.000 N048.50.25.000 E012.38.30.000 COLOR_RMZ
-                                         N048.50.25.000 E012.38.30.000 N048.51.43.000 E012.22.28.000 COLOR_RMZ
-                                         N048.51.43.000 E012.22.28.000 N048.57.40.000 E012.23.34.000 COLOR_RMZ
+RMZ EDMS                                 N048.57.40.000 E012.23.34.000 N048.56.22.000 E012.39.38.000 colour_RMZ
+                                         N048.56.22.000 E012.39.38.000 N048.50.25.000 E012.38.30.000 colour_RMZ
+                                         N048.50.25.000 E012.38.30.000 N048.51.43.000 E012.22.28.000 colour_RMZ
+                                         N048.51.43.000 E012.22.28.000 N048.57.40.000 E012.23.34.000 colour_RMZ
 
-RMZ EDNX                                 N048.16.27.000 E011.27.21.000 N048.17.12.000 E011.32.05.000 COLOR_RMZ
-                                         N048.17.12.000 E011.32.05.000 N048.16.25.000 E011.32.09.000 COLOR_RMZ
-                                         N048.16.25.000 E011.32.09.000 N048.16.54.000 E011.38.27.000 COLOR_RMZ
-                                         N048.16.54.000 E011.38.27.000 N048.15.17.000 E011.40.25.000 COLOR_RMZ
-                                         N048.15.17.000 E011.40.25.000 N048.14.28.000 E011.40.40.000 COLOR_RMZ
-                                         N048.14.28.000 E011.40.40.000 N048.12.14.000 E011.39.45.000 COLOR_RMZ
-                                         N048.12.14.000 E011.39.45.000 N048.10.38.000 E011.29.22.000 COLOR_RMZ
-                                         N048.10.38.000 E011.29.22.000 N048.16.27.000 E011.27.21.000 COLOR_RMZ
+RMZ EDNX                                 N048.16.27.000 E011.27.21.000 N048.17.12.000 E011.32.05.000 colour_RMZ
+                                         N048.17.12.000 E011.32.05.000 N048.16.25.000 E011.32.09.000 colour_RMZ
+                                         N048.16.25.000 E011.32.09.000 N048.16.54.000 E011.38.27.000 colour_RMZ
+                                         N048.16.54.000 E011.38.27.000 N048.15.17.000 E011.40.25.000 colour_RMZ
+                                         N048.15.17.000 E011.40.25.000 N048.14.28.000 E011.40.40.000 colour_RMZ
+                                         N048.14.28.000 E011.40.40.000 N048.12.14.000 E011.39.45.000 colour_RMZ
+                                         N048.12.14.000 E011.39.45.000 N048.10.38.000 E011.29.22.000 colour_RMZ
+                                         N048.10.38.000 E011.29.22.000 N048.16.27.000 E011.27.21.000 colour_RMZ
 
 
 [GEO]
 
-EDDN Groundlayout Holding Points         N049.29.58.736 E011.03.33.028 N049.29.58.942 E011.03.34.353 COLOR_Stopbar
-                                         N049.29.56.786 E011.03.52.659 N049.29.57.006 E011.03.54.022 COLOR_Stopbar
-                                         N049.29.54.726 E011.04.12.424 N049.29.55.069 E011.04.13.780 COLOR_Stopbar
-                                         N049.29.52.460 E011.04.35.712 N049.29.52.803 E011.04.36.718 COLOR_Stopbar
-                                         N049.29.49.782 E011.05.07.369 N049.29.49.453 E011.05.08.660 COLOR_Stopbar
-                                         N049.29.46.390 E011.05.42.055 N049.29.45.841 E011.05.43.456 COLOR_Stopbar
-                                         N049.29.48.890 E011.04.19.445 N049.29.48.739 E011.04.21.004 COLOR_Stopbar
-                                         N049.29.47.750 E011.04.38.414 N049.29.47.667 E011.04.39.214 COLOR_Stopbar
-                                         N049.29.47.667 E011.04.39.214 N049.29.48.038 E011.04.40.474 COLOR_Stopbar
-                                         N049.29.47.475 E011.05.03.614 N049.29.46.871 E011.05.04.269 COLOR_Stopbar
-                                         N049.29.43.547 E011.05.35.831 N049.29.42.669 E011.05.35.961 COLOR_Stopbar
+EDDN Groundlayout Holding Points         N049.29.58.736 E011.03.33.028 N049.29.58.942 E011.03.34.353 colour_Stopbar
+                                         N049.29.56.786 E011.03.52.659 N049.29.57.006 E011.03.54.022 colour_Stopbar
+                                         N049.29.54.726 E011.04.12.424 N049.29.55.069 E011.04.13.780 colour_Stopbar
+                                         N049.29.52.460 E011.04.35.712 N049.29.52.803 E011.04.36.718 colour_Stopbar
+                                         N049.29.49.782 E011.05.07.369 N049.29.49.453 E011.05.08.660 colour_Stopbar
+                                         N049.29.46.390 E011.05.42.055 N049.29.45.841 E011.05.43.456 colour_Stopbar
+                                         N049.29.48.890 E011.04.19.445 N049.29.48.739 E011.04.21.004 colour_Stopbar
+                                         N049.29.47.750 E011.04.38.414 N049.29.47.667 E011.04.39.214 colour_Stopbar
+                                         N049.29.47.667 E011.04.39.214 N049.29.48.038 E011.04.40.474 colour_Stopbar
+                                         N049.29.47.475 E011.05.03.614 N049.29.46.871 E011.05.04.269 colour_Stopbar
+                                         N049.29.43.547 E011.05.35.831 N049.29.42.669 E011.05.35.961 colour_Stopbar
 
-EDQC Groundlayout                        N050.15.52.011 E010.59.29.553 N050.15.52.239 E010.59.29.566 COLOR_Stopbar
-                                         N050.15.39.345 E011.00.04.860 N050.15.39.411 E011.00.05.139 COLOR_Stopbar
+EDQC Groundlayout                        N050.15.52.011 E010.59.29.553 N050.15.52.239 E010.59.29.566 colour_Stopbar
+                                         N050.15.39.345 E011.00.04.860 N050.15.39.411 E011.00.05.139 colour_Stopbar
 
 [REGIONS]
 REGIONNAME EDDM Groundlayout
-COLOR_Stopbar              N048.21.53.621 E011.48.32.152
+colour_Stopbar              N048.21.53.621 E011.48.32.152
                            N048.21.54.514 E011.48.32.715
                            N048.21.54.527 E011.48.32.571
                            N048.21.53.676 E011.48.32.042
 REGIONNAME EDMO Groundlayout
-COLOR_HardSurface1         N048.04.25.470 E011.16.20.093
+colour_HardSurface1         N048.04.25.470 E011.16.20.093
                            N048.04.24.509 E011.16.21.717
                            N048.05.20.677 E011.17.38.446
                            N048.05.21.638 E011.17.36.829
@@ -727,11 +678,11 @@ A5         RTT RTT NUB NUB
             }
         );
         assert_eq!(
-            sct.as_ref().unwrap().colors,
+            sct.as_ref().unwrap().colours,
             HashMap::from([
                 (
-                    "COLOR_APP".to_string(),
-                    Color {
+                    "colour_APP".to_string(),
+                    Colour {
                         r: 0,
                         g: 0,
                         b: 255,
@@ -739,8 +690,8 @@ A5         RTT RTT NUB NUB
                     }
                 ),
                 (
-                    "COLOR_AirspaceA".to_string(),
-                    Color {
+                    "colour_AirspaceA".to_string(),
+                    Colour {
                         r: 0,
                         g: 128,
                         b: 128,
@@ -748,8 +699,8 @@ A5         RTT RTT NUB NUB
                     }
                 ),
                 (
-                    "prohibitcolor".to_string(),
-                    Color {
+                    "prohibitcolour".to_string(),
+                    Colour {
                         r: 117,
                         g: 117,
                         b: 117,
@@ -1077,100 +1028,24 @@ E011.47.09.909
 -3
 1
 
-#define COLOR_APP       16711680
-#define COLOR_AirspaceA  8421376
+#define colour_APP       16711680
+#define colour_AirspaceA  8421376
 
 [SID]
 
 [STAR]
-EDDM TRAN RNP26R LANDU26                 N048.35.46.899 E012.16.26.140 N048.32.16.501 E011.30.05.529 COLOR_APP
-                                         N048.32.16.501 E011.30.05.529 N048.25.44.061 E011.31.15.931 COLOR_APP
-                                         N048.25.44.061 E011.31.15.931 N048.29.36.319 E012.22.42.409 COLOR_APP
-                                         N048.29.36.319 E012.22.42.409 N048.30.47.361 E012.37.38.952 COLOR_APP
+EDDM TRAN RNP26R LANDU26                 N048.35.46.899 E012.16.26.140 N048.32.16.501 E011.30.05.529 colour_APP
+                                         N048.32.16.501 E011.30.05.529 N048.25.44.061 E011.31.15.931 colour_APP
+                                         N048.25.44.061 E011.31.15.931 N048.29.36.319 E012.22.42.409 colour_APP
+                                         N048.29.36.319 E012.22.42.409 N048.30.47.361 E012.37.38.952 colour_APP
 
-EDDN TRAN ILS10 DN430                    N049.33.11.289 E010.30.33.379 N049.32.37.168 E010.36.38.149 COLOR_APP
-                                         N049.32.37.168 E010.36.38.149 N049.32.02.731 E010.42.42.681 COLOR_APP
+EDDN TRAN ILS10 DN430                    N049.33.11.289 E010.30.33.379 N049.32.37.168 E010.36.38.149 colour_APP
+                                         N049.32.37.168 E010.36.38.149 N049.32.02.731 E010.42.42.681 colour_APP
 
 EDQD STAR ALL LONLIxZ                    N050.04.29.060 E011.13.34.989 N049.53.50.819 E011.24.28.540
         ";
         let sct = Sct::parse(sct_bytes);
 
         assert!(sct.is_ok());
-    }
-
-    #[test]
-    fn test_get_by_wpt() {
-        let sct_bytes = b"
-;=========================================================================================================================;
-
-[INFO]
-AeroNav M\xfcnchen 2401/1-1 EDMM 20240125
-AERO_NAV
-ZZZZ
-N048.21.13.618
-E011.47.09.909
-60
-39
--3
-1
-
-#define COLOR_APP       16711680
-#define COLOR_AirspaceA  8421376
-#define prohibitcolor 7697781		; 117,117,117	Prohibited areas
-
-[VOR]
-NUB  115.750 N049.30.10.508 E011.02.06.000 ; NUB Comment Test
-OTT  112.300 N048.10.49.418 E011.48.59.529
-
-[NDB]
-MIQ  426.000 N048.34.12.810 E011.35.51.010 ;MIQ Comment Test
-RTT  303.000 N047.25.51.319 E011.56.24.190
-
-[FIXES]
-(FM-C) N049.31.05.999 E008.26.42.000
-ARMUT N049.43.20.999 E012.19.23.998
-GEDSO N047.04.50.001 E011.52.13.000
-INBED N049.23.15.000 E010.56.30.001
-NAXAV N046.27.49.881 E011.19.19.858
-UNKUL N049.08.13.999 E011.27.34.999
-VEMUT N049.48.38.678 E012.27.40.489
-
-[AIRPORT]
-EDDM 000.000 N048.21.13.618 E011.47.09.909 D
-EDNX 000.000 N048.14.20.399 E011.33.33.001 D
-LIPB 000.000 N046.27.37.000 E011.19.35.000 D
-";
-
-        let sct = Sct::parse(sct_bytes);
-
-        assert_eq!(
-            sct.as_ref().unwrap().get_wpt_coordinate("MIQ").unwrap(),
-            Coord {
-                y: 48.570_225,
-                x: 11.597_502_777_777_779,
-            }
-        );
-        assert_eq!(
-            sct.as_ref().unwrap().get_wpt_coordinate("OTT").unwrap(),
-            Coord {
-                y: 48.180_393_888_888_89,
-                x: 11.816_535_833_333_335
-            }
-        );
-        assert_eq!(
-            sct.as_ref().unwrap().get_wpt_coordinate("EDDM").unwrap(),
-            Coord {
-                y: 48.353_782_777_777_78,
-                x: 11.786_085_833_333_333
-            }
-        );
-        assert_eq!(
-            sct.as_ref().unwrap().get_wpt_coordinate("ARMUT").unwrap(),
-            Coord {
-                y: 49.722_499_722_222_224,
-                x: 12.323_332_777_777_777
-            }
-        );
-        assert_eq!(sct.as_ref().unwrap().get_wpt_coordinate("OZE"), None);
     }
 }

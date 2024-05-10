@@ -4,6 +4,7 @@ use bevy_reflect::Reflect;
 use geo_types::Coord;
 use serde::{Serialize, Serializer};
 
+pub mod adaptation;
 pub mod airway;
 pub mod asr;
 pub mod ese;
@@ -42,28 +43,6 @@ impl FromDegMinSec for Coord {
 pub enum Location {
     Fix(String),
     Coordinate(#[reflect(ignore)] Coord),
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Reflect)]
-pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
-}
-
-impl Color {
-    pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b, a: 255 }
-    }
-
-    pub fn from_euroscope(color_num: i32) -> Self {
-        Self::from_rgb(
-            (color_num % 256) as u8,
-            (color_num / 256 % 256) as u8,
-            (color_num / 256 / 256) as u8,
-        )
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

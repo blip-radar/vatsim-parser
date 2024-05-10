@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{fs, io};
 
-use bevy_reflect::Reflect;
 use pest::iterators::Pair;
 use pest_derive::Parser;
 
@@ -14,8 +13,10 @@ use phf::phf_map;
 use serde::Serialize;
 use thiserror::Error;
 
-use self::map::{parse_topsky_maps, ColorDef, LineStyleDef, Map, OverrideSct};
-use self::settings::parse_topsky_settings;
+use crate::read_to_string;
+
+use self::map::{parse_topsky_maps, ColourDef, LineStyleDef, MapDef, OverrideSct};
+use self::settings::{parse_topsky_settings, Settings};
 use self::symbol::{parse_topsky_symbols, SymbolDef};
 
 #[derive(Error, Debug)]
@@ -32,8 +33,8 @@ pub enum TopskyError {
 #[grammar = "topsky/topsky.pest"]
 pub struct TopskyParser;
 
-type ColorMap = phf::Map<&'static str, (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>)>;
-pub static DEFAULT_COLORS: ColorMap = phf_map! {
+type ColourMap = phf::Map<&'static str, (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>)>;
+pub static DEFAULT_COLOURS: ColourMap = phf_map! {
     "ACF_Via_CFL" => (Some((82,190,115)), Some((82,190,115))),
     "Active_Map" => (Some((70,90,135)), Some((198,174,58))),
     "Active_Map_Type_1" => (Some((1,1,1)), Some((87,87,164))),
@@ -203,11 +204,12 @@ pub static DEFAULT_COLORS: ColorMap = phf_map! {
     "WM_Frame" => (Some((1,1,0)), Some((88,95,99))),
 };
 
-#[derive(Debug, Clone, Reflect, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Topsky {
     pub symbols: HashMap<String, SymbolDef>,
-    pub maps: HashMap<String, Map>,
-    pub colors: HashMap<String, ColorDef>,
+    pub maps: Vec<MapDef>,
+    pub colours: HashMap<String, ColourDef>,
+    pub settings: Settings,
     pub line_styles: HashMap<String, LineStyleDef>,
     pub overrides: Vec<OverrideSct>,
 }
@@ -222,18 +224,21 @@ fn parse_point(pair: Pair<Rule>) -> (f64, f64) {
 pub type TopskyResult = Result<Topsky, TopskyError>;
 impl Topsky {
     pub fn parse(path: PathBuf) -> TopskyResult {
-        let mut colors = parse_topsky_settings(path.join("TopSkySettings.txt"))?;
+        let (mut colours, settings) = parse_topsky_settings(&read_to_string(&fs::read(
+            path.join("TopSkySettings.txt"),
+        )?)?)?;
         let mut symbols = fs::read(path.join("TopSkySymbols.txt"))
             .map_or_else(|_| Ok(HashMap::new()), |bytes| parse_topsky_symbols(&bytes))?;
-        let (maps, mapsymbols, mapcolors, line_styles, overrides) =
+        let (maps, mapsymbols, mapcolours, line_styles, overrides) =
             parse_topsky_maps(&fs::read(path.join("TopSkyMaps.txt"))?)?;
         symbols.extend(mapsymbols);
-        colors.extend(mapcolors);
+        colours.extend(mapcolours);
 
         Ok(Topsky {
             symbols,
             maps,
-            colors,
+            colours,
+            settings,
             line_styles,
             overrides,
         })

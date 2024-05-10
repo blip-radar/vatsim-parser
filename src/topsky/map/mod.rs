@@ -1,4 +1,4 @@
-mod active;
+pub mod active;
 
 use std::collections::HashMap;
 
@@ -10,29 +10,20 @@ use pest::{
 };
 use serde::Serialize;
 
-use crate::{read_to_string, Color, DegMinSec, FromDegMinSec, Location};
-
-pub use self::active::{Active, ActiveIds, ActiveRunways};
+use crate::{
+    adaptation::{
+        colours::Colour,
+        maps::{active::Active, LineStyle, LineStyleType},
+        Alignment,
+    },
+    read_to_string, DegMinSec, FromDegMinSec, Location,
+};
 
 use super::{
     parse_point,
     symbol::{parse_symbol, SymbolDef},
     Rule, TopskyError, TopskyParser,
 };
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Reflect, Serialize)]
-pub struct Runway {
-    pub icao: String,
-    pub designator: String,
-}
-impl Runway {
-    fn parse(pair: Pair<Rule>) -> Self {
-        let mut rwy = pair.into_inner();
-        let icao = rwy.next().unwrap().as_str().to_string();
-        let designator = rwy.next().unwrap().as_str().to_string();
-        Self { icao, designator }
-    }
-}
 
 enum CoordinatePart {
     Decimal(f64),
@@ -93,19 +84,20 @@ impl Location {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Label {
     pub text: String,
+    /// scaled unprojected offset in pixels
     pub pos: (f64, f64),
 }
-
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct MapSymbol {
     pub name: String,
     pub location: Location,
     pub label: Option<Label>,
     pub label_alignment: Option<Alignment>,
 }
+
 impl MapSymbol {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut symbol = pair.into_inner();
@@ -134,32 +126,13 @@ impl MapSymbol {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub enum HorizontalAlignment {
-    Left,
-    Center,
-    Right,
-}
-
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub enum VerticalAlignment {
-    Top,
-    Center,
-    Bottom,
-}
-
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub struct Alignment {
-    pub horizontal: HorizontalAlignment,
-    pub vertical: VerticalAlignment,
-}
-
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Text {
     pub location: Location,
     pub content: String,
     pub alignment: Option<Alignment>,
 }
+
 impl Text {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut text = pair.into_inner();
@@ -184,10 +157,10 @@ impl Text {
 
 #[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 pub enum FontSize {
-    Exact(f64),
-    Add(f64),
-    Subtract(f64),
-    Multiply(f64),
+    Exact(f32),
+    Add(f32),
+    Subtract(f32),
+    Multiply(f32),
     Default,
 }
 
@@ -210,21 +183,6 @@ impl FontSize {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub enum LineStyleType {
-    Solid,
-    Alternate,
-    Dot,
-    Dash,
-    DashDot,
-    DashDotDot,
-    Custom(String),
-}
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub struct LineStyle {
-    pub width: i32,
-    pub style: LineStyleType,
-}
 impl LineStyle {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut linestyle = pair.into_inner();
@@ -283,15 +241,16 @@ impl MapLine {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum MapRule {
     Folder(String),
-    Color(String),
+    Colour(String),
     AsrData(Option<Vec<String>>),
     Active(Active),
     AndActive(Active),
     Global,
     ScreenSpecific,
+    Hidden,
     Layer(i32),
     Symbol(MapSymbol),
     Zoom(f32),
@@ -310,7 +269,7 @@ impl MapRule {
                     Rule::folder => Some(MapRule::Folder(
                         pair.into_inner().next().unwrap().as_str().to_string(),
                     )),
-                    Rule::color => Some(MapRule::Color(
+                    Rule::colour => Some(MapRule::Colour(
                         pair.into_inner().next().unwrap().as_str().to_string(),
                     )),
                     Rule::asrdata => Some(MapRule::AsrData({
@@ -343,13 +302,13 @@ impl MapRule {
                     Rule::text => Some(MapRule::Text(Text::parse(pair))),
                     Rule::screen_specific => Some(MapRule::ScreenSpecific),
                     Rule::global => Some(MapRule::Global),
+                    Rule::hidden => Some(MapRule::Hidden),
                     // TODO
                     Rule::circle => None,
                     Rule::coordline => None,
                     Rule::coord => None,
                     Rule::coordpoly => None,
                     Rule::fontstyle => None,
-                    Rule::hidden => None,
                     Rule::textalign => None,
                     Rule::override_sct => None,
                     _ => {
@@ -362,24 +321,16 @@ impl MapRule {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize)]
-pub struct Map {
-    pub name: String,
-    pub folder: String,
-    pub color: String,
-    pub rules: Vec<MapRule>,
-}
-
-#[derive(Clone, Debug, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
 pub struct OverrideSct {
-    pub folder: Option<String>,
-    pub name: String,
+    pub folder: String,
+    pub name: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
-pub struct ColorDef {
+pub struct ColourDef {
     pub name: String,
-    pub color: Color,
+    pub colour: Colour,
 }
 
 #[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
@@ -390,38 +341,19 @@ pub struct LineStyleDef {
     pub dash_lengths: Vec<i32>,
 }
 
-pub(super) fn parse_map(pair: Pair<Rule>) -> Option<Map> {
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct MapDef {
+    pub name: String,
+    pub rules: Vec<MapRule>,
+}
+
+pub(super) fn parse_map(pair: Pair<Rule>) -> Option<MapDef> {
     match pair.as_rule() {
         Rule::map => {
             let mut symbol = pair.into_inner();
             let name = symbol.next().unwrap().as_str().to_string();
             let rules = MapRule::parse(symbol);
-            let folder = rules
-                .iter()
-                .find_map(|rule| {
-                    if let MapRule::Folder(folder) = rule {
-                        Some(folder.clone())
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or("AUTO".to_string());
-            let maybe_color = rules.iter().find_map(|rule| {
-                if let MapRule::Color(color) = rule {
-                    Some(color.clone())
-                } else {
-                    None
-                }
-            });
-            if maybe_color.is_none() {
-                eprintln!("map {name} doesn't include color");
-            }
-            maybe_color.map(|color| Map {
-                name,
-                folder,
-                color,
-                rules,
-            })
+            Some(MapDef { name, rules })
         }
         Rule::EOI => None,
         _ => {
@@ -434,11 +366,11 @@ pub(super) fn parse_map(pair: Pair<Rule>) -> Option<Map> {
 pub(super) fn parse_linestyle(pair: Pair<Rule>) -> Option<LineStyleDef> {
     match pair.as_rule() {
         Rule::linestyledef => {
-            let mut color = pair.into_inner();
-            let name = color.next().unwrap().as_str().to_string();
-            let brush = color.next().unwrap().as_str().to_string();
-            let hatch = color.next().unwrap().as_str().to_string();
-            let dash_lengths = color.map(|pair| pair.as_str().parse().unwrap()).collect();
+            let mut colour = pair.into_inner();
+            let name = colour.next().unwrap().as_str().to_string();
+            let brush = colour.next().unwrap().as_str().to_string();
+            let hatch = colour.next().unwrap().as_str().to_string();
+            let dash_lengths = colour.map(|pair| pair.as_str().parse().unwrap()).collect();
             Some(LineStyleDef {
                 name,
                 brush,
@@ -454,17 +386,17 @@ pub(super) fn parse_linestyle(pair: Pair<Rule>) -> Option<LineStyleDef> {
     }
 }
 
-pub(super) fn parse_color(pair: Pair<Rule>) -> Option<ColorDef> {
+pub(super) fn parse_colour(pair: Pair<Rule>) -> Option<ColourDef> {
     match pair.as_rule() {
-        Rule::colordef => {
-            let mut color = pair.into_inner();
-            let name = color.next().unwrap().as_str().to_string();
-            let r = color.next().unwrap().as_str().parse().unwrap();
-            let g = color.next().unwrap().as_str().parse().unwrap();
-            let b = color.next().unwrap().as_str().parse().unwrap();
-            Some(ColorDef {
+        Rule::colourdef => {
+            let mut colour = pair.into_inner();
+            let name = colour.next().unwrap().as_str().to_string();
+            let r = colour.next().unwrap().as_str().parse().unwrap();
+            let g = colour.next().unwrap().as_str().parse().unwrap();
+            let b = colour.next().unwrap().as_str().parse().unwrap();
+            Some(ColourDef {
                 name,
-                color: Color::from_rgb(r, g, b),
+                colour: Colour::from_rgb(r, g, b),
             })
         }
         Rule::EOI => None,
@@ -479,14 +411,8 @@ pub(super) fn parse_override(pair: Pair<Rule>) -> Option<OverrideSct> {
     match pair.as_rule() {
         Rule::override_sct => {
             let mut override_sct = pair.into_inner();
-            let folder = override_sct.next().and_then(|folder| {
-                if folder.as_str().is_empty() {
-                    None
-                } else {
-                    Some(folder.as_str().to_string())
-                }
-            });
-            let name = override_sct.next().unwrap().as_str().to_string();
+            let folder = override_sct.next().unwrap().as_str().to_string();
+            let name = override_sct.next().map(|name| name.as_str().to_string());
             Some(OverrideSct { folder, name })
         }
         Rule::EOI => None,
@@ -497,19 +423,18 @@ pub(super) fn parse_override(pair: Pair<Rule>) -> Option<OverrideSct> {
     }
 }
 
-#[derive(Debug)]
 pub enum MapDefinition {
-    Map(Map),
-    Color(ColorDef),
+    Map(MapDef),
+    Colour(ColourDef),
     Symbol(SymbolDef),
     Override(OverrideSct),
     LineStyle(LineStyleDef),
 }
 type ParseMapResult = Result<
     (
-        HashMap<String, Map>,
+        Vec<MapDef>,
         HashMap<String, SymbolDef>,
-        HashMap<String, ColorDef>,
+        HashMap<String, ColourDef>,
         HashMap<String, LineStyleDef>,
         Vec<OverrideSct>,
     ),
@@ -524,7 +449,7 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                 .into_inner()
                 .filter_map(|pair| match pair.as_rule() {
                     Rule::map => parse_map(pair).map(MapDefinition::Map),
-                    Rule::colordef => parse_color(pair).map(MapDefinition::Color),
+                    Rule::colourdef => parse_colour(pair).map(MapDefinition::Colour),
                     Rule::symboldef => parse_symbol(pair).map(MapDefinition::Symbol),
                     Rule::linestyledef => parse_linestyle(pair).map(MapDefinition::LineStyle),
                     Rule::override_sct => parse_override(pair).map(MapDefinition::Override),
@@ -536,27 +461,19 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                 })
                 .fold(
                     (
-                        HashMap::new(),
+                        vec![],
                         HashMap::new(),
                         HashMap::new(),
                         HashMap::new(),
                         vec![],
                     ),
-                    |(mut maps, mut symbols, mut colors, mut line_styles, mut overrides), def| {
+                    |(mut maps, mut symbols, mut colours, mut line_styles, mut overrides), def| {
                         match def {
-                            MapDefinition::Map(mut map) => {
-                                if maps.contains_key(&map.name) {
-                                    let mut i = 2;
-                                    while maps.contains_key(&format!("{}_{i}", map.name)) {
-                                        i += 1;
-                                    }
-                                    map.name = format!("{}_{i}", map.name);
-                                }
-
-                                maps.insert(map.name.clone(), map);
+                            MapDefinition::Map(map) => {
+                                maps.push(map);
                             }
-                            MapDefinition::Color(color) => {
-                                colors.insert(color.name.clone(), color);
+                            MapDefinition::Colour(colour) => {
+                                colours.insert(colour.name.clone(), colour);
                             }
                             MapDefinition::Symbol(symbol) => {
                                 symbols.insert(symbol.name.clone(), symbol);
@@ -568,7 +485,7 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                                 overrides.push(override_sct);
                             }
                         };
-                        (maps, symbols, colors, line_styles, overrides)
+                        (maps, symbols, colours, line_styles, overrides)
                     },
                 )
         })
@@ -577,8 +494,9 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
 
 #[cfg(test)]
 mod test {
-    use crate::topsky::map::{
-        parse_topsky_maps, Active, ActiveIds, ActiveRunways, MapRule, Runway,
+    use crate::{
+        adaptation::maps::active::{ActiveIds, ActiveRunways, Runway},
+        topsky::map::{parse_topsky_maps, Active, MapRule},
     };
 
     #[test]
@@ -604,33 +522,35 @@ ZOOM:9
 COLOR:Active_Map_Type_20
 ACTIVE:RWY:ARR:EDMO22:DEP:*
 ";
-        let (mut maps, ..) = parse_topsky_maps(maps_str).unwrap();
+        let (maps, ..) = parse_topsky_maps(maps_str).unwrap();
 
         assert_eq!(
-            maps.remove("SYMBOLS")
+            maps.iter()
+                .find(|map| map.name == "SYMBOLS")
                 .unwrap()
                 .rules
-                .into_iter()
+                .iter()
                 .filter(|rule| matches!(rule, MapRule::Active(_)))
                 .collect::<Vec<_>>(),
-            vec![MapRule::Active(Active::True)]
+            vec![&MapRule::Active(Active::True)]
         );
 
         assert_eq!(
-            maps.remove("AOR ALTMUEHL")
+            maps.iter()
+                .find(|map| map.name == "AOR ALTMUEHL")
                 .unwrap()
                 .rules
-                .into_iter()
+                .iter()
                 .filter(|rule| matches!(rule, MapRule::Active(_)))
                 .collect::<Vec<_>>(),
             vec![
-                MapRule::Active(Active::Id(ActiveIds {
+                &MapRule::Active(Active::Id(ActiveIds {
                     own: None,
                     own_excludes: None,
                     online: Some(vec!["IGL".to_string()]),
                     online_excludes: None,
                 })),
-                MapRule::Active(Active::Id(ActiveIds {
+                &MapRule::Active(Active::Id(ActiveIds {
                     own: Some(vec!["IGL".to_string()]),
                     own_excludes: None,
                     online: None,
@@ -640,13 +560,14 @@ ACTIVE:RWY:ARR:EDMO22:DEP:*
         );
 
         assert_eq!(
-            maps.remove("EDMO_RNP22")
+            maps.iter()
+                .find(|map| map.name == "EDMO_RNP22")
                 .unwrap()
                 .rules
-                .into_iter()
+                .iter()
                 .filter(|rule| matches!(rule, MapRule::Active(_)))
                 .collect::<Vec<_>>(),
-            vec![MapRule::Active(Active::Runway(ActiveRunways {
+            vec![&MapRule::Active(Active::Runway(ActiveRunways {
                 arrival: Some(vec![Runway {
                     icao: "EDMO".to_string(),
                     designator: "22".to_string()
@@ -681,39 +602,43 @@ ZOOM:9
 COLOR:Active_Map_Type_20
 ACTIVE:RWY:ARR:EDMO22:DEP:*
 ";
-        let (mut maps, ..) = parse_topsky_maps(maps_str).unwrap();
+        let (maps, ..) = parse_topsky_maps(maps_str).unwrap();
 
+        let empty_rules: Vec<&MapRule> = vec![];
         assert_eq!(
-            maps.remove("SYMBOLS")
+            maps.iter()
+                .find(|map| map.name == "SYMBOLS")
                 .unwrap()
                 .rules
-                .into_iter()
+                .iter()
                 .filter(|rule| matches!(rule, MapRule::AsrData(_)))
-                .collect::<Vec<_>>(),
-            vec![]
+                .collect::<Vec<&MapRule>>(),
+            empty_rules
         );
 
         assert_eq!(
-            maps.remove("AOR ALTMUEHL")
+            maps.iter()
+                .find(|map| map.name == "AOR ALTMUEHL")
                 .unwrap()
                 .rules
-                .into_iter()
+                .iter()
                 .filter(|rule| matches!(rule, MapRule::AsrData(_)))
-                .collect::<Vec<_>>(),
-            vec![MapRule::AsrData(Some(vec![
+                .collect::<Vec<&MapRule>>(),
+            vec![&MapRule::AsrData(Some(vec![
                 "CTR".to_string(),
                 "EDDM_APP".to_string()
             ]))]
         );
 
         assert_eq!(
-            maps.remove("EDMO_RNP22")
+            maps.iter()
+                .find(|map| map.name == "EDMO_RNP22")
                 .unwrap()
                 .rules
-                .into_iter()
+                .iter()
                 .filter(|rule| matches!(rule, MapRule::AsrData(_)))
                 .collect::<Vec<_>>(),
-            vec![MapRule::AsrData(Some(vec![
+            vec![&MapRule::AsrData(Some(vec![
                 "APP".to_string(),
                 "CTR".to_string()
             ]))]

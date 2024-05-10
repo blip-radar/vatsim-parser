@@ -1,17 +1,17 @@
-use bevy_reflect::Reflect;
+use super::Rule;
 use pest::iterators::Pair;
-use serde::Serialize;
 
-use crate::topsky::Rule;
+use crate::adaptation::maps::active::{
+    Active, ActiveAreas, ActiveIds, ActiveMapOperator, ActiveRunways, Runway,
+};
 
-use super::Runway;
-
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub struct ActiveIds {
-    pub own: Option<Vec<String>>,
-    pub own_excludes: Option<Vec<String>>,
-    pub online: Option<Vec<String>>,
-    pub online_excludes: Option<Vec<String>>,
+impl Runway {
+    fn parse(pair: Pair<Rule>) -> Self {
+        let mut rwy = pair.into_inner();
+        let icao = rwy.next().unwrap().as_str().to_string();
+        let designator = rwy.next().unwrap().as_str().to_string();
+        Self { icao, designator }
+    }
 }
 
 impl ActiveIds {
@@ -43,14 +43,6 @@ impl ActiveIds {
             }
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub struct ActiveRunways {
-    pub arrival: Option<Vec<Runway>>,
-    pub arrival_excludes: Option<Vec<Runway>>,
-    pub departure: Option<Vec<Runway>>,
-    pub departure_excludes: Option<Vec<Runway>>,
 }
 
 impl ActiveRunways {
@@ -92,11 +84,6 @@ impl ActiveRunways {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub struct ActiveAreas {
-    pub areas: Vec<String>,
-    pub area_excludes: Option<Vec<String>>,
-}
 impl ActiveAreas {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut active = pair.into_inner();
@@ -133,26 +120,6 @@ impl ActiveAreas {
             area_excludes,
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub enum ActiveMapOperator {
-    Same,
-    Opposite,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
-pub enum Active {
-    True,
-    Schedule,
-    Aup(Vec<String>),
-    Notam(String, Vec<String>),
-    Area(ActiveAreas),
-    Id(ActiveIds),
-    Callsign(ActiveIds),
-    Runway(ActiveRunways),
-    /// Same or Opposite as Map in Folder, Name
-    Map(ActiveMapOperator, String, String),
 }
 
 impl Active {

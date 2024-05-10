@@ -6,9 +6,9 @@ use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::TwoKeyMap;
+use crate::{adaptation::colours::Colour, TwoKeyMap};
 
-use super::{read_to_string, Color};
+use super::read_to_string;
 
 #[derive(Parser)]
 #[grammar = "symbology.pest"]
@@ -26,7 +26,7 @@ pub enum SymbologyError {
 pub struct Item {
     pub folder: String,
     pub name: String,
-    pub color: Color,
+    pub colour: Colour,
     pub font_size: f64,
     // TODO
     // line_weight,
@@ -46,14 +46,14 @@ impl Item {
         let mut item = pair.into_inner();
         let folder = item.next().unwrap().as_str().to_string();
         let name = item.next().unwrap().as_str().to_string();
-        let color_str = item.next().unwrap().as_str();
-        let color_num = color_str.parse::<i32>().unwrap();
+        let colour_str = item.next().unwrap().as_str();
+        let colour_num = colour_str.parse::<i32>().unwrap();
         let font_size = item.next().unwrap().as_str().parse().unwrap();
 
         Self {
             folder,
             name,
-            color: Color::from_euroscope(color_num),
+            colour: Colour::from_euroscope(colour_num),
             font_size,
         }
     }
@@ -91,8 +91,8 @@ impl Symbology {
 mod test {
 
     use crate::{
+        adaptation::colours::Colour,
         symbology::{Item, Symbology},
-        Color,
     };
 
     #[test]
@@ -129,7 +129,7 @@ SYMBOLITEM:LINETO -4 3
             Some(&Item {
                 folder: "Sector".to_string(),
                 name: "msaw".to_string(),
-                color: Color::from_rgb(0, 128, 0),
+                colour: Colour::from_rgb(0, 128, 0),
                 font_size: 2.0
             })
         );
@@ -141,7 +141,7 @@ SYMBOLITEM:LINETO -4 3
             Some(&Item {
                 folder: "Sector".to_string(),
                 name: "inactive sector background".to_string(),
-                color: Color::from_rgb(200, 200, 200),
+                colour: Colour::from_rgb(200, 200, 200),
                 font_size: 3.5
             })
         );

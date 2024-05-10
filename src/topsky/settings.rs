@@ -1,34 +1,62 @@
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{collections::HashMap, str::FromStr};
 
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
+use serde::Serialize;
 
-use crate::{read_to_string, Color};
+use crate::adaptation::colours::Colour;
 
-use super::{map::ColorDef, TopskyError};
+use super::{map::ColourDef, TopskyError};
 
 #[derive(Parser)]
 #[grammar = "topsky/settings.pest"]
 pub struct TopskySettingsParser;
 
-fn parse_setting(pair: Pair<Rule>) -> Option<ColorDef> {
+enum Setting {
+    Colour(ColourDef),
+    Other(String, String),
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Settings(pub HashMap<String, String>);
+impl Settings {
+    pub fn parse_with_default<T: FromStr>(&self, key: &str, default: T) -> T {
+        self.0
+            .get(key)
+            .and_then(|font_str| {
+                font_str.parse().map(Some).unwrap_or_else(|_| {
+                    eprintln!("Could not parse {key}");
+                    None
+                })
+            })
+            .unwrap_or(default)
+    }
+}
+
+fn parse_setting(pair: Pair<Rule>) -> Option<Setting> {
     match pair.as_rule() {
-        Rule::color_setting => {
+        Rule::colour_setting => {
             let mut symbol = pair.into_inner();
             let name = symbol.next().unwrap().as_str().to_string();
             symbol.next().map(|rgb| {
-                let mut color = rgb.into_inner();
+                let mut colour = rgb.into_inner();
 
-                let r = color.next().unwrap().as_str().parse().unwrap();
-                let g = color.next().unwrap().as_str().parse().unwrap();
-                let b = color.next().unwrap().as_str().parse().unwrap();
-                ColorDef {
+                let r = colour.next().unwrap().as_str().parse().unwrap();
+                let g = colour.next().unwrap().as_str().parse().unwrap();
+                let b = colour.next().unwrap().as_str().parse().unwrap();
+                Setting::Colour(ColourDef {
                     name,
-                    color: Color::from_rgb(r, g, b),
-                }
+                    colour: Colour::from_rgb(r, g, b),
+                })
             })
         }
-        Rule::ignored_setting | Rule::EOI => None,
+        Rule::other_setting => {
+            let mut setting = pair.into_inner();
+            let name = setting.next().unwrap().as_str().to_string();
+            let value = setting.next().unwrap().as_str().to_string();
+            Some(Setting::Other(name, value))
+        }
+        Rule::section | Rule::EOI => None,
         rule => {
             eprintln!("{rule:?}");
             unreachable!()
@@ -37,34 +65,40 @@ fn parse_setting(pair: Pair<Rule>) -> Option<ColorDef> {
 }
 
 pub(super) fn parse_topsky_settings(
-    path: PathBuf,
-) -> Result<HashMap<String, ColorDef>, TopskyError> {
-    let file_contents = read_to_string(&fs::read(path)?)?;
-    let colors = TopskySettingsParser::parse(Rule::settings, &file_contents).map(|mut pairs| {
+    contents: &str,
+) -> Result<(HashMap<String, ColourDef>, Settings), TopskyError> {
+    let colours = TopskySettingsParser::parse(Rule::settings, contents).map(|mut pairs| {
         pairs
             .next()
             .unwrap()
             .into_inner()
             .filter_map(parse_setting)
-            .map(|color| (color.name.clone(), color))
-            .collect::<HashMap<_, _>>()
+            .fold(
+                (HashMap::new(), Settings(HashMap::new())),
+                |(mut colours, Settings(mut settings)), setting| {
+                    match setting {
+                        Setting::Colour(colour) => {
+                            colours.insert(colour.name.clone(), colour);
+                        }
+                        Setting::Other(key, val) => {
+                            settings.insert(key, val);
+                        }
+                    }
+
+                    (colours, Settings(settings))
+                },
+            )
     })?;
 
-    Ok(colors)
+    Ok(colours)
 }
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-
-    use pest::Parser;
-
-    use crate::Color;
-
-    use super::{parse_setting, Rule, TopskySettingsParser};
+    use crate::{adaptation::colours::Colour, topsky::settings::parse_topsky_settings};
 
     #[test]
-    fn test_settings_colors() {
+    fn test_settings_colours() {
         let settings_str = r"
 Color_Active_Map_Type_16=160,160,160
 Color_Active_Map_Type_17=255,255,255
@@ -72,60 +106,20 @@ Color_Active_Map_Type_18=0,160,0 //MVA - light gray
 Color_Active_Map_Type_19=225,225,225 //Airspace C TMZ and AWYs
 Color_Active_Map_Type_20=140,140,140 //Sectorlines and Labels
         ";
-        let colors = TopskySettingsParser::parse(Rule::settings, settings_str).map(|mut pairs| {
-            pairs
-                .next()
-                .unwrap()
-                .into_inner()
-                .filter_map(parse_setting)
-                .map(|color| (color.name.clone(), color))
-                .collect::<HashMap<_, _>>()
-        });
+        let colours = parse_topsky_settings(settings_str).unwrap().0;
 
         assert!(
-            colors
-                .as_ref()
-                .unwrap()
-                .get("Active_Map_Type_16")
-                .unwrap()
-                .color
-                == Color::from_rgb(160, 160, 160)
+            colours.get("Active_Map_Type_16").unwrap().colour == Colour::from_rgb(160, 160, 160)
         );
         assert!(
-            colors
-                .as_ref()
-                .unwrap()
-                .get("Active_Map_Type_17")
-                .unwrap()
-                .color
-                == Color::from_rgb(255, 255, 255)
+            colours.get("Active_Map_Type_17").unwrap().colour == Colour::from_rgb(255, 255, 255)
+        );
+        assert!(colours.get("Active_Map_Type_18").unwrap().colour == Colour::from_rgb(0, 160, 0));
+        assert!(
+            colours.get("Active_Map_Type_19").unwrap().colour == Colour::from_rgb(225, 225, 225)
         );
         assert!(
-            colors
-                .as_ref()
-                .unwrap()
-                .get("Active_Map_Type_18")
-                .unwrap()
-                .color
-                == Color::from_rgb(0, 160, 0)
-        );
-        assert!(
-            colors
-                .as_ref()
-                .unwrap()
-                .get("Active_Map_Type_19")
-                .unwrap()
-                .color
-                == Color::from_rgb(225, 225, 225)
-        );
-        assert!(
-            colors
-                .as_ref()
-                .unwrap()
-                .get("Active_Map_Type_20")
-                .unwrap()
-                .color
-                == Color::from_rgb(140, 140, 140)
+            colours.get("Active_Map_Type_20").unwrap().colour == Colour::from_rgb(140, 140, 140)
         );
     }
 }

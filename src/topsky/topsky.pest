@@ -1,5 +1,5 @@
 symbols = { SOI ~ NL? ~ symbol+ ~ EOI}
-maps = { SOI ~ NL? ~ (map | symboldef | colordef | linestyledef | override_sct)+ ~ EOI }
+maps = { SOI ~ NL? ~ (map | symboldef | colourdef | linestyledef | override_sct)+ ~ EOI }
 
 symbol = {
   "SYMBOL:" ~ name ~ NL ~ symbolrule+
@@ -8,7 +8,7 @@ symboldef = {
   "SYMBOLDEF:" ~ name ~ NL ~ symbolrule+
 }
 
-colordef = {
+colourdef = {
   "COLORDEF:" ~ name ~ ":" ~ number ~ ":" ~ number ~ ":" ~ number ~ NL?
 }
 
@@ -16,8 +16,8 @@ linestyledef = {
   "LINESTYLEDEF:" ~ name ~ ":" ~ name ~ ":" ~ name ~ (":" ~ (number ~ ("," ~ number)*))? ~ NL?
 }
 
-override_sct = { "OVERRIDE_SCT_MAP:" ~ override_folder ~ name ~ NL? }
-override_folder = { ((!("\\" | NL) ~ ANY)+ ~ "\\")? }
+override_sct = { "OVERRIDE_SCT_MAP:" ~ override_folder ~ ("\\" ~ name)? ~ NL? }
+override_folder = { (!("\\" | NL) ~ ANY)+ }
 
 // TODO DEFAULT_SCREEN-SPECIFIC, DEFAULT_GLOBAL
 
@@ -26,7 +26,7 @@ map = { "MAP:" ~ name ~ NL ~ map_setting+ }
 // MAP
 map_setting = _{
   (" " | "\t")* ~ (
-    folder | color | asrdata | active | andactive | layer | mapsymbol | fontstyle
+    folder | colour | asrdata | active | andactive | layer | mapsymbol | fontstyle
     | fontsize | zoom | style | mapline | text | global | screen_specific
     | circle | coordline | coordpoly | coord | textalign | override_sct
     | hidden
@@ -36,7 +36,7 @@ map_setting = _{
 
 folder = { "FOLDER:" ~ name }
 
-color = { "COLOR:" ~ name }
+colour = { "COLOR:" ~ name }
 
 asrdata = { "ASRDATA:" ~ (wildcard | names) }
 
@@ -124,7 +124,6 @@ coordpoly = { "COORDPOLY:" | number }
 
 // SYMBOLDEF
 symbolrule = _{ (
-  moveto | line | fillarc_ellipse | fillarc | arc_ellipse | arc | polygon | pixel | ellipse | ellipse_circle
   moveto | line | fillarc_ellipse | fillarc | arc_ellipse | arc | polygon | pixel | ellipse | ellipse_circle | fillrect
 ) ~ NL? }
 moveto = { "MOVETO:" ~ point }
