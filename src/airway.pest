@@ -13,7 +13,6 @@ no_neighbour = {
   "\t"{5} ~ "N"
 }
 
-empty_coord = { empty ~ "\t" ~ empty }
 bool = _{ TRUE | FALSE }
 level = { ASCII_DIGIT+ }
 empty = { "" }

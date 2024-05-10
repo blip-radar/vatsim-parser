@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-use std::io;
-
-use bevy_reflect::Reflect;
+use geo_types::Coord;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
+use std::collections::HashMap;
+use std::io;
 use thiserror::Error;
 
 use super::read_to_string;
@@ -23,22 +22,30 @@ pub enum AirwayError {
 
 /// conceptionally HashMap<Fix, HashMap<Airway, AirwayNeighbours>>
 pub type FixAirwayMap = HashMap<String, AirwayNeighbourssOfFix>;
-#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, PartialEq)]
 pub struct AirwayNeighbourssOfFix {
     pub fix: String,
     pub airway_neighbours: HashMap<String, AirwayNeighbours>,
 }
 
-#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+fn parse_coord(pair: Pair<Rule>) -> Coord {
+    let mut coord = pair.into_inner();
+    let lat = coord.next().unwrap().as_str().parse().unwrap();
+    let lng = coord.next().unwrap().as_str().parse().unwrap();
+    Coord { x: lng, y: lat }
+}
+
+#[derive(Clone, Debug, Default, Serialize, PartialEq)]
 pub struct AirwayNeighbours {
     pub airway: String,
     pub previous: Option<AirwayFix>,
     pub next: Option<AirwayFix>,
 }
 
-#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, PartialEq)]
 pub struct AirwayFix {
     pub name: String,
+    pub coord: Coord,
     pub valid_direction: bool,
     pub minimum_level: u32,
 }
@@ -49,11 +56,12 @@ impl AirwayFix {
             Rule::neighbour => {
                 let mut airway_fix = pair.into_inner();
                 let name = airway_fix.next().unwrap().as_str().to_string();
-                let _coord = airway_fix.next().unwrap().as_str().to_string();
+                let coord = parse_coord(airway_fix.next().unwrap());
                 let minimum_level = airway_fix.next().unwrap().as_str().parse().unwrap();
                 let valid_direction = airway_fix.next().unwrap().as_str() == "Y";
                 Some(AirwayFix {
                     name,
+                    coord,
                     minimum_level,
                     valid_direction,
                 })
@@ -133,6 +141,9 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
 mod test {
     use std::collections::HashMap;
 
+    use geo_types::Coord;
+    use pretty_assertions_sorted::assert_eq_sorted;
+
     use crate::airway::{AirwayFix, AirwayNeighbours, AirwayNeighbourssOfFix};
 
     use super::parse_airway_txt;
@@ -152,7 +163,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
 
         let parsed = parse_airway_txt(airway_bytes).unwrap();
 
-        assert_eq!(
+        assert_eq_sorted!(
             parsed,
             HashMap::from([
                 (
@@ -165,11 +176,19 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway: "T161".to_string(),
                                 previous: Some(AirwayFix {
                                     name: "REDNI".to_string(),
+                                    coord: Coord {
+                                        x: 10.890278,
+                                        y: 49.08
+                                    },
                                     valid_direction: false,
                                     minimum_level: 5500
                                 }),
                                 next: Some(AirwayFix {
                                     name: "DEBHI".to_string(),
+                                    coord: Coord {
+                                        x: 10.466111,
+                                        y: 49.360833,
+                                    },
                                     valid_direction: true,
                                     minimum_level: 5500
                                 })
@@ -187,11 +206,19 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway: "T161".to_string(),
                                 previous: Some(AirwayFix {
                                     name: "ASPAT".to_string(),
+                                    coord: Coord {
+                                        x: 10.725828,
+                                        y: 49.196175
+                                    },
                                     valid_direction: false,
                                     minimum_level: 5500
                                 }),
                                 next: Some(AirwayFix {
                                     name: "TOSTU".to_string(),
+                                    coord: Coord {
+                                        x: 9.805942,
+                                        y: 49.713536
+                                    },
                                     valid_direction: true,
                                     minimum_level: 5000
                                 })
@@ -210,11 +237,19 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     airway: "T161".to_string(),
                                     previous: Some(AirwayFix {
                                         name: "NIMDI".to_string(),
+                                        coord: Coord {
+                                            x: 11.633611,
+                                            y: 48.802222
+                                        },
                                         valid_direction: false,
                                         minimum_level: 5000
                                     }),
                                     next: Some(AirwayFix {
                                         name: "GOLMO".to_string(),
+                                        coord: Coord {
+                                            x: 11.055278,
+                                            y: 48.9625
+                                        },
                                         valid_direction: true,
                                         minimum_level: 5500
                                     })
@@ -226,11 +261,19 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     airway: "Y101".to_string(),
                                     previous: Some(AirwayFix {
                                         name: "GIVMI".to_string(),
+                                        coord: Coord {
+                                            x: 11.364803,
+                                            y: 48.701094
+                                        },
                                         valid_direction: false,
                                         minimum_level: 4000
                                     }),
                                     next: Some(AirwayFix {
                                         name: "TALAL".to_string(),
+                                        coord: Coord {
+                                            x: 11.085278,
+                                            y: 49.108333
+                                        },
                                         valid_direction: true,
                                         minimum_level: 5000
                                     })
@@ -250,6 +293,10 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 previous: None,
                                 next: Some(AirwayFix {
                                     name: "ERNAS".to_string(),
+                                    coord: Coord {
+                                        x: 11.219353,
+                                        y: 48.844669
+                                    },
                                     valid_direction: true,
                                     minimum_level: 4000
                                 })
@@ -267,11 +314,19 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway: "T161".to_string(),
                                 previous: Some(AirwayFix {
                                     name: "ERNAS".to_string(),
+                                    coord: Coord {
+                                        x: 11.219353,
+                                        y: 48.844669
+                                    },
                                     valid_direction: false,
                                     minimum_level: 5500
                                 }),
                                 next: Some(AirwayFix {
                                     name: "REDNI".to_string(),
+                                    coord: Coord {
+                                        x: 10.890278,
+                                        y: 49.08
+                                    },
                                     valid_direction: true,
                                     minimum_level: 5500
                                 })
@@ -289,11 +344,19 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway: "T161".to_string(),
                                 previous: Some(AirwayFix {
                                     name: "GOLMO".to_string(),
+                                    coord: Coord {
+                                        x: 11.055278,
+                                        y: 48.9625
+                                    },
                                     valid_direction: false,
                                     minimum_level: 5500
                                 }),
                                 next: Some(AirwayFix {
                                     name: "ASPAT".to_string(),
+                                    coord: Coord {
+                                        x: 10.725828,
+                                        y: 49.196175
+                                    },
                                     valid_direction: true,
                                     minimum_level: 5500
                                 })

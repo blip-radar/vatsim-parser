@@ -11,6 +11,7 @@ license = "LGPL-3.0-or-later"
 bevy_reflect = "0.13.2"
 encoding_rs = "0.8.34"
 geo-types = { version =  "0.7.13", features = [ "serde" ] }
+multimap = "0.10.0"
 pest = "2.7.9"
 pest_derive = "2.7.10"
 phf = { version = "0.11.2", features = ["macros"] }
@@ -19,6 +20,7 @@ thiserror = "1.0.61"
 
 [dev-dependencies]
 serde_json = "1.0.117"
+pretty_assertions_sorted = "1.0.0"
 
 [lints.clippy]
 # TODO fix
