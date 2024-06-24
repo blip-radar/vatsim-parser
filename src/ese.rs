@@ -3,6 +3,7 @@ use std::io;
 
 use bevy_reflect::Reflect;
 use geo_types::{Coord, LineString};
+use multimap::MultiMap;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -304,10 +305,28 @@ impl Cop {
     }
 }
 
+#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+pub struct SID {
+    name: String,
+    airport: String,
+    runway: String,
+    waypoints: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+pub struct STAR {
+    name: String,
+    airport: String,
+    runway: String,
+    waypoints: Vec<String>,
+}
+
 #[derive(Debug, Default, Serialize, PartialEq)]
 pub struct Ese {
     pub positions: HashMap<String, Position>,
     pub sectors: HashMap<String, Sector>,
+    pub sids: TwoKeyMultiMap<String, String, SID>,
+    pub stars: TwoKeyMultiMap<String, String, STAR>,
 }
 
 pub type EseResult = Result<Ese, EseError>;
@@ -316,6 +335,10 @@ pub type EseResult = Result<Ese, EseError>;
 enum Section {
     Positions(HashMap<String, Position>),
     Sectors(HashMap<String, Sector>),
+    SidsStars(
+        TwoKeyMultiMap<String, String, SID>,
+        TwoKeyMultiMap<String, String, STAR>,
+    ),
     Unsupported,
 }
 
@@ -323,6 +346,7 @@ enum Section {
 enum SectionName {
     Position,
     Airspace,
+    SidsStars,
     Unsupported,
 }
 
@@ -494,6 +518,39 @@ fn combine_sectors_with_borders(
         .collect()
 }
 
+enum SidStar {
+    Sid(SID),
+    Star(STAR),
+}
+fn parse_sid_star(pair: Pair<Rule>) -> SidStar {
+    let rule = pair.as_rule();
+    let mut sid_star = pair.into_inner();
+    let airport = sid_star.next().unwrap().as_str().to_string();
+    let runway = sid_star.next().unwrap().as_str().to_string();
+    let name = sid_star.next().unwrap().as_str().to_string();
+    let waypoints = sid_star
+        .next()
+        .unwrap()
+        .into_inner()
+        .map(|wpt| wpt.as_str().to_string())
+        .collect();
+    match rule {
+        Rule::sid => SidStar::Sid(SID {
+            airport,
+            runway,
+            name,
+            waypoints,
+        }),
+        Rule::star => SidStar::Star(STAR {
+            airport,
+            runway,
+            name,
+            waypoints,
+        }),
+        rule => unreachable!("{rule:?}"),
+    }
+}
+
 fn parse_section(pair: Pair<Rule>) -> (SectionName, Section) {
     match pair.as_rule() {
         Rule::position_section => (
@@ -519,6 +576,26 @@ fn parse_section(pair: Pair<Rule>) -> (SectionName, Section) {
                 )
             }),
         ),
+        Rule::sidsstars_section => {
+            let (sids, stars) = pair.into_inner().map(parse_sid_star).fold(
+                (
+                    TwoKeyMultiMap(MultiMap::new()),
+                    TwoKeyMultiMap(MultiMap::new()),
+                ),
+                |(mut sids, mut stars), sid_star| {
+                    match sid_star {
+                        SidStar::Sid(sid) => {
+                            sids.0.insert((sid.airport.clone(), sid.name.clone()), sid)
+                        }
+                        SidStar::Star(star) => stars
+                            .0
+                            .insert((star.airport.clone(), star.name.clone()), star),
+                    }
+                    (sids, stars)
+                },
+            );
+            (SectionName::SidsStars, Section::SidsStars(sids, stars))
+        }
         _ => (SectionName::Unsupported, Section::Unsupported),
     }
 }
@@ -542,8 +619,20 @@ impl Ese {
             Some((_, Section::Sectors(sectors))) => sectors,
             _ => HashMap::new(),
         };
+        let (sids, stars) = match sections.remove_entry(&SectionName::SidsStars) {
+            Some((_, Section::SidsStars(sids, stars))) => (sids, stars),
+            _ => (
+                TwoKeyMultiMap(MultiMap::new()),
+                TwoKeyMultiMap(MultiMap::new()),
+            ),
+        };
 
-        Ok(Ese { positions, sectors })
+        Ok(Ese {
+            positions,
+            sectors,
+            sids,
+            stars,
+        })
     }
 }
 
@@ -554,7 +643,7 @@ mod test {
     use geo_types::line_string;
 
     use crate::{
-        ese::{Cop, Ese, Position, SectorLine},
+        ese::{Cop, Ese, Position, SectorLine, SID, STAR},
         Coord,
     };
 
@@ -1055,6 +1144,61 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     ]
                 }
             ]
+        );
+    }
+
+    #[test]
+    fn test_ese_sids_stars() {
+        let ese_bytes = b"
+[POSITIONS]
+EDDM_ATIS:Muenchen ATIS:123.130:MX::EDDM:ATIS:::0000:0000
+EDMM_ALB_CTR:Muenchen Radar:129.100:ALB:ALB:EDMM:CTR:::2354:2367:N049.02.24.501:E012.31.35.850
+EDMM_TEG_CTR:Muenchen Radar:133.680:TEG:TEG:EDMM:CTR:::2354:2367:N048.10.49.419:E011.48.59.530
+EDXX_FIS_CTR:Langen Information:128.950:GIXX:FIS:EDXX:CTR:::2001:2577:N049.26.51.334:E010.13.06.336:N052.28.08.891:E010.52.12.796
+EGBB_ATIS:Birmingham ATIS:136.030:BBI:B:EGBB:ATIS:-:-::
+
+[SIDSSTARS]
+STAR:EDDN:28:UPALA1V:UPALA DN463 DN462 DN461 DN452 DN453 DN454 DN455 DN456 DN457 DN458 DN459 DN439 DN438 DN437 OSNUB NGD32
+STAR:EDMO:22:MAHxRNP:MAH MO220 MO221 EDIMO
+STAR:EDJA:06:KPT1C:KPT JA450 JA430 JA060 FIMPE
+SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
+";
+
+        let ese = Ese::parse(ese_bytes).unwrap();
+        assert_eq!(
+            *ese.sids
+                .0
+                .get(&("EDDM".to_string(), "GIVMI1N".to_string()))
+                .unwrap(),
+            SID {
+                name: "GIVMI1N".to_string(),
+                airport: "EDDM".to_string(),
+                runway: "26R".to_string(),
+                waypoints: vec![
+                    "DM060".to_string(),
+                    "DM063".to_string(),
+                    "GIVMI".to_string()
+                ]
+            }
+        );
+
+        assert_eq!(
+            *ese.stars
+                .0
+                .get(&("EDJA".to_string(), "KPT1C".to_string()))
+                .unwrap(),
+            STAR {
+                name: "KPT1C".to_string(),
+                airport: "EDJA".to_string(),
+                runway: "06".to_string(),
+                waypoints: vec![
+                    "KPT".to_string(),
+                    "JA450".to_string(),
+                    "JA430".to_string(),
+                    "JA060".to_string(),
+                    "FIMPE".to_string()
+                ]
+            }
         );
     }
 }

@@ -3,6 +3,7 @@ ese = { SOI ~ NL? ~ section+ ~ EOI}
 section = _{
   position_section
   | airspace_section
+  | sidsstars_section
   | unparsed_section
 }
 
@@ -12,6 +13,7 @@ section_header = _{ "[" ~ header_name ~ "]" }
 
 position_section = { "[POSITIONS]" ~ NL ~ (position ~ NL)* }
 airspace_section = { "[AIRSPACE]" ~ NL ~ (sectorline | circle_sectorline | display_sectorline | sector | cop | fir_cop | msaw)* }
+sidsstars_section = { "[SIDSSTARS]" ~ NL ~ ((sid | star) ~ NL)* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 position = {
@@ -65,6 +67,9 @@ ades = _{ wildcard | designator }
 
 msaw = { "MSAW:" ~ text ~ ":" ~ INTEGER ~ NL ~ (coord ~ NL)+ }
 
+sid = { "SID:" ~ designator ~ ":" ~ rwy_designator ~ ":" ~ fix_designator ~ ":" ~ route }
+star = { "STAR:" ~ designator ~ ":" ~ rwy_designator ~ ":" ~ fix_designator ~ ":" ~ route }
+
 wildcard = { "*" }
 
 broken = @{ !("[") ~ (!NL ~ ANY)* }
@@ -76,9 +81,11 @@ coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 frequency = @{ DECIMAL }
 
 
+route = { designator* }
 fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | ".")+ }
 designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
 pos_designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "_" | "-")+ }
+rwy_designator = { ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 text = @{ (!(":" | NL) ~ ANY)* }
 
 header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }

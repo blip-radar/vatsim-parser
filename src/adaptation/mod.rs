@@ -124,7 +124,9 @@ impl Adaptation {
         let sct = Sct::parse(&fs::read(prf.sct_path())?)?;
         let ese = Ese::parse(&fs::read(prf.ese_path())?)?;
         let airways = parse_airway_txt(&fs::read(prf.airways_path())?)?;
-        let locations = Locations::from_euroscope(sct, airways);
+        let sectors = ese.sectors.clone();
+        let positions = Position::from_ese_positions(ese.positions.clone());
+        let locations = Locations::from_euroscope(sct, ese, airways);
         let symbology = Symbology::parse(&fs::read(prf.symbology_path())?)?;
         let topsky = prf.topsky_path().and_then(|path| {
             Topsky::parse(path).map(Some).unwrap_or_else(|e| {
@@ -138,8 +140,8 @@ impl Adaptation {
             .unwrap_or_default();
         let colours = Colours::from_euroscope(&symbology, &topsky, &settings);
         Ok(Adaptation {
-            positions: Position::from_ese_positions(ese.positions),
-            sectors: ese.sectors,
+            positions,
+            sectors,
             maps: topsky
                 .as_ref()
                 .map(|topsky| maps::from_topsky(topsky, &settings, &colours, &locations))

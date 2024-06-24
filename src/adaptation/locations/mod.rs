@@ -7,8 +7,9 @@ use multimap::MultiMap;
 use serde::Serialize;
 
 use crate::{
+    ese::{Ese, SID, STAR},
     sct::{self, Sct},
-    Location,
+    Location, TwoKeyMultiMap,
 };
 
 use self::airways::FixAirwayMap;
@@ -77,13 +78,12 @@ pub struct Locations {
     pub ndbs: MultiMap<String, NDB>,
     pub airports: HashMap<String, Airport>,
     pub airways: FixAirwayMap,
-    // TODO
-    pub sids: Vec<String>,
-    pub stars: Vec<String>,
+    pub sids: TwoKeyMultiMap<String, String, SID>,
+    pub stars: TwoKeyMultiMap<String, String, STAR>,
 }
 
 impl Locations {
-    pub(super) fn from_euroscope(sct: Sct, airways: FixAirwayMap) -> Self {
+    pub(super) fn from_euroscope(sct: Sct, ese: Ese, airways: FixAirwayMap) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
             acc.insert(fix.designator.clone(), fix);
             acc
@@ -102,8 +102,8 @@ impl Locations {
             ndbs,
             airports: Airport::from_sct_airports(sct.airports, sct.runways),
             airways,
-            sids: vec![],
-            stars: vec![],
+            sids: ese.sids,
+            stars: ese.stars,
         }
     }
 

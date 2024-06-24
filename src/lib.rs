@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Display, hash::Hash, io};
 
 use bevy_reflect::Reflect;
 use geo_types::Coord;
+use multimap::MultiMap;
 use serde::{Serialize, Serializer};
 
 pub mod adaptation;
@@ -60,5 +61,43 @@ where
     {
         let key = |k1, k2| format!("{k1}:{k2}");
         serializer.collect_map(self.0.iter().map(|(k, v)| (key(&k.0, &k.1), v)))
+    }
+}
+
+impl<K1, K2, V> Default for TwoKeyMap<K1, K2, V>
+where
+    K1: Eq + Hash + Display,
+    K2: Eq + Hash + Display,
+{
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TwoKeyMultiMap<K1: Eq + Hash, K2: Eq + Hash, V>(pub MultiMap<(K1, K2), V>);
+
+impl<K1, K2, V> Serialize for TwoKeyMultiMap<K1, K2, V>
+where
+    K1: Eq + Hash + Display,
+    K2: Eq + Hash + Display,
+    V: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let key = |k1, k2| format!("{k1}:{k2}");
+        serializer.collect_map(self.0.iter().map(|(k, v)| (key(&k.0, &k.1), v)))
+    }
+}
+
+impl<K1, K2, V> Default for TwoKeyMultiMap<K1, K2, V>
+where
+    K1: Eq + Hash + Display,
+    K2: Eq + Hash + Display,
+{
+    fn default() -> Self {
+        Self(Default::default())
     }
 }
