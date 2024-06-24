@@ -57,10 +57,7 @@ fn parse_setting(pair: Pair<Rule>) -> Option<Setting> {
             Some(Setting::Other(name, value))
         }
         Rule::section | Rule::EOI => None,
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 

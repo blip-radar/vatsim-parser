@@ -108,7 +108,7 @@ fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
         * match hemi {
             "N" | "E" => 1.0,
             "S" | "W" => -1.0,
-            _ => unreachable!(),
+            _ => unreachable!("{hemi} is not a hemisphere"),
         };
     let min = coordinate_part.next().unwrap().as_str().parse().unwrap();
     let sec = coordinate_part.next().unwrap().as_str().parse().unwrap();
@@ -142,10 +142,7 @@ fn parse_or_fix(pair: Pair<Rule>) -> Location {
     match pair.as_rule() {
         Rule::coordinate => Location::Coordinate(parse_coordinate(pair)),
         Rule::airway_fix => Location::Fix(pair.into_inner().next().unwrap().as_str().to_string()),
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 
@@ -254,7 +251,7 @@ fn parse_info_section(pair: Pair<Rule>, colours: &mut HashMap<String, Colour>) -
                 6 => sct_info.miles_per_deg_lng = pair.as_str().parse().unwrap(),
                 7 => sct_info.magnetic_variation = pair.as_str().parse().unwrap(),
                 8 => sct_info.scale_factor = pair.as_str().parse().unwrap(),
-                _ => unreachable!(),
+                _ => unreachable!("Too many .sct info lines"),
             }
             i += 1;
         }

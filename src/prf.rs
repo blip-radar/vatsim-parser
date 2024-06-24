@@ -123,7 +123,7 @@ fn parse_setting(pair: Pair<Rule>) -> Option<((String, String), String)> {
             Some(((category, key), value))
         }
         Rule::EOI => None,
-        _ => unreachable!(),
+        rule => unreachable!("{rule:?}"),
     }
 }
 

@@ -46,14 +46,14 @@ impl CoordinatePart {
                     * match hemi {
                         "N" | "n" | "E" | "e" => 1.0,
                         "S" | "s" | "W" | "w" => -1.0,
-                        _ => unreachable!(),
+                        _ => unreachable!("{hemi} is not a hemisphere"),
                     };
                 let min = sct_coord_part.next().unwrap().as_str().parse().unwrap();
                 let sec = sct_coord_part.next().unwrap().as_str().parse().unwrap();
 
                 Self::DegMinSec((degrees, min, sec))
             }
-            _ => unreachable!(),
+            rule => unreachable!("{rule:?}"),
         }
     }
 }
@@ -76,10 +76,7 @@ impl Location {
         match pair.as_rule() {
             Rule::name => Self::Fix(pair.as_str().to_string()),
             Rule::coordinate => Self::Coordinate(parse_coord(pair)),
-            ruletype => {
-                eprintln!("unhandled {ruletype:?}");
-                unreachable!()
-            }
+            rule => unreachable!("{rule:?}"),
         }
     }
 }
@@ -177,7 +174,7 @@ impl FontSize {
                 "+" => Self::Add(size),
                 "-" => Self::Subtract(size),
                 "*" => Self::Multiply(size),
-                _ => unreachable!(),
+                modifier => unreachable!("invalid font size modifier: {modifier}"),
             }
         }
     }
@@ -281,10 +278,7 @@ impl MapRule {
                                     .map(|pair| pair.as_str().to_string())
                                     .collect(),
                             ),
-                            _ => {
-                                eprintln!("unhandled {ruletype:?}");
-                                unreachable!()
-                            }
+                            rule => unreachable!("{rule:?}"),
                         }
                     })),
                     Rule::active => Some(MapRule::Active(Active::parse(pair))),
@@ -311,10 +305,7 @@ impl MapRule {
                     Rule::fontstyle => None,
                     Rule::textalign => None,
                     Rule::override_sct => None,
-                    _ => {
-                        eprintln!("unhandled {ruletype:?}");
-                        unreachable!()
-                    }
+                    rule => unreachable!("{rule:?}"),
                 }
             })
             .collect::<Vec<_>>()
@@ -356,10 +347,7 @@ pub(super) fn parse_map(pair: Pair<Rule>) -> Option<MapDef> {
             Some(MapDef { name, rules })
         }
         Rule::EOI => None,
-        _ => {
-            eprintln!("{:?}", pair.as_rule());
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 
@@ -379,10 +367,7 @@ pub(super) fn parse_linestyle(pair: Pair<Rule>) -> Option<LineStyleDef> {
             })
         }
         Rule::EOI => None,
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 
@@ -400,10 +385,7 @@ pub(super) fn parse_colour(pair: Pair<Rule>) -> Option<ColourDef> {
             })
         }
         Rule::EOI => None,
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 
@@ -416,10 +398,7 @@ pub(super) fn parse_override(pair: Pair<Rule>) -> Option<OverrideSct> {
             Some(OverrideSct { folder, name })
         }
         Rule::EOI => None,
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 
@@ -454,10 +433,7 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                     Rule::linestyledef => parse_linestyle(pair).map(MapDefinition::LineStyle),
                     Rule::override_sct => parse_override(pair).map(MapDefinition::Override),
                     Rule::EOI => None,
-                    _ => {
-                        eprintln!("{:?}", pair.as_rule());
-                        unreachable!()
-                    }
+                    rule => unreachable!("{rule:?}"),
                 })
                 .fold(
                     (

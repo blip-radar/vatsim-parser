@@ -37,10 +37,7 @@ impl ActiveIds {
                     .map(|pair| pair.as_str().to_string())
                     .collect(),
             ),
-            rule => {
-                eprintln!("{rule:?}");
-                unreachable!()
-            }
+            rule => unreachable!("{rule:?}"),
         }
     }
 }
@@ -76,10 +73,7 @@ impl ActiveRunways {
         match pair.as_rule() {
             Rule::wildcard => None,
             Rule::runways => Some(pair.into_inner().map(Runway::parse).collect()),
-            rule => {
-                eprintln!("{rule:?}");
-                unreachable!()
-            }
+            rule => unreachable!("{rule:?}"),
         }
     }
 }
@@ -154,10 +148,7 @@ impl Active {
                 let op = match active_map.next().unwrap().as_str() {
                     "!" => ActiveMapOperator::Opposite,
                     "=" => ActiveMapOperator::Same,
-                    op => {
-                        eprintln!("Unknown active_map operator: {op}");
-                        unreachable!()
-                    }
+                    op => unreachable!("Unknown active_map operator: {op}"),
                 };
                 Self::Map(
                     op,
@@ -165,10 +156,7 @@ impl Active {
                     active_map.next().unwrap().as_str().to_string(),
                 )
             }
-            rule => {
-                eprintln!("{rule:?}");
-                unreachable!()
-            }
+            rule => unreachable!("{rule:?}"),
         }
     }
 }

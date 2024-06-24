@@ -46,10 +46,7 @@ impl AirwayFix {
                     valid_direction,
                 })
             }
-            rule => {
-                eprintln!("{rule:?}");
-                unreachable!()
-            }
+            rule => unreachable!("{rule:?}"),
         }
     }
 }

@@ -9,7 +9,7 @@ use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::{DegMinSec, FromDegMinSec};
+use crate::{DegMinSec, FromDegMinSec, TwoKeyMultiMap};
 
 use super::read_to_string;
 
@@ -233,10 +233,7 @@ impl Sector {
                     .map(|pair| pair.as_str().to_string())
                     .collect(),
             ),
-            rule => {
-                eprintln!("{rule:?}");
-                unreachable!()
-            }
+            rule => unreachable!("{rule:?}"),
         }
     }
 }
@@ -245,10 +242,7 @@ fn parse_wildcard_string(pair: Pair<Rule>) -> Option<String> {
     match pair.as_rule() {
         Rule::wildcard => None,
         Rule::text | Rule::designator => Some(pair.as_str().to_string()),
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 
@@ -256,10 +250,7 @@ fn parse_wildcard_u32(pair: Pair<Rule>) -> Option<u32> {
     match pair.as_rule() {
         Rule::wildcard => None,
         Rule::INTEGER => Some(pair.as_str().parse().unwrap()),
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 
@@ -362,7 +353,7 @@ fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
         * match hemi {
             "N" | "E" | "n" | "e" => 1.0,
             "S" | "W" | "s" | "w" => -1.0,
-            _ => unreachable!(),
+            _ => unreachable!("{hemi} is not a hemisphere"),
         };
     let min = coordinate_part.next().unwrap().as_str().parse().unwrap();
     let sec = coordinate_part.next().unwrap().as_str().parse().unwrap();
@@ -397,10 +388,7 @@ fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
         Rule::display_sectorline => SectorRule::DisplaySectorline,
         Rule::circle_sectorline => SectorRule::CircleSectorLine(CircleSectorLine::parse(pair)),
         Rule::msaw => SectorRule::Msaw(MSAW::parse(pair)),
-        rule => {
-            eprintln!("{rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("{rule:?}"),
     }
 }
 

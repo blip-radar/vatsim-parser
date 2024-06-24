@@ -93,9 +93,7 @@ fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
                     SymbolRule::Polygon(vec![(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
                 }
                 Rule::polygon => SymbolRule::Polygon(symbolrule.map(parse_point).collect()),
-                _ => {
-                    unreachable!()
-                }
+                rule => unreachable!("{rule:?}"),
             }
         })
         .collect()
@@ -112,7 +110,7 @@ pub(super) fn parse_symbol(pair: Pair<Rule>) -> Option<SymbolDef> {
             })
         }
         Rule::EOI => None,
-        _ => unreachable!(),
+        rule => unreachable!("{rule:?}"),
     }
 }
 

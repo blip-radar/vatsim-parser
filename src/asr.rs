@@ -227,10 +227,7 @@ fn parse_setting(pair: Pair<Rule>) -> Option<AsrData> {
         Rule::ground_network => None,
         Rule::regions => None,
         Rule::EOI => None,
-        _ => {
-            eprintln!("Unhandled rule: {rule:?}");
-            unreachable!()
-        }
+        rule => unreachable!("Unhandled rule: {rule:?}"),
     }
 }
 

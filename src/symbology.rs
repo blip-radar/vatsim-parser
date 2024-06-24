@@ -73,10 +73,7 @@ impl Symbology {
                         Some(((item.folder.clone(), item.name.clone()), item))
                     }
                     Rule::header | Rule::symbols | Rule::EOI => None,
-                    rule => {
-                        eprintln!("unhandled {rule:?}");
-                        unreachable!()
-                    }
+                    rule => unreachable!("unhandled {rule:?}"),
                 })
                 .collect::<HashMap<_, _>>()
         })?;
