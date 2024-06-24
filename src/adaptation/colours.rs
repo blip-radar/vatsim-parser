@@ -88,10 +88,14 @@ impl Default for SectorColours {
 pub struct TrackColours {
     pub assumed: Colour,
     pub flight_leg: Colour,
+    pub predicted_alert: Colour,
+    pub current_alert: Colour,
 }
 impl TrackColours {
     const DEFAULT_ASSUMED: Colour = Colour::from_rgb(0, 0, 0);
     const DEFAULT_FLIGHT_LEG: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_PREDICTED_ALERT: Colour = Colour::from_rgb(255, 140, 0);
+    const DEFAULT_CURRENT_ALERT: Colour = Colour::from_rgb(255, 25, 26);
 
     pub fn from_euroscope(topsky_colours: &HashMap<String, Colour>, settings: &Settings) -> Self {
         Self {
@@ -105,6 +109,16 @@ impl TrackColours {
                 .copied()
                 .or(Colour::from_topsky_default(settings, "Flight_Leg"))
                 .unwrap_or(Self::DEFAULT_FLIGHT_LEG),
+            predicted_alert: topsky_colours
+                .get("Warning")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Warning"))
+                .unwrap_or(Self::DEFAULT_PREDICTED_ALERT),
+            current_alert: topsky_colours
+                .get("Urgency")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Urgency"))
+                .unwrap_or(Self::DEFAULT_CURRENT_ALERT),
         }
     }
 }
@@ -114,6 +128,8 @@ impl Default for TrackColours {
         Self {
             assumed: Self::DEFAULT_ASSUMED,
             flight_leg: Self::DEFAULT_FLIGHT_LEG,
+            predicted_alert: Self::DEFAULT_PREDICTED_ALERT,
+            current_alert: Self::DEFAULT_CURRENT_ALERT,
         }
     }
 }
