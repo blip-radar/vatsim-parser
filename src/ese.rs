@@ -298,18 +298,18 @@ impl Cop {
 
 #[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
 pub struct SID {
-    name: String,
-    airport: String,
-    runway: String,
-    waypoints: Vec<String>,
+    pub name: String,
+    pub airport: String,
+    pub runway: String,
+    pub waypoints: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
 pub struct STAR {
-    name: String,
-    airport: String,
-    runway: String,
-    waypoints: Vec<String>,
+    pub name: String,
+    pub airport: String,
+    pub runway: String,
+    pub waypoints: Vec<String>,
 }
 
 #[derive(Debug, Default, Serialize, PartialEq)]
