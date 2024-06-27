@@ -73,18 +73,18 @@ impl Airport {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct SID {
-    name: String,
-    airport: String,
-    runway: String,
-    waypoints: Vec<Fix>,
+    pub name: String,
+    pub airport: String,
+    pub runway: String,
+    pub waypoints: Vec<Fix>,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct STAR {
-    name: String,
-    airport: String,
-    runway: String,
-    waypoints: Vec<Fix>,
+    pub name: String,
+    pub airport: String,
+    pub runway: String,
+    pub waypoints: Vec<Fix>,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -121,58 +121,59 @@ impl Locations {
             sids: TwoKeyMultiMap(MultiMap::new()),
             stars: TwoKeyMultiMap(MultiMap::new()),
         };
-        ese.sids_stars.into_iter().for_each(
-            |sid_star| {
-                match sid_star {
-                    SidStar::Sid(sid) => locations.sids.0.insert(
-                        (sid.airport.clone(), sid.name.clone()),
-                        SID {
-                            waypoints: sid
-                                .waypoints
-                                .into_iter()
-                                .filter_map(|wpt| {
-                                    if let Some(coordinate) = locations.convert_designator(&wpt) {
-                                        Some(Fix {
-                                            coordinate,
-                                            designator: wpt,
-                                        })
-                                    } else {
-                                        eprintln!("Waypoint {wpt} not found in SID {}", sid.name);
-                                        None
-                                    }
-                                })
-                                .collect(),
-                            name: sid.name,
-                            airport: sid.airport,
-                            runway: sid.runway,
-                        },
-                    ),
-                    SidStar::Star(star) => locations.stars.0.insert(
-                        (star.airport.clone(), star.name.clone()),
-                        STAR {
-                            waypoints: star
-                                .waypoints
-                                .into_iter()
-                                .filter_map(|wpt| {
-                                    if let Some(coordinate) = locations.convert_designator(&wpt) {
-                                        Some(Fix {
-                                            coordinate,
-                                            designator: wpt,
-                                        })
-                                    } else {
-                                        eprintln!("STAR {} {} {}: waypoint {wpt} not found", star.airport, star.name, star.runway);
-                                        None
-                                    }
-                                })
-                                .collect(),
-                            name: star.name,
-                            airport: star.airport,
-                            runway: star.runway,
-                        },
-                    ),
-                }
-            },
-        );
+        ese.sids_stars
+            .into_iter()
+            .for_each(|sid_star| match sid_star {
+                SidStar::Sid(sid) => locations.sids.0.insert(
+                    (sid.airport.clone(), sid.name.clone()),
+                    SID {
+                        waypoints: sid
+                            .waypoints
+                            .into_iter()
+                            .filter_map(|wpt| {
+                                if let Some(coordinate) = locations.convert_designator(&wpt) {
+                                    Some(Fix {
+                                        coordinate,
+                                        designator: wpt,
+                                    })
+                                } else {
+                                    eprintln!("Waypoint {wpt} not found in SID {}", sid.name);
+                                    None
+                                }
+                            })
+                            .collect(),
+                        name: sid.name,
+                        airport: sid.airport,
+                        runway: sid.runway,
+                    },
+                ),
+                SidStar::Star(star) => locations.stars.0.insert(
+                    (star.airport.clone(), star.name.clone()),
+                    STAR {
+                        waypoints: star
+                            .waypoints
+                            .into_iter()
+                            .filter_map(|wpt| {
+                                if let Some(coordinate) = locations.convert_designator(&wpt) {
+                                    Some(Fix {
+                                        coordinate,
+                                        designator: wpt,
+                                    })
+                                } else {
+                                    eprintln!(
+                                        "STAR {} {} {}: waypoint {wpt} not found",
+                                        star.airport, star.name, star.runway
+                                    );
+                                    None
+                                }
+                            })
+                            .collect(),
+                        name: star.name,
+                        airport: star.airport,
+                        runway: star.runway,
+                    },
+                ),
+            });
 
         locations
     }
