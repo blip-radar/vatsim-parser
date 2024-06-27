@@ -34,6 +34,7 @@ pub struct Map {
     pub folder: String,
     pub map_groups: Vec<MapGroup>,
     pub hidden: bool,
+    pub active: Vec<Vec<Active>>,
 }
 
 impl Map {
@@ -49,7 +50,6 @@ impl Map {
                     colour: last.colour,
                     font_size: last.font_size,
                     layer: last.layer,
-                    active: last.active.clone(),
                     asr_data: last.asr_data.clone(),
                     zoom: last.zoom,
                     line_style: last.line_style.clone(),
@@ -73,7 +73,6 @@ pub struct MapGroup {
     pub colour: Colour,
     pub font_size: f32,
     pub layer: f32,
-    pub active: Vec<Vec<Active>>,
     pub asr_data: Option<Vec<String>>,
     pub zoom: Option<f32>,
     pub lines: MultiLineString,
@@ -88,7 +87,6 @@ impl MapGroup {
             colour,
             font_size: settings.maps.font_size,
             layer: settings.maps.layer,
-            active: Default::default(),
             asr_data: Default::default(),
             zoom: Default::default(),
             lines: MultiLineString::new(vec![]),
@@ -208,6 +206,7 @@ pub fn from_topsky(
                     Map {
                         name: topsky_map.name.clone(),
                         folder: settings.maps.auto_folder.clone(),
+                        active: vec![],
                         map_groups: vec![MapGroup::default_from_settings(settings, colour)],
                         hidden: false,
                     },
@@ -227,19 +226,13 @@ pub fn from_topsky(
                                     map_group.asr_data = asr_data.clone()
                                 })
                             }
-                            MapRule::Active(active) => {
-                                map.config_change(settings, colour, |map_group| {
-                                    map_group.active.push(vec![active.clone()])
-                                })
-                            }
+                            MapRule::Active(active) => map.active.push(vec![active.clone()]),
                             MapRule::AndActive(active) => {
-                                map.config_change(settings, colour, |map_group| {
-                                    if let Some(actives) = map_group.active.last_mut() {
-                                        actives.push(active.clone())
-                                    } else {
-                                        eprintln!("AndActive unreachable?!")
-                                    }
-                                })
+                                if let Some(actives) = map.active.last_mut() {
+                                    actives.push(active.clone())
+                                } else {
+                                    eprintln!("AndActive unreachable?!")
+                                }
                             }
                             MapRule::Layer(layer) => {
                                 map.config_change(settings, colour, |map_group| {
