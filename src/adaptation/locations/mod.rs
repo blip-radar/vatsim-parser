@@ -7,7 +7,7 @@ use multimap::MultiMap;
 use serde::Serialize;
 
 use crate::{
-    ese::{Ese, SID, STAR},
+    ese::{Ese, SidStar},
     sct::{self, Sct},
     Location, TwoKeyMultiMap,
 };
@@ -72,6 +72,22 @@ impl Airport {
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
+pub struct SID {
+    name: String,
+    airport: String,
+    runway: String,
+    waypoints: Vec<Fix>,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct STAR {
+    name: String,
+    airport: String,
+    runway: String,
+    waypoints: Vec<Fix>,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct Locations {
     pub fixes: MultiMap<String, Fix>,
     pub vors: MultiMap<String, VOR>,
@@ -96,15 +112,69 @@ impl Locations {
             acc.insert(ndb.designator.clone(), ndb);
             acc
         });
-        Locations {
+        let mut locations = Locations {
             fixes,
             vors,
             ndbs,
             airports: Airport::from_sct_airports(sct.airports, sct.runways),
             airways,
-            sids: ese.sids,
-            stars: ese.stars,
-        }
+            sids: TwoKeyMultiMap(MultiMap::new()),
+            stars: TwoKeyMultiMap(MultiMap::new()),
+        };
+        ese.sids_stars.into_iter().for_each(
+            |sid_star| {
+                match sid_star {
+                    SidStar::Sid(sid) => locations.sids.0.insert(
+                        (sid.airport.clone(), sid.name.clone()),
+                        SID {
+                            waypoints: sid
+                                .waypoints
+                                .into_iter()
+                                .filter_map(|wpt| {
+                                    if let Some(coordinate) = locations.convert_designator(&wpt) {
+                                        Some(Fix {
+                                            coordinate,
+                                            designator: wpt,
+                                        })
+                                    } else {
+                                        eprintln!("Waypoint {wpt} not found in SID {}", sid.name);
+                                        None
+                                    }
+                                })
+                                .collect(),
+                            name: sid.name,
+                            airport: sid.airport,
+                            runway: sid.runway,
+                        },
+                    ),
+                    SidStar::Star(star) => locations.stars.0.insert(
+                        (star.airport.clone(), star.name.clone()),
+                        STAR {
+                            waypoints: star
+                                .waypoints
+                                .into_iter()
+                                .filter_map(|wpt| {
+                                    if let Some(coordinate) = locations.convert_designator(&wpt) {
+                                        Some(Fix {
+                                            coordinate,
+                                            designator: wpt,
+                                        })
+                                    } else {
+                                        eprintln!("STAR {} {} {}: waypoint {wpt} not found", star.airport, star.name, star.runway);
+                                        None
+                                    }
+                                })
+                                .collect(),
+                            name: star.name,
+                            airport: star.airport,
+                            runway: star.runway,
+                        },
+                    ),
+                }
+            },
+        );
+
+        locations
     }
 
     pub(crate) fn convert_location(&self, loc: &Location) -> Option<Coord> {

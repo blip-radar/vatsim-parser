@@ -3,13 +3,12 @@ use std::io;
 
 use bevy_reflect::Reflect;
 use geo_types::{Coord, LineString};
-use multimap::MultiMap;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::{DegMinSec, FromDegMinSec, TwoKeyMultiMap};
+use crate::{DegMinSec, FromDegMinSec};
 
 use super::read_to_string;
 
@@ -316,8 +315,7 @@ pub struct STAR {
 pub struct Ese {
     pub positions: HashMap<String, Position>,
     pub sectors: HashMap<String, Sector>,
-    pub sids: TwoKeyMultiMap<String, String, SID>,
-    pub stars: TwoKeyMultiMap<String, String, STAR>,
+    pub sids_stars: Vec<SidStar>,
 }
 
 pub type EseResult = Result<Ese, EseError>;
@@ -326,10 +324,7 @@ pub type EseResult = Result<Ese, EseError>;
 enum Section {
     Positions(HashMap<String, Position>),
     Sectors(HashMap<String, Sector>),
-    SidsStars(
-        TwoKeyMultiMap<String, String, SID>,
-        TwoKeyMultiMap<String, String, STAR>,
-    ),
+    SidsStars(Vec<SidStar>),
     Unsupported,
 }
 
@@ -506,7 +501,8 @@ fn combine_sectors_with_borders(
         .collect()
 }
 
-enum SidStar {
+#[derive(Debug, PartialEq, Serialize)]
+pub enum SidStar {
     Sid(SID),
     Star(STAR),
 }
@@ -564,26 +560,10 @@ fn parse_section(pair: Pair<Rule>) -> (SectionName, Section) {
                 )
             }),
         ),
-        Rule::sidsstars_section => {
-            let (sids, stars) = pair.into_inner().map(parse_sid_star).fold(
-                (
-                    TwoKeyMultiMap(MultiMap::new()),
-                    TwoKeyMultiMap(MultiMap::new()),
-                ),
-                |(mut sids, mut stars), sid_star| {
-                    match sid_star {
-                        SidStar::Sid(sid) => {
-                            sids.0.insert((sid.airport.clone(), sid.name.clone()), sid)
-                        }
-                        SidStar::Star(star) => stars
-                            .0
-                            .insert((star.airport.clone(), star.name.clone()), star),
-                    }
-                    (sids, stars)
-                },
-            );
-            (SectionName::SidsStars, Section::SidsStars(sids, stars))
-        }
+        Rule::sidsstars_section => (
+            SectionName::SidsStars,
+            Section::SidsStars(pair.into_inner().map(parse_sid_star).collect()),
+        ),
         _ => (SectionName::Unsupported, Section::Unsupported),
     }
 }
@@ -607,19 +587,15 @@ impl Ese {
             Some((_, Section::Sectors(sectors))) => sectors,
             _ => HashMap::new(),
         };
-        let (sids, stars) = match sections.remove_entry(&SectionName::SidsStars) {
-            Some((_, Section::SidsStars(sids, stars))) => (sids, stars),
-            _ => (
-                TwoKeyMultiMap(MultiMap::new()),
-                TwoKeyMultiMap(MultiMap::new()),
-            ),
+        let sids_stars = match sections.remove_entry(&SectionName::SidsStars) {
+            Some((_, Section::SidsStars(sids_stars))) => sids_stars,
+            _ => vec![],
         };
 
         Ok(Ese {
             positions,
             sectors,
-            sids,
-            stars,
+            sids_stars,
         })
     }
 }
@@ -631,7 +607,7 @@ mod test {
     use geo_types::line_string;
 
     use crate::{
-        ese::{Cop, Ese, Position, SectorLine, SID, STAR},
+        ese::{Cop, Ese, Position, SectorLine, SidStar, SID, STAR},
         Coord,
     };
 
@@ -1146,47 +1122,37 @@ EDXX_FIS_CTR:Langen Information:128.950:GIXX:FIS:EDXX:CTR:::2001:2577:N049.26.51
 EGBB_ATIS:Birmingham ATIS:136.030:BBI:B:EGBB:ATIS:-:-::
 
 [SIDSSTARS]
-STAR:EDDN:28:UPALA1V:UPALA DN463 DN462 DN461 DN452 DN453 DN454 DN455 DN456 DN457 DN458 DN459 DN439 DN438 DN437 OSNUB NGD32
-STAR:EDMO:22:MAHxRNP:MAH MO220 MO221 EDIMO
 STAR:EDJA:06:KPT1C:KPT JA450 JA430 JA060 FIMPE
 SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
 ";
 
         let ese = Ese::parse(ese_bytes).unwrap();
         assert_eq!(
-            *ese.sids
-                .0
-                .get(&("EDDM".to_string(), "GIVMI1N".to_string()))
-                .unwrap(),
-            SID {
-                name: "GIVMI1N".to_string(),
-                airport: "EDDM".to_string(),
-                runway: "26R".to_string(),
-                waypoints: vec![
-                    "DM060".to_string(),
-                    "DM063".to_string(),
-                    "GIVMI".to_string()
-                ]
-            }
-        );
-
-        assert_eq!(
-            *ese.stars
-                .0
-                .get(&("EDJA".to_string(), "KPT1C".to_string()))
-                .unwrap(),
-            STAR {
-                name: "KPT1C".to_string(),
-                airport: "EDJA".to_string(),
-                runway: "06".to_string(),
-                waypoints: vec![
-                    "KPT".to_string(),
-                    "JA450".to_string(),
-                    "JA430".to_string(),
-                    "JA060".to_string(),
-                    "FIMPE".to_string()
-                ]
-            }
+            *ese.sids_stars,
+            vec![
+                SidStar::Star(STAR {
+                    name: "KPT1C".to_string(),
+                    airport: "EDJA".to_string(),
+                    runway: "06".to_string(),
+                    waypoints: vec![
+                        "KPT".to_string(),
+                        "JA450".to_string(),
+                        "JA430".to_string(),
+                        "JA060".to_string(),
+                        "FIMPE".to_string()
+                    ]
+                }),
+                SidStar::Sid(SID {
+                    name: "GIVMI1N".to_string(),
+                    airport: "EDDM".to_string(),
+                    runway: "26R".to_string(),
+                    waypoints: vec![
+                        "DM060".to_string(),
+                        "DM063".to_string(),
+                        "GIVMI".to_string()
+                    ]
+                })
+            ]
         );
     }
 }
