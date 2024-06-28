@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use geo_types::Coord;
 use multimap::MultiMap;
+use regex::Regex;
 use serde::Serialize;
 
 use crate::{
@@ -185,6 +186,58 @@ impl Locations {
         }
     }
 
+    fn convert_coordinate(&self, designator: &str) -> Option<Coord> {
+        let regex = Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap();
+        regex.captures(designator).and_then(|captures| {
+            let lat_str = &captures[1];
+            let lng_str = &captures[3];
+            let normalised_lat_str = if matches!(lat_str.len(), 1 | 3 | 5) {
+                // invalid syntax
+                if lat_str.starts_with('0') {
+                    eprintln!("Coordinate waypoints must not be abbreviated and start with a 0: {designator} (lat_str)");
+                    return None;
+                }
+                format!("0{lat_str}")
+            } else {
+                lat_str.to_string()
+            };
+            let normalised_lng_str = if matches!(lng_str.len(), 2 | 4 | 6) {
+                // invalid syntax
+                if lng_str.starts_with('0') {
+                    eprintln!("Coordinate waypoints must not be abbreviated and start with a 0: {designator} (lng_str)");
+                    return None;
+                }
+                format!("0{lng_str}")
+            } else {
+                lng_str.to_string()
+            };
+            if normalised_lng_str.len() - normalised_lat_str.len() != 1 {
+                eprintln!("Coordinate waypoints must have the same precision in lat/lon: {designator}");
+                return None;
+            }
+            let lat: f64 = match normalised_lat_str.len() {
+                2 => normalised_lat_str.parse().unwrap(),
+                4 => normalised_lat_str[0..2].parse::<f64>().unwrap() + normalised_lat_str[2..4].parse::<f64>().unwrap() / 60.0,
+                6 => normalised_lat_str[0..2].parse::<f64>().unwrap() + normalised_lat_str[2..4].parse::<f64>().unwrap() / 60.0
+                    + normalised_lat_str[4..6].parse::<f64>().unwrap() / 3600.0,
+                _ => unreachable!(),
+            };
+            let lng: f64 = match normalised_lng_str.len() {
+                3 => normalised_lng_str.parse().unwrap(),
+                5 => normalised_lng_str[0..3].parse::<f64>().unwrap() + normalised_lng_str[3..5].parse::<f64>().unwrap() / 60.0,
+                7 => normalised_lng_str[0..3].parse::<f64>().unwrap() + normalised_lng_str[3..5].parse::<f64>().unwrap() / 60.0
+                    + normalised_lng_str[5..7].parse::<f64>().unwrap() / 3600.0,
+                _ => unreachable!(),
+            };
+            let n_s = &captures[2];
+            let w_e = &captures[4];
+            Some(Coord {
+                y: if n_s == "N" { 1.0 } else { -1.0 } * lat,
+                x: if w_e == "E" { 1.0 } else { -1.0 } * lng,
+            })
+        })
+    }
+
     pub fn convert_designator(&self, designator: &str) -> Option<Coord> {
         self.vors
             .get(designator)
@@ -195,6 +248,7 @@ impl Locations {
                 .airports
                 .get(designator)
                 .map(|airport| airport.coordinate))
+            .or(self.convert_coordinate(designator))
     }
 
     pub fn contains_designator(&self, designator: &str) -> bool {
@@ -297,6 +351,44 @@ mod test {
             }
         );
         assert_eq!(locs.convert_designator("OZE"), None);
-        // TODO test runways, r/b, "coord wpts"
+        assert_eq!(
+            locs.convert_designator("46N078W").unwrap(),
+            Coord { y: 46.0, x: -78.0 }
+        );
+        assert_eq!(
+            locs.convert_designator("4620N05805W").unwrap(),
+            Coord {
+                y: 46.333333333333336,
+                x: -58.083333333333336
+            }
+        );
+        assert_eq!(
+            locs.convert_designator("462013N0580503W").unwrap(),
+            Coord {
+                y: 46.33694444444445,
+                x: -58.08416666666667
+            }
+        );
+        assert_eq!(
+            locs.convert_designator("4N40W").unwrap(),
+            Coord { y: 4.0, x: -40.0 }
+        );
+        assert_eq!(
+            locs.convert_designator("04N40W").unwrap(),
+            Coord { y: 4.0, x: -40.0 }
+        );
+        assert_eq!(locs.convert_designator("4N04W"), None);
+        assert_eq!(locs.convert_designator("04N04W"), None);
+        assert_eq!(
+            locs.convert_designator("400N4000W").unwrap(),
+            Coord { y: 4.0, x: -40.0 }
+        );
+        assert_eq!(
+            locs.convert_designator("0400N4000W").unwrap(),
+            Coord { y: 4.0, x: -40.0 }
+        );
+        assert_eq!(locs.convert_designator("400N0400W"), None);
+        assert_eq!(locs.convert_designator("0400N0400W"), None);
+        // TODO test runways, r/b
     }
 }
