@@ -754,6 +754,7 @@ dependencies = [
  "encoding_rs",
  "geo-types",
  "multimap",
+ "once_cell",
  "pest",
  "pest_derive",
  "phf",

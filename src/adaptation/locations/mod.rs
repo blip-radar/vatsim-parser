@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use geo_types::Coord;
 use multimap::MultiMap;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
 
@@ -99,7 +100,10 @@ pub struct Locations {
     pub stars: TwoKeyMultiMap<String, String, STAR>,
 }
 
+static COORD_RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap());
 impl Locations {
+
     pub(super) fn from_euroscope(sct: Sct, ese: Ese, airways: FixAirwayMap) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
             acc.insert(fix.designator.clone(), fix);
@@ -187,8 +191,7 @@ impl Locations {
     }
 
     fn convert_coordinate(&self, designator: &str) -> Option<Coord> {
-        let regex = Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap();
-        regex.captures(designator).and_then(|captures| {
+        COORD_RE.captures(designator).and_then(|captures| {
             let lat_str = &captures[1];
             let lng_str = &captures[3];
             let normalised_lat_str = if matches!(lat_str.len(), 1 | 3 | 5) {
