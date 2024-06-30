@@ -100,10 +100,8 @@ pub struct Locations {
     pub stars: TwoKeyMultiMap<String, String, STAR>,
 }
 
-static COORD_RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap());
+static COORD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap());
 impl Locations {
-
     pub(super) fn from_euroscope(sct: Sct, ese: Ese, airways: FixAirwayMap) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
             acc.insert(fix.designator.clone(), fix);
