@@ -21,7 +21,7 @@ serde = { version = "1.0.203", features = ["derive"] }
 thiserror = "1.0.61"
 
 [dev-dependencies]
-serde_json = "1.0.118"
+serde_json = "1.0.120"
 pretty_assertions_sorted = "1.0.0"
 
 [lints.clippy]
