@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use geo_types::Coord;
+use geo::Coord;
 use serde::Serialize;
 
 /// conceptionally HashMap<Fix, HashMap<Airway, AirwayNeighbours>>

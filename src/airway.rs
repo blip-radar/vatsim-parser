@@ -1,4 +1,4 @@
-use geo_types::Coord;
+use geo::Coord;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use std::collections::HashMap;
@@ -118,7 +118,7 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
 mod test {
     use std::collections::HashMap;
 
-    use geo_types::Coord;
+    use geo::Coord;
     use pretty_assertions_sorted::assert_eq_sorted;
 
     use crate::airway::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix};

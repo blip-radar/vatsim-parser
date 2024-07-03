@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io;
 
 use bevy_reflect::Reflect;
-use geo_types::{Coord, LineString};
+use geo::{Coord, LineString};
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -604,7 +604,7 @@ impl Ese {
 mod test {
     use std::collections::HashMap;
 
-    use geo_types::line_string;
+    use geo::line_string;
 
     use crate::{
         ese::{Cop, Ese, Position, SectorLine, SidStar, SID, STAR},

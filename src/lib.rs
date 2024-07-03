@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, io};
 
 use bevy_reflect::Reflect;
-use geo_types::Coord;
+use geo::Coord;
 use multimap::MultiMap;
 use serde::{Serialize, Serializer};
 

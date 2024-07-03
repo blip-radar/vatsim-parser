@@ -3,7 +3,7 @@ pub mod active;
 use std::collections::HashMap;
 
 use bevy_reflect::Reflect;
-use geo_types::Coord;
+use geo::Coord;
 use pest::{
     iterators::{Pair, Pairs},
     Parser,

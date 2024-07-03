@@ -2,11 +2,13 @@ pub mod airways;
 
 use std::collections::HashMap;
 
-use geo_types::Coord;
+use geo::{Coord, GeodesicDestination, Point};
 use multimap::MultiMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
+use uom::si::f64::Length;
+use uom::si::length::{meter, nautical_mile};
 
 use crate::{
     ese::{Ese, SidStar},
@@ -101,6 +103,8 @@ pub struct Locations {
 }
 
 static COORD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap());
+static RANGE_BEARING_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^([0-9A-Z]{2,5})(\d{3})(\d{3})$").unwrap());
 impl Locations {
     pub(super) fn from_euroscope(sct: Sct, ese: Ese, airways: FixAirwayMap) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
@@ -188,6 +192,22 @@ impl Locations {
         }
     }
 
+    fn convert_range_bearing(&self, designator: &str) -> Option<Coord> {
+        RANGE_BEARING_RE.captures(designator).and_then(|captures| {
+            let fix = &captures[1];
+            // TODO magnetic
+            let bearing: f64 = captures[2].parse().unwrap();
+            let range = Length::new::<nautical_mile>(captures[3].parse::<f64>().unwrap());
+            eprintln!("bearing: {bearing}, range: {range:?}");
+
+            self.convert_fix(fix).map(|c| {
+                Point::from(c)
+                    .geodesic_destination(bearing, range.get::<meter>())
+                    .0
+            })
+        })
+    }
+
     fn convert_coordinate(&self, designator: &str) -> Option<Coord> {
         COORD_RE.captures(designator).and_then(|captures| {
             let lat_str = &captures[1];
@@ -239,7 +259,7 @@ impl Locations {
         })
     }
 
-    pub fn convert_designator(&self, designator: &str) -> Option<Coord> {
+    fn convert_fix(&self, designator: &str) -> Option<Coord> {
         self.vors
             .get(designator)
             .map(|vor| vor.coordinate)
@@ -249,7 +269,12 @@ impl Locations {
                 .airports
                 .get(designator)
                 .map(|airport| airport.coordinate))
+    }
+
+    pub fn convert_designator(&self, designator: &str) -> Option<Coord> {
+        self.convert_fix(designator)
             .or(self.convert_coordinate(designator))
+            .or(self.convert_range_bearing(designator))
     }
 
     pub fn contains_designator(&self, designator: &str) -> bool {
@@ -262,7 +287,7 @@ impl Locations {
 
 #[cfg(test)]
 mod test {
-    use geo_types::Coord;
+    use geo::Coord;
 
     use crate::adaptation::locations::{Airport, Fix, Locations, NDB, VOR};
 
@@ -281,17 +306,30 @@ mod test {
             )]
             .into_iter()
             .collect(),
-            ndbs: [(
-                "MIQ".to_string(),
-                NDB {
-                    designator: "MIQ".to_string(),
-                    frequency: "426.000".to_string(),
-                    coordinate: Coord {
-                        y: 48.570_225,
-                        x: 11.597_502_777_777_779,
+            ndbs: [
+                (
+                    "MIQ".to_string(),
+                    NDB {
+                        designator: "MIQ".to_string(),
+                        frequency: "426.000".to_string(),
+                        coordinate: Coord {
+                            y: 48.570_225,
+                            x: 11.597_502_777_777_779,
+                        },
                     },
-                },
-            )]
+                ),
+                (
+                    "SI".to_string(),
+                    NDB {
+                        designator: "SI".to_string(),
+                        frequency: "410.000".to_string(),
+                        coordinate: Coord {
+                            y: 47.81860777777778,
+                            x: 12.987674722222222,
+                        },
+                    },
+                ),
+            ]
             .into_iter()
             .collect(),
             vors: [(
@@ -390,6 +428,27 @@ mod test {
         );
         assert_eq!(locs.convert_designator("400N0400W"), None);
         assert_eq!(locs.convert_designator("0400N0400W"), None);
-        // TODO test runways, r/b
+        assert_eq!(
+            locs.convert_designator("ARMUT070005").unwrap(),
+            Coord {
+                y: 49.750911853173,
+                x: 12.444077899400547,
+            }
+        );
+        assert_eq!(
+            locs.convert_designator("MIQ270060").unwrap(),
+            Coord {
+                y: 48.5603816435381,
+                x: 10.09199177231163
+            }
+        );
+        assert_eq!(
+            locs.convert_designator("SI123456").unwrap(),
+            Coord {
+                y: 43.32784433371484,
+                x: 21.728708973319613,
+            }
+        );
+        // TODO test runways
     }
 }

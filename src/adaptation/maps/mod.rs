@@ -3,7 +3,7 @@ pub mod active;
 use std::collections::HashMap;
 
 use bevy_reflect::Reflect;
-use geo_types::{Coord, MultiLineString};
+use geo::{Coord, MultiLineString};
 use serde::Serialize;
 
 use crate::topsky::{

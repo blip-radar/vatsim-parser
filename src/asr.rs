@@ -1,6 +1,6 @@
 use std::io;
 
-use geo_types::Coord;
+use geo::Coord;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -483,7 +483,7 @@ impl Asr {
 mod test {
     use std::{collections::HashMap, fs};
 
-    use geo_types::Coord;
+    use geo::Coord;
 
     use crate::{
         asr::{DisplayType, Leader, SimulationMode},

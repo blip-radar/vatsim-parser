@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io;
 
-use geo_types::Coord;
+use geo::Coord;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -470,7 +470,7 @@ impl Sct {
 mod test {
     use std::collections::HashMap;
 
-    use geo_types::Coord;
+    use geo::Coord;
 
     use crate::{
         adaptation::{
