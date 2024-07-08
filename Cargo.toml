@@ -8,7 +8,7 @@ repository = "https://github.com/blip-radar/vatsim-parser"
 license = "LGPL-3.0-or-later"
 
 [dependencies]
-bevy_reflect = "0.13.2"
+bevy_reflect = "0.14.0"
 encoding_rs = "0.8.34"
 geo = { version =  "0.28", features = [ "use-serde" ] }
 multimap = "0.10.0"
