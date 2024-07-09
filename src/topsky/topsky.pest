@@ -154,7 +154,7 @@ fillrect = {
 
 // TODO: SCTDATA
 
-name = @{ (!(NL | ":") ~ ANY)+ }
+name = @{ (!(NL | ":") ~ ANY)* }
 name_no_comma = @{ (!(NL | ":" | ",") ~ ANY)* }
 name_no_backslash = @{ (!(NL | "\\") ~ ANY)* }
 names = { name_no_comma ~ ("," ~ name_no_comma)* }
