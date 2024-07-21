@@ -1,10 +1,10 @@
 pub mod track;
 
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use serde::Serialize;
 
-use crate::topsky::Topsky;
+use crate::{squawks::SquawksJson, topsky::Topsky};
 
 use self::track::TrackSettings;
 
@@ -47,6 +47,42 @@ impl Default for MapsSettings {
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
+pub struct SsrSettings {
+    pub special_use_codes: HashMap<String, String>,
+}
+impl SsrSettings {
+    pub fn from_squawks_json(squawks: &SquawksJson) -> Self {
+        Self {
+            special_use_codes: squawks
+                .squawks
+                .iter()
+                .flat_map(|sq| match (&sq.code, &sq.range) {
+                    (None, None) | (Some(_), Some(_)) => {
+                        eprintln!("Specify either code or range: {sq:?}");
+                        vec![]
+                    }
+                    (Some(code), None) => u16::from_str_radix(code, 8)
+                        .map(|u16_code| vec![(format!("{u16_code:04o}"), sq.message.clone())])
+                        .unwrap_or(vec![]),
+                    (None, Some(range)) => {
+                        if let Some((start, end)) = u16::from_str_radix(&range.start, 8)
+                            .ok()
+                            .zip(u16::from_str_radix(&range.end, 8).ok())
+                        {
+                            (start..=end)
+                                .map(|i| (format!("{i:04o}"), sq.message.clone()))
+                                .collect()
+                        } else {
+                            vec![]
+                        }
+                    }
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct Settings {
     // text, enabled, divergence, delay(?),  ...?
     // clam: ClamSettings,
@@ -54,19 +90,28 @@ pub struct Settings {
     pub maps: MapsSettings,
     pub track: TrackSettings,
     pub coopans: bool,
+    pub ssr: SsrSettings,
 }
 
 impl Settings {
-    pub fn from_topsky(topsky: &Topsky) -> Self {
+    pub fn from_euroscope(topsky: &Option<Topsky>, squawks: &Option<SquawksJson>) -> Self {
         Self {
-            maps: MapsSettings::from_topsky(topsky),
-            track: TrackSettings::from_topsky(topsky),
+            maps: topsky
+                .as_ref()
+                .map(MapsSettings::from_topsky)
+                .unwrap_or_default(),
+            track: topsky
+                .as_ref()
+                .map(TrackSettings::from_topsky)
+                .unwrap_or_default(),
             coopans: topsky
-                .settings
-                .0
-                .get("Setup_COOPANS")
-                .map(|v| v != "0")
+                .as_ref()
+                .and_then(|t| t.settings.0.get("Setup_COOPANS").map(|v| v != "0"))
                 .unwrap_or(true),
+            ssr: squawks
+                .as_ref()
+                .map(SsrSettings::from_squawks_json)
+                .unwrap_or_default(),
         }
     }
 }

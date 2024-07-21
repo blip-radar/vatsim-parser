@@ -11,6 +11,7 @@ pub mod asr;
 pub mod ese;
 pub mod prf;
 pub mod sct;
+pub mod squawks;
 pub mod symbology;
 pub mod topsky;
 

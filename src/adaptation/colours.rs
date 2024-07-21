@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use bevy_reflect::Reflect;
-use serde::Serialize;
+use once_cell::sync::Lazy;
+use regex::Regex;
+use serde::{de::Visitor, Deserialize, Serialize};
 
 use crate::{
     symbology::Symbology,
@@ -45,6 +47,48 @@ impl Colour {
             .get(key)
             .and_then(|tuples| if settings.coopans { tuples.1 } else { tuples.0 })
             .map(|(r, g, b)| Colour::from_rgb(r, g, b))
+    }
+}
+
+struct ColourVisitor;
+
+static HASH_RGB_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$").unwrap());
+
+impl<'de> Visitor<'de> for ColourVisitor {
+    type Value = Colour;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // TODO should be able to deserialise other formats, too
+        formatter.write_str("A colour in the format #rrggbb")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        if let Some(((r, g), b)) = HASH_RGB_RE.captures(v).and_then(|captures| {
+            let r = u8::from_str_radix(&captures[1], 16);
+            let g = u8::from_str_radix(&captures[2], 16);
+            let b = u8::from_str_radix(&captures[3], 16);
+            r.ok().zip(g.ok()).zip(b.ok())
+        }) {
+            return Ok(Colour::from_rgb(r, g, b));
+        }
+
+        Err(serde::de::Error::invalid_type(
+            serde::de::Unexpected::Str(v),
+            &self,
+        ))
+    }
+}
+
+impl<'de> Deserialize<'de> for Colour {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ColourVisitor)
     }
 }
 

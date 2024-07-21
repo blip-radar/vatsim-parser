@@ -72,6 +72,24 @@ impl Prf {
     }
 
     #[must_use]
+    pub fn squawks_path(&self) -> Option<PathBuf> {
+        self.settings
+            .0
+            .iter()
+            .find_map(|(_, v)| {
+                let path = from_prf_path(v);
+                if path.file_name() == Some(OsStr::new("Squawks.dll")) {
+                    path.parent()
+                        .map(Path::to_path_buf)
+                        .map(|path| path.join("squawks.json"))
+                } else {
+                    None
+                }
+            })
+            .map(|path| self.path.parent().unwrap().join(path))
+    }
+
+    #[must_use]
     pub fn topsky_path(&self) -> Option<PathBuf> {
         self.settings
             .0

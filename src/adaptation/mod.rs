@@ -128,16 +128,17 @@ impl Adaptation {
         let positions = Position::from_ese_positions(ese.positions.clone());
         let locations = Locations::from_euroscope(sct, ese, airways);
         let symbology = Symbology::parse(&fs::read(prf.symbology_path())?)?;
+        let squawks = prf
+            .squawks_path()
+            .and_then(|path| fs::read(path).ok())
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let topsky = prf.topsky_path().and_then(|path| {
             Topsky::parse(path).map(Some).unwrap_or_else(|e| {
                 eprintln!("Could not parse topsky config: {e:?}");
                 None
             })
         });
-        let settings = topsky
-            .as_ref()
-            .map(Settings::from_topsky)
-            .unwrap_or_default();
+        let settings = Settings::from_euroscope(&topsky, &squawks);
         let colours = Colours::from_euroscope(&symbology, &topsky, &settings);
         Ok(Adaptation {
             positions,
