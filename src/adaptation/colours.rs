@@ -134,9 +134,12 @@ pub struct TrackColours {
     pub flight_leg: Colour,
     pub predicted_alert: Colour,
     pub current_alert: Colour,
+    // FIXME
+    pub vfr: Colour,
 }
 impl TrackColours {
     const DEFAULT_ASSUMED: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_VFR: Colour = Colour::from_rgb(180, 150, 95);
     const DEFAULT_FLIGHT_LEG: Colour = Colour::from_rgb(0, 0, 0);
     const DEFAULT_PREDICTED_ALERT: Colour = Colour::from_rgb(255, 140, 0);
     const DEFAULT_CURRENT_ALERT: Colour = Colour::from_rgb(255, 25, 26);
@@ -148,6 +151,11 @@ impl TrackColours {
                 .copied()
                 .or(Colour::from_topsky_default(settings, "Assumed"))
                 .unwrap_or(Self::DEFAULT_ASSUMED),
+            vfr: topsky_colours
+                .get("VFR")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "VFR"))
+                .unwrap_or(Self::DEFAULT_VFR),
             flight_leg: topsky_colours
                 .get("Flight_Leg")
                 .copied()
@@ -171,6 +179,7 @@ impl Default for TrackColours {
     fn default() -> Self {
         Self {
             assumed: Self::DEFAULT_ASSUMED,
+            vfr: Self::DEFAULT_VFR,
             flight_leg: Self::DEFAULT_FLIGHT_LEG,
             predicted_alert: Self::DEFAULT_PREDICTED_ALERT,
             current_alert: Self::DEFAULT_CURRENT_ALERT,
