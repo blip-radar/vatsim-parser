@@ -1,17 +1,19 @@
 pub mod colours;
 pub mod locations;
 pub mod maps;
+pub mod sectors;
 pub mod settings;
 
 use std::{collections::HashMap, fs, io};
 
 use bevy_reflect::Reflect;
+use sectors::{Sector, Volume};
 use serde::Serialize;
 use thiserror::Error;
 
 use crate::{
     airway::{parse_airway_txt, AirwayError},
-    ese::{self, Ese, EseError, Sector},
+    ese::{self, Ese, EseError},
     prf::Prf,
     sct::{Sct, SctError},
     symbology::{Symbology, SymbologyError},
@@ -93,7 +95,7 @@ pub struct Adaptation {
     pub locations: Locations,
     // TODO id -> pos? something else might be more useful/efficient (freq, prefix, suffix)?
     pub positions: HashMap<String, Position>,
-    // TODO better sector structure?
+    pub volumes: HashMap<String, Volume>,
     pub sectors: HashMap<String, Sector>,
     pub maps: MapFolders,
     // TODO
@@ -124,7 +126,7 @@ impl Adaptation {
         let sct = Sct::parse(&fs::read(prf.sct_path())?)?;
         let ese = Ese::parse(&fs::read(prf.ese_path())?)?;
         let airways = parse_airway_txt(&fs::read(prf.airways_path())?)?;
-        let sectors = ese.sectors.clone();
+        let (volumes, sectors) = Sector::from_ese(&ese);
         let positions = Position::from_ese_positions(ese.positions.clone());
         let locations = Locations::from_euroscope(sct, ese, airways);
         let symbology = Symbology::parse(&fs::read(prf.symbology_path())?)?;
@@ -142,6 +144,7 @@ impl Adaptation {
         let colours = Colours::from_euroscope(&symbology, &topsky, &settings);
         Ok(Adaptation {
             positions,
+            volumes,
             sectors,
             maps: topsky
                 .as_ref()

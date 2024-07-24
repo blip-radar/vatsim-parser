@@ -2,10 +2,10 @@ use super::Rule;
 use pest::iterators::Pair;
 
 use crate::adaptation::maps::active::{
-    Active, ActiveAreas, ActiveIds, ActiveMapOperator, ActiveRunways, Runway,
+    Active, ActiveAreas, ActiveIds, ActiveMapOperator, ActiveRunways, RunwayIdentifier,
 };
 
-impl Runway {
+impl RunwayIdentifier {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut rwy = pair.into_inner();
         let icao = rwy.next().unwrap().as_str().to_string();
@@ -69,10 +69,10 @@ impl ActiveRunways {
         }
     }
 
-    fn parse_value(pair: Pair<Rule>) -> Option<Vec<Runway>> {
+    fn parse_value(pair: Pair<Rule>) -> Option<Vec<RunwayIdentifier>> {
         match pair.as_rule() {
             Rule::wildcard => None,
-            Rule::runways => Some(pair.into_inner().map(Runway::parse).collect()),
+            Rule::runways => Some(pair.into_inner().map(RunwayIdentifier::parse).collect()),
             rule => unreachable!("{rule:?}"),
         }
     }

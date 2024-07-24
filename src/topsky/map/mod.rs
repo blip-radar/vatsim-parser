@@ -471,7 +471,7 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
 #[cfg(test)]
 mod test {
     use crate::{
-        adaptation::maps::active::{ActiveIds, ActiveRunways, Runway},
+        adaptation::maps::active::{ActiveIds, ActiveRunways, RunwayIdentifier},
         topsky::map::{parse_topsky_maps, Active, MapRule},
     };
 
@@ -544,7 +544,7 @@ ACTIVE:RWY:ARR:EDMO22:DEP:*
                 .filter(|rule| matches!(rule, MapRule::Active(_)))
                 .collect::<Vec<_>>(),
             vec![&MapRule::Active(Active::Runway(ActiveRunways {
-                arrival: Some(vec![Runway {
+                arrival: Some(vec![RunwayIdentifier {
                     icao: "EDMO".to_string(),
                     designator: "22".to_string()
                 }]),

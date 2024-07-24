@@ -8,7 +8,7 @@ use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::{DegMinSec, FromDegMinSec};
+use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, FromDegMinSec};
 
 use super::read_to_string;
 
@@ -123,9 +123,7 @@ pub struct Sector {
     // TODO?
     // pub alt_owner_priority: Vec<String>,
     // pub guest: Vec<String>,
-    // TODO
-    // airport, runway
-    // pub active: (String, String),
+    pub runway_filter: Vec<RunwayIdentifier>,
 }
 
 impl Sector {
@@ -175,6 +173,19 @@ impl Sector {
                 }
             })
             .unwrap_or(vec![]);
+        let runway_filter = subsettings
+            .iter()
+            .filter_map(|subsetting| {
+                if let SectorSubsetting::Active(icao, designator) = subsetting {
+                    Some(RunwayIdentifier {
+                        icao: icao.clone(),
+                        designator: designator.clone(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         (
             border,
@@ -185,6 +196,7 @@ impl Sector {
                 owner_priority,
                 departure_airports,
                 arrival_airports,
+                runway_filter,
                 // replaced later on
                 border: vec![],
                 copns: vec![],

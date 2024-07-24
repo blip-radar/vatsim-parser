@@ -20,9 +20,10 @@ regex = "1.10.5"
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.118"
 thiserror = "1.0.63"
-uom = "0.36"
+uom = { version = "0.36", features = ["serde"] }
 
 [dev-dependencies]
+geojson = { version =  "0.24", features = [ "geo-types" ] }
 pretty_assertions_sorted = "1.0.0"
 
 [lints.clippy]
