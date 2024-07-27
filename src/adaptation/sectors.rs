@@ -27,6 +27,7 @@ pub struct Sector {
     pub volumes: Vec<String>,
 }
 
+// FIXME better error handling and reporting
 fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
     let lines: Vec<_> = sector
         .border
@@ -69,28 +70,33 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
         return None;
     }
 
-    let start_point = *points.iter().next().unwrap();
-    let mut stack = vec![start_point];
-    let mut polygon = vec![];
-    let mut current = start_point;
+    let polygon = if let Some(start_point) = points.iter().next() {
+        let mut stack = vec![*start_point];
+        let mut polygon = vec![];
+        let mut current = *start_point;
 
-    while !stack.is_empty() {
-        if let Some(neighbors) = adj_list.get_mut(&current) {
-            if !neighbors.is_empty() {
-                stack.push(current);
-                let next = neighbors.pop().unwrap();
-                if let Some(rev_neighbors) = adj_list.get_mut(&next) {
-                    if let Some(pos) = rev_neighbors.iter().position(|&x| x == current) {
-                        rev_neighbors.swap_remove(pos);
+        while !stack.is_empty() {
+            if let Some(neighbors) = adj_list.get_mut(&current) {
+                if !neighbors.is_empty() {
+                    stack.push(current);
+                    let next = neighbors.pop().unwrap();
+                    if let Some(rev_neighbors) = adj_list.get_mut(&next) {
+                        if let Some(pos) = rev_neighbors.iter().position(|x| *x == current) {
+                            rev_neighbors.swap_remove(pos);
+                        }
                     }
+                    current = next;
+                } else {
+                    polygon.push(current);
+                    current = stack.pop().unwrap();
                 }
-                current = next;
-            } else {
-                polygon.push(current);
-                current = stack.pop().unwrap();
             }
         }
-    }
+
+        polygon
+    } else {
+        return None;
+    };
 
     if polygon.len() == lines.len() + 1 {
         Some(Polygon::new(
