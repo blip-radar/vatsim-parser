@@ -4,7 +4,7 @@ pub mod maps;
 pub mod sectors;
 pub mod settings;
 
-use std::{collections::HashMap, fs, io};
+use std::{collections::HashMap, io};
 
 use bevy_reflect::Reflect;
 use sectors::{Sector, Volume};
@@ -123,16 +123,16 @@ pub struct Adaptation {
 impl Adaptation {
     pub fn from_prf(prf: Prf) -> AdaptationResult {
         // TODO parallelise/asyncify where able
-        let sct = Sct::parse(&fs::read(prf.sct_path())?)?;
-        let ese = Ese::parse(&fs::read(prf.ese_path())?)?;
-        let airways = parse_airway_txt(&fs::read(prf.airways_path())?)?;
+        let sct = Sct::parse(&fs_err::read(prf.sct_path())?)?;
+        let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
+        let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let (volumes, sectors) = Sector::from_ese(&ese);
         let positions = Position::from_ese_positions(ese.positions.clone());
         let locations = Locations::from_euroscope(sct, ese, airways);
-        let symbology = Symbology::parse(&fs::read(prf.symbology_path())?)?;
+        let symbology = Symbology::parse(&fs_err::read(prf.symbology_path())?)?;
         let squawks = prf
             .squawks_path()
-            .and_then(|path| fs::read(path).ok())
+            .and_then(|path| fs_err::read(path).ok())
             .and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let topsky = prf.topsky_path().and_then(|path| {
             Topsky::parse(path).map(Some).unwrap_or_else(|e| {

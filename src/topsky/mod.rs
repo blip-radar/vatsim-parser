@@ -3,8 +3,8 @@ pub mod settings;
 pub mod symbol;
 
 use std::collections::HashMap;
+use std::io;
 use std::path::PathBuf;
-use std::{fs, io};
 
 use pest::iterators::Pair;
 use pest_derive::Parser;
@@ -21,7 +21,7 @@ use self::symbol::{parse_topsky_symbols, SymbolDef};
 
 #[derive(Error, Debug)]
 pub enum TopskyError {
-    #[error("failed to read .prf file: {0}")]
+    #[error("failed to read topsky files: {0}")]
     FileRead(#[from] io::Error),
     #[error("failed to parse topsky maps/symbol file: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
@@ -224,13 +224,13 @@ fn parse_point(pair: Pair<Rule>) -> (f64, f64) {
 pub type TopskyResult = Result<Topsky, TopskyError>;
 impl Topsky {
     pub fn parse(path: PathBuf) -> TopskyResult {
-        let (mut colours, settings) = parse_topsky_settings(&read_to_string(&fs::read(
+        let (mut colours, settings) = parse_topsky_settings(&read_to_string(&fs_err::read(
             path.join("TopSkySettings.txt"),
         )?)?)?;
-        let mut symbols = fs::read(path.join("TopSkySymbols.txt"))
+        let mut symbols = fs_err::read(path.join("TopSkySymbols.txt"))
             .map_or_else(|_| Ok(HashMap::new()), |bytes| parse_topsky_symbols(&bytes))?;
         let (maps, mapsymbols, mapcolours, line_styles, overrides) =
-            parse_topsky_maps(&fs::read(path.join("TopSkyMaps.txt"))?)?;
+            parse_topsky_maps(&fs_err::read(path.join("TopSkyMaps.txt"))?)?;
         symbols.extend(mapsymbols);
         colours.extend(mapcolours);
 
