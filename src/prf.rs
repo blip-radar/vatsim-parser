@@ -17,7 +17,7 @@ use super::read_to_string;
 pub enum PrfError {
     #[error("failed to read .prf file: {0}")]
     FileRead(#[from] io::Error),
-    #[error("failed to parse .prf file: {0:?}")]
+    #[error("failed to parse .prf file: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
 }
 

@@ -23,9 +23,9 @@ pub struct SctParser;
 
 #[derive(Error, Debug)]
 pub enum SctError {
-    #[error("failed to parse .sct file: {0:?}")]
+    #[error("failed to parse .sct file: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
-    #[error("failed to read .sct file: {0:?}")]
+    #[error("failed to read .sct file: {0}")]
     FileRead(#[from] io::Error),
 }
 

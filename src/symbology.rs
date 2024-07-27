@@ -16,9 +16,9 @@ pub struct SymbologyParser;
 
 #[derive(Error, Debug)]
 pub enum SymbologyError {
-    #[error("failed to parse .sct file: {0:?}")]
+    #[error("failed to parse Symbology.txt: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
-    #[error("failed to read .sct file: {0:?}")]
+    #[error("failed to read Symbology.txt file: {0}")]
     FileRead(#[from] io::Error),
 }
 

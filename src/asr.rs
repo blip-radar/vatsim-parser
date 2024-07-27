@@ -16,9 +16,9 @@ pub struct AsrParser;
 
 #[derive(Error, Debug)]
 pub enum AsrError {
-    #[error("failed to parse .sct file: {0:?}")]
+    #[error("failed to parse .asr file: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
-    #[error("failed to read .sct file: {0:?}")]
+    #[error("failed to read .asr file: {0}")]
     FileRead(#[from] io::Error),
 }
 

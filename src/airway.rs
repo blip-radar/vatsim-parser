@@ -17,9 +17,9 @@ pub struct AirwayParser;
 
 #[derive(Error, Debug)]
 pub enum AirwayError {
-    #[error("failed to parse airway.txt: {0:?}")]
+    #[error("failed to parse airway.txt: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
-    #[error("failed to read airway.txt: {0:?}")]
+    #[error("failed to read airway.txt: {0}")]
     FileRead(#[from] io::Error),
 }
 

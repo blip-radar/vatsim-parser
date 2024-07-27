@@ -6,9 +6,9 @@ use crate::adaptation::colours::Colour;
 
 #[derive(Error, Debug)]
 pub enum SquawksError {
-    #[error("failed to read squawks.json: {0:?}")]
+    #[error("failed to read squawks.json: {0}")]
     FileRead(#[from] io::Error),
-    #[error("failed to deserialize squawks.json: {0:?}")]
+    #[error("failed to deserialize squawks.json: {0}")]
     Deserialize(#[from] serde_json::Error),
 }
 

@@ -23,9 +23,9 @@ use self::symbol::{parse_topsky_symbols, SymbolDef};
 pub enum TopskyError {
     #[error("failed to read .prf file: {0}")]
     FileRead(#[from] io::Error),
-    #[error("failed to parse topsky maps/symbol file: {0:?}")]
+    #[error("failed to parse topsky maps/symbol file: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
-    #[error("failed to parse topsky settings file: {0:?}")]
+    #[error("failed to parse topsky settings file: {0}")]
     ParseSettings(#[from] pest::error::Error<settings::Rule>),
 }
 

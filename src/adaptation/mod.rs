@@ -75,17 +75,17 @@ impl Position {
 
 #[derive(Error, Debug)]
 pub enum AdaptationError {
-    #[error("failed to parse .sct file: {0:?}")]
+    #[error("SCT: {0}")]
     Sct(#[from] SctError),
-    #[error("failed to parse .ese file: {0:?}")]
+    #[error("ESE: {0}")]
     Ese(#[from] EseError),
-    #[error("failed to parse Symbology.txt: {0:?}")]
+    #[error("Symbology: {0}")]
     Symbology(#[from] SymbologyError),
-    #[error("failed to parse topsky config: {0:?}")]
+    #[error("Topsky: {0}")]
     Topsky(#[from] TopskyError),
-    #[error("failed to parse airway.txt: {0:?}")]
+    #[error("airway.txt: {0}")]
     Airways(#[from] AirwayError),
-    #[error("failed to read file: {0:?}")]
+    #[error("failed to read file: {0}")]
     FileRead(#[from] io::Error),
 }
 
@@ -136,7 +136,7 @@ impl Adaptation {
             .and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let topsky = prf.topsky_path().and_then(|path| {
             Topsky::parse(path).map(Some).unwrap_or_else(|e| {
-                eprintln!("Could not parse topsky config: {e:?}");
+                eprintln!("Topsky: {e}");
                 None
             })
         });

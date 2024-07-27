@@ -18,9 +18,9 @@ pub struct EseParser;
 
 #[derive(Error, Debug)]
 pub enum EseError {
-    #[error("failed to parse .ese file: {0:?}")]
+    #[error("failed to parse .ese file: {0}")]
     Parse(#[from] pest::error::Error<Rule>),
-    #[error("failed to read .ese file: {0:?}")]
+    #[error("failed to read .ese file: {0}")]
     FileRead(#[from] io::Error),
 }
 
