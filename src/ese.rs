@@ -311,7 +311,7 @@ impl Cop {
 pub struct SID {
     pub name: String,
     pub airport: String,
-    pub runway: String,
+    pub runway: Option<String>,
     pub waypoints: Vec<String>,
 }
 
@@ -319,7 +319,7 @@ pub struct SID {
 pub struct STAR {
     pub name: String,
     pub airport: String,
-    pub runway: String,
+    pub runway: Option<String>,
     pub waypoints: Vec<String>,
 }
 
@@ -522,7 +522,12 @@ fn parse_sid_star(pair: Pair<Rule>) -> SidStar {
     let rule = pair.as_rule();
     let mut sid_star = pair.into_inner();
     let airport = sid_star.next().unwrap().as_str().to_string();
-    let runway = sid_star.next().unwrap().as_str().to_string();
+    let runway_pair = sid_star.next().unwrap();
+    let runway = match runway_pair.as_rule() {
+        Rule::rwy_designator => Some(runway_pair.as_str().to_string()),
+        Rule::none => None,
+        rule => unreachable!("{rule:?}"),
+    };
     let name = sid_star.next().unwrap().as_str().to_string();
     let waypoints = sid_star
         .next()
@@ -1145,7 +1150,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                 SidStar::Star(STAR {
                     name: "KPT1C".to_string(),
                     airport: "EDJA".to_string(),
-                    runway: "06".to_string(),
+                    runway: Some("06".to_string()),
                     waypoints: vec![
                         "KPT".to_string(),
                         "JA450".to_string(),
@@ -1157,7 +1162,7 @@ SID:EDDM:26R:GIVMI1N:DM060 DM063 GIVMI
                 SidStar::Sid(SID {
                     name: "GIVMI1N".to_string(),
                     airport: "EDDM".to_string(),
-                    runway: "26R".to_string(),
+                    runway: Some("26R".to_string()),
                     waypoints: vec![
                         "DM060".to_string(),
                         "DM063".to_string(),

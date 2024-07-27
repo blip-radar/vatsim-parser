@@ -79,7 +79,7 @@ impl Airport {
 pub struct SID {
     pub name: String,
     pub airport: String,
-    pub runway: String,
+    pub runway: Option<String>,
     pub waypoints: Vec<Fix>,
 }
 
@@ -87,7 +87,7 @@ pub struct SID {
 pub struct STAR {
     pub name: String,
     pub airport: String,
-    pub runway: String,
+    pub runway: Option<String>,
     pub waypoints: Vec<Fix>,
 }
 
@@ -169,7 +169,9 @@ impl Locations {
                                 } else {
                                     eprintln!(
                                         "STAR {} {} {}: waypoint {wpt} not found",
-                                        star.airport, star.name, star.runway
+                                        star.airport,
+                                        star.name,
+                                        star.runway.as_deref().unwrap_or("")
                                     );
                                     None
                                 }

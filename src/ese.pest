@@ -67,8 +67,8 @@ ades = _{ wildcard | designator }
 
 msaw = { "MSAW:" ~ text ~ ":" ~ INTEGER ~ NL ~ (coord ~ NL)+ }
 
-sid = { "SID:" ~ designator ~ ":" ~ rwy_designator ~ ":" ~ fix_designator ~ ":" ~ route }
-star = { "STAR:" ~ designator ~ ":" ~ rwy_designator ~ ":" ~ fix_designator ~ ":" ~ route }
+sid = { "SID:" ~ designator ~ ":" ~ (rwy_designator | none) ~ ":" ~ fix_designator ~ ":" ~ route }
+star = { "STAR:" ~ designator ~ ":" ~ (rwy_designator | none) ~ ":" ~ fix_designator ~ ":" ~ route }
 
 wildcard = { "*" }
 
@@ -87,6 +87,7 @@ designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
 pos_designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "_" | "-")+ }
 rwy_designator = { ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 text = @{ (!(":" | NL) ~ ANY)* }
+none = { "" }
 
 header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }
 
