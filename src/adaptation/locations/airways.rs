@@ -23,5 +23,5 @@ pub struct AirwayFix {
     pub name: String,
     pub coord: Coord,
     pub valid_direction: bool,
-    pub minimum_level: u32,
+    pub minimum_level: Option<u32>,
 }

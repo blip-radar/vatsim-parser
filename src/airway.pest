@@ -7,15 +7,15 @@ airway = {
 }
 
 neighbour = {
-   "\t" ~ designator ~ "\t" ~ coord ~ "\t" ~ level ~ "\t" ~ bool
+   "\t" ~ designator ~ "\t" ~ coord ~ "\t" ~ (level | not_established) ~ "\t" ~ bool
 }
 no_neighbour = {
-  "\t"{5} ~ "N"
+  ("\t" ~ "0"?){5} ~ "N"
 }
 
 bool = _{ TRUE | FALSE }
 level = { ASCII_DIGIT+ }
-empty = { "" }
+not_established = { "NESTB" }
 
 designator = { (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
 

@@ -29,6 +29,13 @@ fn parse_coord(pair: Pair<Rule>) -> Coord {
     let lng = coord.next().unwrap().as_str().parse().unwrap();
     Coord { x: lng, y: lat }
 }
+fn parse_level(pair: Pair<Rule>) -> Option<u32> {
+    match pair.as_rule() {
+        Rule::not_established => None,
+        Rule::level => Some(pair.as_str().parse().unwrap()),
+        rule => unreachable!("{rule:?}"),
+    }
+}
 impl AirwayFix {
     fn parse(pair: Pair<Rule>) -> Option<Self> {
         match pair.as_rule() {
@@ -37,7 +44,7 @@ impl AirwayFix {
                 let mut airway_fix = pair.into_inner();
                 let name = airway_fix.next().unwrap().as_str().to_string();
                 let coord = parse_coord(airway_fix.next().unwrap());
-                let minimum_level = airway_fix.next().unwrap().as_str().parse().unwrap();
+                let minimum_level = parse_level(airway_fix.next().unwrap());
                 let valid_direction = airway_fix.next().unwrap().as_str() == "Y";
                 Some(AirwayFix {
                     name,
@@ -129,7 +136,7 @@ mod test {
     fn test_airway() {
         let airway_bytes = b"
 ASPAT	49.196175	10.725828	14	T161	B	REDNI	49.080000	10.890278	05500	N					N
-ASPAT	49.196175	10.725828	14	T161	L					N	DEBHI	49.360833	10.466111	05500	Y
+ASPAT	49.196175	10.725828	14	T161	L					N	DEBHI	49.360833	10.466111	NESTB	Y
 DEBHI	49.360833	10.466111	14	T161	L	ASPAT	49.196175	10.725828	05500	N	TOSTU	49.713536	9.805942	05000	Y
 ERNAS	48.844669	11.219353	14	T161	B	NIMDI	48.802222	11.633611	05000	N	GOLMO	48.962500	11.055278	05500	Y
 ERNAS	48.844669	11.219353	14	Y101	B	GIVMI	48.701094	11.364803	04000	N	TALAL	49.108333	11.085278	05000	Y
@@ -158,7 +165,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 49.08
                                     },
                                     valid_direction: false,
-                                    minimum_level: 5500
+                                    minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
                                     name: "DEBHI".to_string(),
@@ -167,7 +174,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 49.360833,
                                     },
                                     valid_direction: true,
-                                    minimum_level: 5500
+                                    minimum_level: None
                                 })
                             }
                         )])
@@ -188,7 +195,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 49.196175
                                     },
                                     valid_direction: false,
-                                    minimum_level: 5500
+                                    minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
                                     name: "TOSTU".to_string(),
@@ -197,7 +204,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 49.713536
                                     },
                                     valid_direction: true,
-                                    minimum_level: 5000
+                                    minimum_level: Some(5000)
                                 })
                             }
                         )])
@@ -219,7 +226,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                             y: 48.802222
                                         },
                                         valid_direction: false,
-                                        minimum_level: 5000
+                                        minimum_level: Some(5000)
                                     }),
                                     next: Some(AirwayFix {
                                         name: "GOLMO".to_string(),
@@ -228,7 +235,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                             y: 48.9625
                                         },
                                         valid_direction: true,
-                                        minimum_level: 5500
+                                        minimum_level: Some(5500)
                                     })
                                 }
                             ),
@@ -243,7 +250,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                             y: 48.701094
                                         },
                                         valid_direction: false,
-                                        minimum_level: 4000
+                                        minimum_level: Some(4000)
                                     }),
                                     next: Some(AirwayFix {
                                         name: "TALAL".to_string(),
@@ -252,7 +259,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                             y: 49.108333
                                         },
                                         valid_direction: true,
-                                        minimum_level: 5000
+                                        minimum_level: Some(5000)
                                     })
                                 }
                             )
@@ -275,7 +282,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 48.844669
                                     },
                                     valid_direction: true,
-                                    minimum_level: 4000
+                                    minimum_level: Some(4000)
                                 })
                             }
                         )])
@@ -296,7 +303,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 48.844669
                                     },
                                     valid_direction: false,
-                                    minimum_level: 5500
+                                    minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
                                     name: "REDNI".to_string(),
@@ -305,7 +312,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 49.08
                                     },
                                     valid_direction: true,
-                                    minimum_level: 5500
+                                    minimum_level: Some(5500)
                                 })
                             }
                         )])
@@ -326,7 +333,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 48.9625
                                     },
                                     valid_direction: false,
-                                    minimum_level: 5500
+                                    minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
                                     name: "ASPAT".to_string(),
@@ -335,7 +342,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         y: 49.196175
                                     },
                                     valid_direction: true,
-                                    minimum_level: 5500
+                                    minimum_level: Some(5500)
                                 })
                             }
                         )])
