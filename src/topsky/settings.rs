@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, num::ParseIntError, str::FromStr};
 
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
@@ -33,21 +33,25 @@ impl Settings {
     }
 }
 
+fn parse_colour(pair: Pair<Rule>) -> Result<Colour, ParseIntError> {
+    let mut colour = pair.into_inner();
+    let r = colour.next().unwrap().as_str().parse()?;
+    let g = colour.next().unwrap().as_str().parse()?;
+    let b = colour.next().unwrap().as_str().parse()?;
+    Ok(Colour::from_rgb(r, g, b))
+}
+
 fn parse_setting(pair: Pair<Rule>) -> Option<Setting> {
     match pair.as_rule() {
         Rule::colour_setting => {
             let mut symbol = pair.into_inner();
             let name = symbol.next().unwrap().as_str().to_string();
-            symbol.next().map(|rgb| {
-                let mut colour = rgb.into_inner();
-
-                let r = colour.next().unwrap().as_str().parse().unwrap();
-                let g = colour.next().unwrap().as_str().parse().unwrap();
-                let b = colour.next().unwrap().as_str().parse().unwrap();
-                Setting::Colour(ColourDef {
-                    name,
-                    colour: Colour::from_rgb(r, g, b),
-                })
+            symbol.next().and_then(|rgb| match parse_colour(rgb) {
+                Ok(colour) => Some(Setting::Colour(ColourDef { name, colour })),
+                Err(e) => {
+                    eprintln!("Could not parse colour {name}: {e:?}");
+                    None
+                }
             })
         }
         Rule::other_setting => {
