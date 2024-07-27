@@ -40,14 +40,12 @@ fn from_prf_path(prf_path: &str) -> PathBuf {
 }
 
 impl Prf {
-    #[must_use]
     pub fn sct_path(&self) -> PathBuf {
         let sct_path =
             from_prf_path(&self.settings.0[&("Settings".to_string(), "sector".to_string())]);
         self.path.parent().unwrap().join(sct_path)
     }
 
-    #[must_use]
     pub fn ese_path(&self) -> PathBuf {
         let ese_path = from_prf_path(
             &self.settings.0[&("Settings".to_string(), "sector".to_string())]
@@ -56,14 +54,12 @@ impl Prf {
         self.path.parent().unwrap().join(ese_path)
     }
 
-    #[must_use]
     pub fn airways_path(&self) -> PathBuf {
         let airways_path =
             from_prf_path(&self.settings.0[&("Settings".to_string(), "airways".to_string())]);
         self.path.parent().unwrap().join(airways_path)
     }
 
-    #[must_use]
     pub fn symbology_path(&self) -> PathBuf {
         let symbology_path = from_prf_path(
             &self.settings.0[&("Settings".to_string(), "SettingsfileSYMBOLOGY".to_string())],
@@ -71,7 +67,6 @@ impl Prf {
         self.path.parent().unwrap().join(symbology_path)
     }
 
-    #[must_use]
     pub fn squawks_path(&self) -> Option<PathBuf> {
         self.settings
             .0
@@ -89,7 +84,6 @@ impl Prf {
             .map(|path| self.path.parent().unwrap().join(path))
     }
 
-    #[must_use]
     pub fn topsky_path(&self) -> Option<PathBuf> {
         self.settings
             .0
@@ -105,7 +99,6 @@ impl Prf {
             .map(|path| self.path.parent().unwrap().join(path))
     }
 
-    #[must_use]
     pub fn recent_path(&self, num: u8) -> Option<PathBuf> {
         self.settings
             .0

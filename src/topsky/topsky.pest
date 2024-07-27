@@ -1,5 +1,5 @@
 symbols = { SOI ~ NL? ~ symbol+ ~ EOI}
-maps = { SOI ~ NL? ~ (map | symboldef | colourdef | linestyledef | override_sct)+ ~ EOI }
+maps = { SOI ~ NL? ~ (map | symboldef | colourdef | linestyledef | override_sct | sctfilepath)+ ~ EOI }
 
 symbol = {
   "SYMBOL:" ~ name ~ NL ~ symbolrule+
@@ -19,6 +19,8 @@ linestyledef = {
 override_sct = { "OVERRIDE_SCT_MAP:" ~ override_folder ~ ("\\" ~ name)? ~ NL? }
 override_folder = { (!("\\" | NL) ~ ANY)+ }
 
+sctfilepath = { "SCTFILEPATH:" ~ name ~ NL? }
+
 // TODO DEFAULT_SCREEN-SPECIFIC, DEFAULT_GLOBAL
 
 map = { "MAP:" ~ name ~ NL ~ map_setting+ }
@@ -29,7 +31,7 @@ map_setting = _{
     folder | colour | asrdata | active | andactive | layer | mapsymbol | fontstyle
     | fontsize | zoom | style | mapline | text | global | screen_specific
     | circle | coordline | coordpoly | coord | textalign | override_sct
-    | hidden
+    | hidden | sctfiledata | sctdata
   )
   ~ NL?
 }
@@ -98,7 +100,7 @@ zoom = { "ZOOM:" ~ decimal }
 
 style = { "STYLE:" ~ name ~ (":" ~ number)? }
 
-mapline = { ("LINE:" ~ (maplinecoordinates | maplinewpts) ~ NL)+ }
+mapline = { ("LINE:" ~ (maplinecoordinates | maplinewpts) ~ NL?)+ }
 maplinecoordinates = { coordinate ~ ":" ~ coordinate }
 maplinewpts = { name ~ ":" ~ name }
 
@@ -152,7 +154,10 @@ fillrect = {
   "FILLRECT:" ~ point ~ ":" ~ point
 }
 
-// TODO: SCTDATA
+sctfiledata = { "SCTFILEDATA" ~ sctfiledata_ignore_style? ~ ":" ~ name_no_backslash ~ "\\" ~ name_no_backslash }
+sctfiledata_ignore_style = { "/MONO" }
+sctdata = { "SCTDATA" ~ ":" ~ name_no_backslash ~ "\\" ~ name_no_backslash }
+
 
 name = @{ (!(NL | ":") ~ ANY)* }
 name_no_comma = @{ (!(NL | ":" | ",") ~ ANY)* }

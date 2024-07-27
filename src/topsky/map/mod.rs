@@ -305,6 +305,8 @@ impl MapRule {
                     Rule::fontstyle => None,
                     Rule::textalign => None,
                     Rule::override_sct => None,
+                    Rule::sctfiledata => None,
+                    Rule::sctdata => None,
                     rule => unreachable!("{rule:?}"),
                 }
             })
@@ -432,6 +434,8 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                     Rule::symboldef => parse_symbol(pair).map(MapDefinition::Symbol),
                     Rule::linestyledef => parse_linestyle(pair).map(MapDefinition::LineStyle),
                     Rule::override_sct => parse_override(pair).map(MapDefinition::Override),
+                    // TODO not implemented yet
+                    Rule::sctfilepath => None,
                     Rule::EOI => None,
                     rule => unreachable!("{rule:?}"),
                 })

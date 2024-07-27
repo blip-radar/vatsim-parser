@@ -11,10 +11,10 @@ other_setting = { name ~ "=" ~ setting_value }
 
 section = { "[" ~ name ~ "]" ~ NL ~ setting+ }
 
-name = @{ ("_" | ASCII_ALPHA | ASCII_DIGIT)+ }
+name = @{ ("/" | "_" | ASCII_ALPHA | ASCII_DIGIT)+ }
 number = @{ ASCII_DIGIT+ }
-setting_value = { (!NL ~ ANY)+ }
+setting_value = { (!NL ~ ANY)* }
 
 WHITESPACE = _{ (" " | "\t") }
 NL = _{ NEWLINE+ }
-COMMENT = _{ "//" ~ (!NL ~ ANY)* ~ NL }
+COMMENT = _{ (";" | "//") ~ (!NL ~ ANY)* ~ NL }
