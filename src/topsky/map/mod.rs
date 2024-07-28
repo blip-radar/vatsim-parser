@@ -255,6 +255,9 @@ pub enum MapRule {
     LineStyle(LineStyle),
     Line(Vec<MapLine>),
     Text(Text),
+    CoordPoly(String),
+    CoordLine,
+    Coord(Location),
 }
 
 impl MapRule {
@@ -297,11 +300,15 @@ impl MapRule {
                     Rule::screen_specific => Some(MapRule::ScreenSpecific),
                     Rule::global => Some(MapRule::Global),
                     Rule::hidden => Some(MapRule::Hidden),
+                    Rule::coordline => Some(MapRule::CoordLine),
+                    Rule::coord => Some(MapRule::Coord(Location::parse(
+                        pair.into_inner().next().unwrap(),
+                    ))),
+                    Rule::coordpoly => Some(MapRule::CoordPoly(
+                        pair.into_inner().next().unwrap().as_str().to_string(),
+                    )),
                     // TODO
                     Rule::circle => None,
-                    Rule::coordline => None,
-                    Rule::coord => None,
-                    Rule::coordpoly => None,
                     Rule::fontstyle => None,
                     Rule::textalign => None,
                     Rule::override_sct => None,

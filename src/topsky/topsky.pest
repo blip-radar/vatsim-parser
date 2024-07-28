@@ -122,7 +122,7 @@ circle = { "CIRCLE:" ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
 coord = { "COORD:" ~ (coordinate | name) }
 
 coordline = { "COORDLINE" }
-coordpoly = { "COORDPOLY:" | number }
+coordpoly = { "COORDPOLY:" ~ number }
 
 // SYMBOLDEF
 symbolrule = _{ (

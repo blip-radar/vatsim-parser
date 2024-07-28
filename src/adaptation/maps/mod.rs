@@ -3,12 +3,15 @@ pub mod active;
 use std::collections::HashMap;
 
 use bevy_reflect::Reflect;
-use geo::{Coord, MultiLineString};
+use geo::{Coord, MultiLineString, Polygon};
 use serde::Serialize;
 
-use crate::topsky::{
-    map::{FontSize, MapLine, MapRule, MapSymbol, OverrideSct, Text},
-    Topsky,
+use crate::{
+    topsky::{
+        map::{FontSize, MapLine, MapRule, MapSymbol, OverrideSct, Text},
+        Topsky,
+    },
+    Location,
 };
 
 use self::active::Active;
@@ -55,6 +58,7 @@ impl Map {
                     line_style: last.line_style.clone(),
                     lines: MultiLineString::new(vec![]),
                     labels: vec![],
+                    polygons: vec![],
                     symbols: vec![],
                 };
                 change_fn(&mut map_group);
@@ -78,6 +82,7 @@ pub struct MapGroup {
     pub lines: MultiLineString,
     pub labels: Vec<Label>,
     pub symbols: Vec<Symbol>,
+    pub polygons: Vec<Polygon>,
     pub line_style: LineStyle,
 }
 
@@ -92,6 +97,7 @@ impl MapGroup {
             lines: MultiLineString::new(vec![]),
             labels: Default::default(),
             symbols: Default::default(),
+            polygons: Default::default(),
             line_style: Default::default(),
         }
     }
@@ -132,6 +138,21 @@ impl MapGroup {
                 })
                 .collect()
         }))
+    }
+    fn add_topsky_polygon(&mut self, coords: &[Location], locations: &Locations) {
+        self.polygons.push(Polygon::new(
+            coords
+                .iter()
+                .filter_map(|loc| {
+                    let coord = locations.convert_location(loc);
+                    if coord.is_none() {
+                        eprintln!("Could not convert {:?}", loc);
+                    }
+                    coord
+                })
+                .collect(),
+            vec![],
+        ))
     }
     fn add_topsky_text(&mut self, text: &Text, locations: &Locations) {
         if let Some(coordinate) = locations.convert_location(&text.location) {
@@ -202,17 +223,20 @@ pub fn from_topsky(
                 MapRule::Colour(c) => colours.get(c, settings),
                 _ => None,
             }) {
-                let mut map = topsky_map.rules.iter().fold(
-                    Map {
-                        name: topsky_map.name.clone(),
-                        folder: settings.maps.auto_folder.clone(),
-                        active: vec![],
-                        map_groups: vec![MapGroup::default_from_settings(settings, colour)],
-                        hidden: false,
-                    },
-                    |mut map, rule| {
+                let (mut map, _) = topsky_map.rules.iter().fold(
+                    (
+                        Map {
+                            name: topsky_map.name.clone(),
+                            folder: settings.maps.auto_folder.clone(),
+                            active: vec![],
+                            map_groups: vec![MapGroup::default_from_settings(settings, colour)],
+                            hidden: false,
+                        },
+                        vec![],
+                    ),
+                    |(mut map, mut coord_buffer), rule| {
                         match rule {
-                            MapRule::Folder(folder) => map.folder = folder.clone(),
+                            MapRule::Folder(folder) => map.folder.clone_from(folder),
                             MapRule::Hidden => map.hidden = true,
                             MapRule::Colour(new_colour_name) => {
                                 if let Some(new_colour) = colours.get(new_colour_name, settings) {
@@ -223,7 +247,7 @@ pub fn from_topsky(
                             }
                             MapRule::AsrData(asr_data) => {
                                 map.config_change(settings, colour, |map_group| {
-                                    map_group.asr_data = asr_data.clone()
+                                    map_group.asr_data.clone_from(asr_data)
                                 })
                             }
                             MapRule::Active(active) => map.active.push(vec![active.clone()]),
@@ -278,11 +302,29 @@ pub fn from_topsky(
                                 .last_mut()
                                 .unwrap()
                                 .add_topsky_text(t, locations),
+                            // TODO
+                            MapRule::CoordPoly(_hatch_style) => {
+                                map.map_groups
+                                    .last_mut()
+                                    .unwrap()
+                                    .add_topsky_polygon(&coord_buffer, locations);
+                                coord_buffer.clear()
+                            }
+                            MapRule::CoordLine => {
+                                map.map_groups.last_mut().unwrap().add_topsky_lines(
+                                    &[MapLine {
+                                        points: coord_buffer.clone(),
+                                    }],
+                                    locations,
+                                );
+                                coord_buffer.clear()
+                            }
+                            MapRule::Coord(loc) => coord_buffer.push(loc.clone()),
                             // intentionally ignored
                             MapRule::Global | MapRule::ScreenSpecific => (),
                         };
 
-                        map
+                        (map, coord_buffer)
                     },
                 );
                 folders
