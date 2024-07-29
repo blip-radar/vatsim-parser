@@ -12,7 +12,7 @@ use crate::adaptation::locations::airways::{
 use super::read_to_string;
 
 #[derive(Parser)]
-#[grammar = "airway.pest"]
+#[grammar = "pest/airway.pest"]
 pub struct AirwayParser;
 
 #[derive(Error, Debug)]

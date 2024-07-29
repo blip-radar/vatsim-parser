@@ -1,0 +1,31 @@
+symbolrule = _{ (
+  moveto | line | fillarc_ellipse | fillarc | arc_ellipse | arc | polygon | pixel | ellipse | ellipse_circle | fillrect
+) ~ NL? }
+moveto = ${ "MOVETO" ~ symbol_rule_delimiter ~ symbol_rule_point }
+line = ${ "LINETO" ~ symbol_rule_delimiter ~ symbol_rule_point }
+fillarc = ${
+  "FILLARC" ~ symbol_rule_delimiter ~ symbol_rule_point ~ symbol_rule_delimiter ~ decimal ~ symbol_rule_delimiter ~ integer ~ symbol_rule_delimiter ~ integer
+}
+fillarc_ellipse = ${
+  "FILLARC" ~ symbol_rule_delimiter ~ symbol_rule_point ~ symbol_rule_delimiter ~ decimal ~ symbol_rule_delimiter ~ decimal ~ symbol_rule_delimiter ~ integer ~ symbol_rule_delimiter ~ integer
+}
+arc = ${
+  "ARC" ~ symbol_rule_delimiter ~ symbol_rule_point ~ symbol_rule_delimiter ~ decimal ~ symbol_rule_delimiter ~ integer ~ symbol_rule_delimiter ~ integer
+}
+arc_ellipse = ${
+  "ARC" ~ symbol_rule_delimiter ~ symbol_rule_point ~ symbol_rule_delimiter ~ decimal ~ symbol_rule_delimiter ~ decimal ~ symbol_rule_delimiter ~ integer ~ symbol_rule_delimiter ~ integer
+}
+ellipse = ${
+  "ELLIPSE" ~ symbol_rule_delimiter ~ symbol_rule_point ~ symbol_rule_delimiter ~ decimal ~ symbol_rule_delimiter ~ decimal
+}
+ellipse_circle = ${
+  "ELLIPSE" ~ symbol_rule_delimiter ~ symbol_rule_point ~ symbol_rule_delimiter ~ decimal
+}
+polygon = ${ "POLYGON" ~ (symbol_rule_delimiter ~ symbol_rule_point)+ }
+pixel = ${ "SETPIXEL" ~ symbol_rule_delimiter ~ symbol_rule_point }
+fillrect = ${
+  "FILLRECT" ~ symbol_rule_delimiter ~ symbol_rule_point ~ symbol_rule_delimiter ~ symbol_rule_point
+}
+
+symbol_rule_delimiter = _{ ":" | " " }
+symbol_rule_point = ${ decimal ~ symbol_rule_delimiter ~ decimal }

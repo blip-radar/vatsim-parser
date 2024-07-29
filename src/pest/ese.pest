@@ -17,11 +17,11 @@ sidsstars_section = { "[SIDSSTARS]" ~ NL ~ ((sid | star) ~ NL)* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 position = {
-  text ~ ":" ~ text ~ ":" ~ frequency ~ ":" ~ text ~ ":" ~ text ~ ":" ~ text ~ ":"
-  ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ squawk_range? ~ ":"?
+  colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ frequency ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":"
+  ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ squawk_range? ~ ":"?
   ~ coordinate? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)? ~ (":" ~ coordinate)?
 }
-squawk_range = { INTEGER ~ ":" ~ INTEGER }
+squawk_range = { integer ~ ":" ~ integer }
 
 cop = {
   "COPX:" ~ prev ~ ":" ~ dep_rwy ~ ":" ~ cop_def ~ ":" ~ after ~ ":" ~ arr_rwy ~ ":" ~ sctx ~ ":"
@@ -31,74 +31,61 @@ fir_cop = {
   "FIR_COPX:" ~ prev ~ ":" ~ dep_rwy ~ ":" ~ cop_def ~ ":" ~ after ~ ":" ~ arr_rwy ~ ":" ~ sctx ~ ":"
   ~ sctn ~ ":" ~ alt_clb ~ ":" ~ alt_des ~ ":" ~ cop_description ~ NL
 }
-prev = _{ wildcard | text }
+prev = _{ wildcard | colon_delimited_text }
 dep_rwy = _{ wildcard | designator }
-after = _{ wildcard | text }
+after = _{ wildcard | colon_delimited_text }
 arr_rwy = _{ wildcard | designator }
-cop_def = _{ wildcard | text }
-sctx = _{ text }
-sctn = _{ text }
-alt_clb = _{ wildcard | INTEGER }
-alt_des = _{ wildcard | INTEGER }
-cop_description = _{ text }
+cop_def = _{ wildcard | colon_delimited_text }
+sctx = _{ colon_delimited_text }
+sctn = _{ colon_delimited_text }
+alt_clb = _{ wildcard | integer }
+alt_des = _{ wildcard | integer }
+cop_description = _{ colon_delimited_text }
 
-sectorline = { "SECTORLINE:" ~ text ~ NL ~ ((display | coord) ~ NL)* }
-display = { "DISPLAY:" ~ text ~ ":" ~ text ~ ":" ~ text }
+sectorline = { "SECTORLINE:" ~ colon_delimited_text ~ NL ~ ((display | coord) ~ NL)* }
+display = { "DISPLAY:" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text }
 
 circle_sectorline = {
-  "CIRCLE_SECTORLINE:" ~ text ~ ":" ~ fix_designator ~ ":" ~ DECIMAL ~ NL
+  "CIRCLE_SECTORLINE:" ~ colon_delimited_text ~ ":" ~ fix_designator ~ ":" ~ decimal ~ NL
   ~ (display ~ NL)*
 }
 
-display_sectorline = { "DISPLAY_SECTORLINE:" ~ text ~ ":" ~ text ~ ":" ~ text ~ ":" ~ text ~ NL }
+display_sectorline = { "DISPLAY_SECTORLINE:" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ NL }
 
-sector = { "SECTOR:" ~ text ~ ":" ~ INTEGER ~ ":" ~ INTEGER ~ NL ~ (sector_subsettings ~ NL)* }
+sector = { "SECTOR:" ~ colon_delimited_text ~ ":" ~ integer ~ ":" ~ integer ~ NL ~ (sector_subsettings ~ NL)* }
 sector_subsettings = _{ owner | altowner | border | guest | active | depapt | arrapt }
-owner = { "OWNER" ~ (":" ~ text)+ }
-altowner = { "ALTOWNER:" ~ text ~ (":" ~ text)+ }
-border = { "BORDER" ~ (":" ~ text)+ }
+owner = { "OWNER" ~ (":" ~ colon_delimited_text)+ }
+altowner = { "ALTOWNER:" ~ colon_delimited_text ~ (":" ~ colon_delimited_text)+ }
+border = { "BORDER" ~ (":" ~ colon_delimited_text)+ }
 guest = { "GUEST" ~ ":" ~ sct ~ ":" ~ adep ~ ":" ~ ades  }
 active = { "ACTIVE:" ~ designator ~ ":" ~ designator }
 depapt = { "DEPAPT" ~ (":" ~ designator)+ }
 arrapt = { "ARRAPT" ~ (":" ~ designator)+ }
-sct = _{ text }
+sct = _{ colon_delimited_text }
 adep = _{ wildcard | designator }
 ades = _{ wildcard | designator }
 
-msaw = { "MSAW:" ~ text ~ ":" ~ INTEGER ~ NL ~ (coord ~ NL)+ }
+msaw = { "MSAW:" ~ colon_delimited_text ~ ":" ~ integer ~ NL ~ (coord ~ NL)+ }
 
-sid = { "SID:" ~ designator ~ ":" ~ (rwy_designator | none) ~ ":" ~ text ~ ":" ~ route }
-star = { "STAR:" ~ designator ~ ":" ~ (rwy_designator | none) ~ ":" ~ text ~ ":" ~ route }
+sid = { "SID:" ~ designator ~ ":" ~ (runway_designator | none) ~ ":" ~ colon_delimited_text ~ ":" ~ route }
+star = { "STAR:" ~ designator ~ ":" ~ (runway_designator | none) ~ ":" ~ colon_delimited_text ~ ":" ~ route }
 
 wildcard = { "*" }
 
 broken = @{ !("[") ~ (!NL ~ ANY)* }
 
 coord = _{ "COORD:" ~ coordinate }
-coordinate = { coord_part ~ ":" ~ coord_part }
-coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 
-frequency = @{ DECIMAL }
+frequency = @{ decimal }
 
 
 route = { designator* }
 fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | ".")+ }
 designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "-")+ }
 pos_designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT | "_" | "-")+ }
-rwy_designator = { ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
-text = @{ (!(":" | NL) ~ ANY)* }
 none = { "" }
 
 header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }
 
-deg = @{ ASCII_DIGIT+ }
-min = @{ ASCII_DIGIT+ }
-sec = @{ DECIMAL }
-hemi = @{ "N" | "n" | "S" | "s" | "W" | "w" | "E" | "e" }
-
-DECIMAL = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
-INTEGER = @{ ASCII_DIGIT+ }
-
-NL = _{ NEWLINE+ }
 COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " | "\t" }

@@ -11,7 +11,7 @@ use crate::TwoKeyMap;
 use super::read_to_string;
 
 #[derive(Parser)]
-#[grammar = "asr.pest"]
+#[grammar = "pest/asr.pest"]
 pub struct AsrParser;
 
 #[derive(Error, Debug)]

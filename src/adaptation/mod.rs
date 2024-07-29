@@ -3,12 +3,14 @@ pub mod locations;
 pub mod maps;
 pub mod sectors;
 pub mod settings;
+pub mod symbols;
 
 use std::{collections::HashMap, io};
 
 use bevy_reflect::Reflect;
 use sectors::{Sector, Volume};
 use serde::Serialize;
+use symbols::Symbols;
 use thiserror::Error;
 
 use crate::{
@@ -17,7 +19,7 @@ use crate::{
     prf::Prf,
     sct::{Sct, SctError},
     symbology::{Symbology, SymbologyError},
-    topsky::{symbol::SymbolDef, Topsky, TopskyError},
+    topsky::{Topsky, TopskyError},
 };
 
 use self::{colours::Colours, locations::Locations, maps::MapFolders, settings::Settings};
@@ -101,7 +103,7 @@ pub struct Adaptation {
     // TODO
     // pub areas,
     // TODO convert to svg?
-    pub symbols: HashMap<String, SymbolDef>,
+    pub symbols: Symbols,
     pub colours: Colours,
     pub settings: Settings,
     // TODO
@@ -151,7 +153,7 @@ impl Adaptation {
                 .map(|topsky| maps::from_topsky(topsky, &settings, &colours, &locations))
                 .unwrap_or_default(),
             locations,
-            symbols: topsky.map(|t| t.symbols).unwrap_or_default(),
+            symbols: Symbols::from_euroscope(&symbology, &topsky),
             colours,
             settings,
         })

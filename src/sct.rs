@@ -18,7 +18,8 @@ use crate::{
 use super::read_to_string;
 
 #[derive(Parser)]
-#[grammar = "sct.pest"]
+#[grammar = "pest/base.pest"]
+#[grammar = "pest/sct.pest"]
 pub struct SctParser;
 
 #[derive(Error, Debug)]
@@ -128,7 +129,7 @@ fn parse_airport(pair: Pair<Rule>) -> Airport {
     let designator = location.next().unwrap().as_str().to_string();
     let coordinate = parse_coordinate(
         location
-            .find(|pair| matches!(pair.as_rule(), Rule::coordinate))
+            .find(|pair| matches!(pair.as_rule(), Rule::sct_coordinate))
             .unwrap(),
     );
 
@@ -140,7 +141,7 @@ fn parse_airport(pair: Pair<Rule>) -> Airport {
 
 fn parse_or_fix(pair: Pair<Rule>) -> Location {
     match pair.as_rule() {
-        Rule::coordinate => Location::Coordinate(parse_coordinate(pair)),
+        Rule::sct_coordinate => Location::Coordinate(parse_coordinate(pair)),
         Rule::airway_fix => Location::Fix(pair.into_inner().next().unwrap().as_str().to_string()),
         rule => unreachable!("{rule:?}"),
     }

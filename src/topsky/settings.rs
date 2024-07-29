@@ -9,7 +9,7 @@ use crate::adaptation::colours::Colour;
 use super::{map::ColourDef, TopskyError};
 
 #[derive(Parser)]
-#[grammar = "topsky/settings.pest"]
+#[grammar = "pest/topsky_settings.pest"]
 pub struct TopskySettingsParser;
 
 enum Setting {

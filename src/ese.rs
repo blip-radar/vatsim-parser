@@ -13,7 +13,8 @@ use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, FromDegMinSec
 use super::read_to_string;
 
 #[derive(Parser)]
-#[grammar = "ese.pest"]
+#[grammar = "pest/base.pest"]
+#[grammar = "pest/ese.pest"]
 pub struct EseParser;
 
 #[derive(Error, Debug)]
@@ -252,7 +253,7 @@ impl Sector {
 fn parse_wildcard_string(pair: Pair<Rule>) -> Option<String> {
     match pair.as_rule() {
         Rule::wildcard => None,
-        Rule::text | Rule::designator => Some(pair.as_str().to_string()),
+        Rule::colon_delimited_text | Rule::designator => Some(pair.as_str().to_string()),
         rule => unreachable!("{rule:?}"),
     }
 }
@@ -260,7 +261,7 @@ fn parse_wildcard_string(pair: Pair<Rule>) -> Option<String> {
 fn parse_wildcard_u32(pair: Pair<Rule>) -> Option<u32> {
     match pair.as_rule() {
         Rule::wildcard => None,
-        Rule::INTEGER => Some(pair.as_str().parse().unwrap()),
+        Rule::integer => Some(pair.as_str().parse().unwrap()),
         rule => unreachable!("{rule:?}"),
     }
 }
@@ -349,7 +350,7 @@ enum SectionName {
 }
 
 fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
-    let mut coordinate_part = pair.into_inner();
+    let mut coordinate_part = pair.into_inner().next().unwrap().into_inner();
     let hemi = coordinate_part.next().unwrap().as_str();
     let degrees = coordinate_part
         .next()
@@ -524,7 +525,7 @@ fn parse_sid_star(pair: Pair<Rule>) -> SidStar {
     let airport = sid_star.next().unwrap().as_str().to_string();
     let runway_pair = sid_star.next().unwrap();
     let runway = match runway_pair.as_rule() {
-        Rule::rwy_designator => Some(runway_pair.as_str().to_string()),
+        Rule::runway_designator => Some(runway_pair.as_str().to_string()),
         Rule::none => None,
         rule => unreachable!("{rule:?}"),
     };

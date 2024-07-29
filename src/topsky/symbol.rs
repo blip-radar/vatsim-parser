@@ -1,33 +1,16 @@
 use std::collections::HashMap;
 
-use bevy_reflect::Reflect;
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
 };
-use serde::Serialize;
 
-use crate::read_to_string;
+use crate::{
+    adaptation::symbols::{SymbolDef, SymbolRule},
+    read_to_string,
+};
 
 use super::{parse_point, Rule, TopskyError, TopskyParser};
-
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
-pub enum SymbolRule {
-    Move((f64, f64)),
-    Line((f64, f64)),
-    Pixel((f64, f64)),
-    Arc((f64, f64), f64, i64, i64),
-    EllipticArc((f64, f64), f64, f64, i64, i64),
-    FilledArc((f64, f64), f64, i64, i64),
-    FilledEllipticArc((f64, f64), f64, f64, i64, i64),
-    Polygon(Vec<(f64, f64)>),
-}
-
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
-pub struct SymbolDef {
-    pub name: String,
-    pub rules: Vec<SymbolRule>,
-}
 
 fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
     pairs

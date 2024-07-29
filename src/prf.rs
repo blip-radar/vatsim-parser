@@ -22,7 +22,7 @@ pub enum PrfError {
 }
 
 #[derive(Parser)]
-#[grammar = "prf.pest"]
+#[grammar = "pest/prf.pest"]
 pub struct PrfParser;
 
 #[derive(Clone, Debug, Serialize)]

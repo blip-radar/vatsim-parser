@@ -19,8 +19,8 @@ section_header = _{ "[" ~ header_name ~ "]" }
 
 info_section = {
   "[INFO]" ~ NL ~ colour_definition* ~ sector_name ~ NL ~ sector_callsign ~ NL ~ designator ~ NL
-  ~ coord_part ~ NL ~ coord_part ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL ~ MAYBE_DECIMAL ~ NL
-  ~ (MAYBE_DECIMAL ~ NL)? ~ colour_definition*
+  ~ sct_coord_part ~ NL ~ sct_coord_part ~ NL ~ decimal ~ NL ~ decimal ~ NL ~ decimal ~ NL
+  ~ (decimal ~ NL)? ~ colour_definition*
 }
 vor_section = { "[VOR]" ~ NL ~ colour_definition* ~ (location ~ NL?)* ~ colour_definition* }
 ndb_section = { "[NDB]" ~ NL ~ colour_definition* ~ ((location | broken) ~ NL)* ~ colour_definition* }
@@ -35,39 +35,24 @@ sector_name = @{ (LETTER | ASCII_DIGIT | "\t" | ' '..'~')+ }
 sector_callsign = @{ (ASCII_ALPHANUMERIC | "_")+ }
 
 
-colour_definition = { "#define" ~ colour_name ~ colour_value ~ NL }
+colour_definition = { "#define" ~ colour_name ~ pos_integer ~ NL }
 colour_name = @{ (ASCII_ALPHANUMERIC | "-" | "_")+ }
-colour_value = @{ ASCII_DIGIT+ }
 
-fix = { fix_designator ~ coordinate }
-aerodrome = { designator ~ (frequency | ".")? ~ coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G") }
-location = { designator ~ frequency ~ coordinate }
-runway = { runway_designator ~ runway_designator ~ degrees ~ degrees ~ coordinate ~ coordinate ~ designator ~ (!NEWLINE ~ ANY)* }
-airway = { fix_designator ~ (coordinate | airway_fix) ~ (coordinate | airway_fix) }
+fix = { fix_designator ~ sct_coordinate }
+aerodrome = { designator ~ (frequency | ".")? ~ sct_coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G") }
+location = { designator ~ frequency ~ sct_coordinate }
+runway = { runway_designator ~ runway_designator ~ pos_integer ~ pos_integer ~ sct_coordinate ~ sct_coordinate ~ designator ~ (!NEWLINE ~ ANY)* }
+airway = { fix_designator ~ (sct_coordinate | airway_fix) ~ (sct_coordinate | airway_fix) }
 // EDGG has invalid WPT with spaces
 broken = @{ !("[" | "#") ~ (!NL ~ ANY)* }
 
 airway_fix = { (designator ~ designator) }
-coordinate = { coord_part ~ coord_part }
-degrees = @{ ASCII_DIGIT+ }
-frequency = @{ MAYBE_DECIMAL }
-runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
-
-coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
+sct_coordinate = { sct_coord_part ~ sct_coord_part }
+frequency = @{ decimal }
 
 fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | "." | "[" | "]")+ }
 designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
-
 header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }
 
-deg = @{ ASCII_DIGIT+ }
-min = @{ ASCII_DIGIT+ }
-sec = @{ DECIMAL }
-hemi = @{ "N" | "S" | "W" | "E" }
-
-DECIMAL = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
-MAYBE_DECIMAL = @{ "-"? ~ (DECIMAL | ASCII_DIGIT+) }
-
-NL = _{ NEWLINE+ }
 COMMENT = _{ (";" | "//") ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " | "\t" }

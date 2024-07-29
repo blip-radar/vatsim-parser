@@ -2,28 +2,27 @@ symbols = { SOI ~ NL? ~ symbol+ ~ EOI}
 maps = { SOI ~ NL? ~ (map | symboldef | colourdef | linestyledef | override_sct | sctfilepath)+ ~ EOI }
 
 symbol = {
-  "SYMBOL:" ~ name ~ NL ~ symbolrule+
+  "SYMBOL:" ~ colon_delimited_text ~ NL ~ symbolrule+
 }
 symboldef = {
-  "SYMBOLDEF:" ~ name ~ NL ~ symbolrule+
+  "SYMBOLDEF:" ~ colon_delimited_text ~ NL ~ symbolrule+
 }
 
 colourdef = {
-  "COLORDEF:" ~ name ~ ":" ~ number ~ ":" ~ number ~ ":" ~ number ~ NL?
+  "COLORDEF:" ~ colon_delimited_text ~ ":" ~ integer ~ ":" ~ integer ~ ":" ~ integer ~ NL?
 }
 
 linestyledef = {
-  "LINESTYLEDEF:" ~ name ~ ":" ~ name ~ ":" ~ name ~ (":" ~ (number ~ ("," ~ number)*))? ~ NL?
+  "LINESTYLEDEF:" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ (":" ~ (integer ~ ("," ~ integer)*))? ~ NL?
 }
 
-override_sct = { "OVERRIDE_SCT_MAP:" ~ override_folder ~ ("\\" ~ name)? ~ NL? }
-override_folder = { (!("\\" | NL) ~ ANY)+ }
+override_sct = { "OVERRIDE_SCT_MAP:" ~ backslash_delimited_text ~ ("\\" ~ colon_delimited_text)? ~ NL? }
 
-sctfilepath = { "SCTFILEPATH:" ~ name ~ NL? }
+sctfilepath = { "SCTFILEPATH:" ~ colon_delimited_text ~ NL? }
 
 // TODO DEFAULT_SCREEN-SPECIFIC, DEFAULT_GLOBAL
 
-map = { "MAP:" ~ name ~ NL ~ map_setting+ }
+map = { "MAP:" ~ colon_delimited_text ~ NL ~ map_setting+ }
 
 // MAP
 map_setting = _{
@@ -36,9 +35,9 @@ map_setting = _{
   ~ NL?
 }
 
-folder = { "FOLDER:" ~ name }
+folder = { "FOLDER:" ~ colon_delimited_text }
 
-colour = { "COLOR:" ~ name }
+colour = { "COLOR:" ~ colon_delimited_text }
 
 asrdata = { "ASRDATA:" ~ (wildcard | names) }
 
@@ -68,7 +67,7 @@ active_aup = {
   "AUP:" ~ names
 }
 active_map = {
-  "MAP:" ~ active_map_operator ~ ":" ~ name_no_backslash ~ "\\" ~ name
+  "MAP:" ~ active_map_operator ~ ":" ~ backslash_delimited_text ~ "\\" ~ colon_delimited_text
 }
 active_notam = {
   "NOTAM:" ~ icao ~ ":" ~ names
@@ -84,27 +83,27 @@ runways = { runway ~ ("," ~ runway)* }
 active_sched = { (ymd | md) ~ ":" ~ (ymd | md) ~ ":" ~ ASCII_DIGIT+ ~ ":" ~ hm ~ ":" ~ hm }
 active_map_operator = { "!" | "=" }
 
-layer = { "LAYER:" ~ number }
+layer = { "LAYER:" ~ integer }
 
-mapsymbol = { "SYMBOL" ~ ("/" ~ textalign_config)? ~ ":" ~ name ~ ":" ~ (coordinate | name) ~ (":" ~ mapsymbollabel)? }
-mapsymbollabel = { name ~ ":" ~ point }
+mapsymbol = { "SYMBOL" ~ ("/" ~ textalign_config)? ~ ":" ~ colon_delimited_text ~ ":" ~ (coordinate | colon_delimited_text) ~ (":" ~ mapsymbollabel)? }
+mapsymbollabel = { colon_delimited_text ~ ":" ~ point }
 
 fontstyle = { "FONTSTYLE:" ~ (fontstyle_set | fontstyle_default) }
 fontstyle_default = { "0" }
-fontstyle_set = { number ~ ":" ~ boolean ~ ":" ~ boolean ~ ":" ~ boolean }
+fontstyle_set = { integer ~ ":" ~ boolean ~ ":" ~ boolean ~ ":" ~ boolean }
 fontsize = { "FONTSIZE:" ~ ((font_symbol ~ ":" ~ decimal) | fontsize_default)}
 fontsize_default = { "0" }
 font_symbol = { "=" | "+" | "-" | "*" }
 
 zoom = { "ZOOM:" ~ decimal }
 
-style = { "STYLE:" ~ name ~ (":" ~ number)? }
+style = { "STYLE:" ~ colon_delimited_text ~ (":" ~ integer)? }
 
 mapline = { ("LINE:" ~ (maplinecoordinates | maplinewpts) ~ NL?)+ }
 maplinecoordinates = { coordinate ~ ":" ~ coordinate }
-maplinewpts = { name ~ ":" ~ name }
+maplinewpts = { colon_delimited_text ~ ":" ~ colon_delimited_text }
 
-text = { "TEXT" ~ ("/" ~ textalign_config)? ~ ":" ~ (coordinate | name) ~ ":" ~ text_content }
+text = { "TEXT" ~ ("/" ~ textalign_config)? ~ ":" ~ (coordinate | colon_delimited_text) ~ ":" ~ text_content }
 text_content = { (!NL ~ ANY)+ }
 
 textalign = { "TEXTALIGN:" ~ textalign_config }
@@ -119,73 +118,27 @@ hidden = { "HIDDEN" }
 
 circle = { "CIRCLE:" ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
 
-coord = { "COORD:" ~ (coordinate | name) }
+coord = { "COORD:" ~ (coordinate | colon_delimited_text) }
 
 coordline = { "COORDLINE" }
-coordpoly = { "COORDPOLY:" ~ number }
+coordpoly = { "COORDPOLY:" ~ integer }
 
-// SYMBOLDEF
-symbolrule = _{ (
-  moveto | line | fillarc_ellipse | fillarc | arc_ellipse | arc | polygon | pixel | ellipse | ellipse_circle | fillrect
-) ~ NL? }
-moveto = { "MOVETO:" ~ point }
-line = { "LINETO:" ~ point }
-fillarc = {
-  "FILLARC:" ~ point ~ ":" ~ decimal ~ ":" ~ number ~ ":" ~ number
-}
-fillarc_ellipse = {
-  "FILLARC:" ~ point ~ ":" ~ decimal ~ ":" ~ decimal ~ ":" ~ number ~ ":" ~ number
-}
-arc = {
-  "ARC:" ~ point ~ ":" ~ decimal ~ ":" ~ number ~ ":" ~ number
-}
-arc_ellipse = {
-  "ARC:" ~ point ~ ":" ~ decimal ~ ":" ~ decimal ~ ":" ~ number ~ ":" ~ number
-}
-ellipse = {
-  "ELLIPSE:" ~ point ~ ":" ~ decimal ~ ":" ~ decimal
-}
-ellipse_circle = {
-  "ELLIPSE:" ~ point ~ ":" ~ decimal
-}
-polygon = { "POLYGON" ~ (":" ~ point)+ }
-pixel = { "SETPIXEL:" ~ point }
-fillrect = {
-  "FILLRECT:" ~ point ~ ":" ~ point
-}
-
-sctfiledata = { "SCTFILEDATA" ~ sctfiledata_ignore_style? ~ ":" ~ name_no_backslash ~ "\\" ~ name_no_backslash }
+sctfiledata = { "SCTFILEDATA" ~ sctfiledata_ignore_style? ~ ":" ~ backslash_delimited_text ~ "\\" ~ backslash_delimited_text }
 sctfiledata_ignore_style = { "/MONO" }
-sctdata = { "SCTDATA" ~ ":" ~ name_no_backslash ~ "\\" ~ name_no_backslash }
+sctdata = { "SCTDATA" ~ ":" ~ backslash_delimited_text ~ "\\" ~ backslash_delimited_text }
 
 
-name = @{ (!(NL | ":") ~ ANY)* }
-name_no_comma = @{ (!(NL | ":" | ",") ~ ANY)* }
-name_no_backslash = @{ (!(NL | "\\") ~ ANY)* }
-names = { name_no_comma ~ ("," ~ name_no_comma)* }
+names = { comma_delimited_text ~ ("," ~ comma_delimited_text)* }
 wildcard = { "*" }
-
-coordinate = { coord_part ~ ":" ~ coord_part }
-coord_part = { sct_coord_part | decimal }
-sct_coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
-deg = @{ ASCII_DIGIT+ }
-min = @{ ASCII_DIGIT+ }
-sec = @{ decimal }
-hemi = @{ "N" | "S" | "W" | "E" | "n" | "s" | "w" | "e" }
 
 md = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 ymd = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 hm = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 
-runway = { icao ~ rwy_designator }
+runway = { icao ~ runway_designator }
 icao = { ASCII_ALPHA_UPPER{4} }
-rwy_designator = { ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
-point = { decimal ~ ":" ~ decimal }
-number = @{ ("-"|"+")? ~ ASCII_DIGIT+ }
-decimal = @{ ("-"|"+")? ~ ((ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+) | ASCII_DIGIT+) }
 boolean = { "0" | "1" }
 
-NL = _{ ((" " | "\t")* ~ NEWLINE)+ }
 // per documentation only "//" but ";" is used quite often and apparently ignored
 // in the ES topsky plugin
 COMMENT = _{ (" " | "\t")* ~ ("//" | ";") ~ (!NL ~ ANY)* }

@@ -1,0 +1,14 @@
+symbology = { SOI ~ NL? ~ header ~ items ~ symbol+ ~ footer ~ EOI}
+
+header = { "SYMBOLOGY" ~ NL ~ "SYMBOLSIZE" ~ NL }
+
+items = _{ item+ }
+item = { colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ integer ~ ":" ~ decimal ~ ":" ~ integer ~ ":" ~ integer ~ ":" ~ integer ~ NL }
+
+symbol = { "SYMBOL:" ~ integer ~ NL ~ symbolitem+ }
+symbolitem = _{ "SYMBOLITEM:" ~ symbolrule }
+
+footer = { clip_area ~ NL ~ "END" ~ NL? }
+clip_area = { "m_ClipArea:" ~ integer }
+
+WHITESPACE = _{ " " | "\t" }

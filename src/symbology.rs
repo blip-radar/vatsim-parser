@@ -1,17 +1,24 @@
 use std::collections::HashMap;
 use std::io;
 
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::{adaptation::colours::Colour, TwoKeyMap};
+use crate::{
+    adaptation::{colours::Colour, symbols::SymbolRule},
+    TwoKeyMap,
+};
 
 use super::read_to_string;
 
 #[derive(Parser)]
-#[grammar = "symbology.pest"]
+#[grammar = "pest/base.pest"]
+#[grammar = "pest/symbol_rule.pest"]
+#[grammar = "pest/symbology.pest"]
 pub struct SymbologyParser;
 
 #[derive(Error, Debug)]
@@ -34,9 +41,38 @@ pub struct Item {
     // text_alignment,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, Serialize)]
+pub enum SymbolType {
+    Airport,
+    NDB,
+    VOR,
+    Fix,
+    AircraftStandby,
+    AircraftPrimaryOnly,
+    AircraftCorrAlphaCharlieSecondaryOnly,
+    AircraftCorrModeSierraSecondaryOnly,
+    AircraftCorrModeAlphaCharlie,
+    AircraftCorrModeSierra,
+    AircraftCorrModeAlphaCharlieIdent,
+    AircraftCorrModeSierraIdent,
+    AircraftFlightPlanTrack,
+    AircraftCoasting,
+    HistoryDot,
+    GroundAircraft,
+    AircraftUncorrModeAlphaCharlieSecondaryOnly,
+    AircraftUncorrModeSierraSecondaryOnly,
+    AircraftUncorrModeAlphaCharlie,
+    AircraftUncorrModeSierra,
+    AircraftUncorrModeAlphaCharlieIdent,
+    AircraftUncorrModeSierraIdent,
+    GroundVehicle,
+    GroundRotorcraft,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Symbology {
-    pub items: TwoKeyMap<String, String, Item>, // TODO symbols
+    pub items: TwoKeyMap<String, String, Item>,
+    pub symbols: HashMap<SymbolType, Vec<SymbolRule>>,
 }
 
 pub type SymbologyResult = Result<Symbology, SymbologyError>;
@@ -59,27 +95,117 @@ impl Item {
     }
 }
 
+fn parse_point(pair: Pair<Rule>) -> (f64, f64) {
+    let mut point = pair.into_inner();
+    let x = point.next().unwrap().as_str().parse().unwrap();
+    let y = point.next().unwrap().as_str().parse().unwrap();
+    (x, y)
+}
+
+// TODO similar to topsky symbol parsing, generalise?
+fn parse_symbol_rules(pair: Pair<Rule>) -> Option<(SymbolType, Vec<SymbolRule>)> {
+    let mut symbol = pair.into_inner();
+    let maybe_symbol_type = SymbolType::from_u32(symbol.next().unwrap().as_str().parse().unwrap());
+    let symbol_rules = symbol
+        .map(|pair| {
+            let ruletype = pair.as_rule();
+            let mut symbolrule = pair.into_inner();
+            match ruletype {
+                Rule::moveto => SymbolRule::Move(parse_point(symbolrule.next().unwrap())),
+                Rule::line => SymbolRule::Line(parse_point(symbolrule.next().unwrap())),
+                Rule::pixel => SymbolRule::Pixel(parse_point(symbolrule.next().unwrap())),
+                Rule::arc => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let start_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    let end_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    SymbolRule::Arc(pos, radius, start_angle, end_angle)
+                }
+                Rule::arc_ellipse => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let start_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    let end_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    SymbolRule::EllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                }
+                Rule::fillarc => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let start_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    let end_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    SymbolRule::FilledArc(pos, radius, start_angle, end_angle)
+                }
+                Rule::fillarc_ellipse => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let start_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    let end_angle =
+                        symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
+                    SymbolRule::FilledEllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                }
+                Rule::ellipse_circle => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    SymbolRule::FilledArc(pos, radius, 0, 0)
+                }
+                Rule::ellipse => {
+                    let pos = parse_point(symbolrule.next().unwrap());
+                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    SymbolRule::FilledEllipticArc(pos, radius_x, radius_y, 0, 0)
+                }
+                Rule::fillrect => {
+                    let (x1, y1) = parse_point(symbolrule.next().unwrap());
+                    let (x2, y2) = parse_point(symbolrule.next().unwrap());
+                    SymbolRule::Polygon(vec![(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+                }
+                Rule::polygon => SymbolRule::Polygon(symbolrule.map(parse_point).collect()),
+                rule => unreachable!("{rule:?}"),
+            }
+        })
+        .collect();
+    maybe_symbol_type.map(|symbol_type| (symbol_type, symbol_rules))
+}
+
 impl Symbology {
     pub fn parse(content: &[u8]) -> SymbologyResult {
         let unparsed_file = read_to_string(content)?;
-        let items = SymbologyParser::parse(Rule::symbology, &unparsed_file).map(|mut pairs| {
-            pairs
-                .next()
-                .unwrap()
-                .into_inner()
-                .filter_map(|pair| match pair.as_rule() {
-                    Rule::item => {
-                        let item = Item::parse(pair);
-                        Some(((item.folder.clone(), item.name.clone()), item))
-                    }
-                    Rule::header | Rule::symbols | Rule::EOI => None,
-                    rule => unreachable!("unhandled {rule:?}"),
-                })
-                .collect::<HashMap<_, _>>()
-        })?;
+        let (items, symbols) =
+            SymbologyParser::parse(Rule::symbology, &unparsed_file).map(|mut pairs| {
+                pairs.next().unwrap().into_inner().fold(
+                    (HashMap::new(), HashMap::new()),
+                    |(mut items, mut symbols), pair| {
+                        match pair.as_rule() {
+                            Rule::item => {
+                                let item = Item::parse(pair);
+                                items.insert((item.folder.clone(), item.name.clone()), item);
+                            }
+                            Rule::symbol => {
+                                if let Some((symbol_type, symbol_rules)) = parse_symbol_rules(pair)
+                                {
+                                    symbols.insert(symbol_type, symbol_rules);
+                                }
+                            }
+                            Rule::header | Rule::footer | Rule::EOI => (),
+                            rule => unreachable!("unhandled {rule:?}"),
+                        }
+                        (items, symbols)
+                    },
+                )
+            })?;
 
         Ok(Symbology {
             items: TwoKeyMap(items),
+            symbols,
         })
     }
 }
@@ -88,8 +214,8 @@ impl Symbology {
 mod test {
 
     use crate::{
-        adaptation::colours::Colour,
-        symbology::{Item, Symbology},
+        adaptation::{colours::Colour, symbols::SymbolRule},
+        symbology::{Item, SymbolType, Symbology},
     };
 
     #[test]
@@ -114,6 +240,8 @@ SYMBOLITEM:MOVETO -4 3
 SYMBOLITEM:LINETO 0 -4
 SYMBOLITEM:LINETO 4 3
 SYMBOLITEM:LINETO -4 3
+m_ClipArea:0
+END
         ";
         let symbology = Symbology::parse(symbology_bytes);
         assert_eq!(
@@ -141,6 +269,33 @@ SYMBOLITEM:LINETO -4 3
                 colour: Colour::from_rgb(200, 200, 200),
                 font_size: 3.5
             })
+        );
+        assert_eq!(
+            symbology
+                .as_ref()
+                .unwrap()
+                .symbols
+                .get(&SymbolType::Airport),
+            Some(&vec![
+                SymbolRule::Move((-3.0, -3.0)),
+                SymbolRule::Line((3.0, -3.0)),
+                SymbolRule::Line((3.0, 3.0)),
+                SymbolRule::Line((-3.0, 3.0)),
+                SymbolRule::Line((-3.0, -3.0)),
+                SymbolRule::Move((5.0, 0.0)),
+                SymbolRule::Line((-6.0, 0.0)),
+                SymbolRule::Move((0.0, 5.0)),
+                SymbolRule::Line((0.0, -6.0)),
+            ])
+        );
+        assert_eq!(
+            symbology.as_ref().unwrap().symbols.get(&SymbolType::NDB),
+            Some(&vec![
+                SymbolRule::Move((-4.0, 3.0)),
+                SymbolRule::Line((0.0, -4.0)),
+                SymbolRule::Line((4.0, 3.0)),
+                SymbolRule::Line((-4.0, 3.0)),
+            ])
         );
     }
 }

@@ -13,11 +13,12 @@ use phf::phf_map;
 use serde::Serialize;
 use thiserror::Error;
 
+use crate::adaptation::symbols::SymbolDef;
 use crate::read_to_string;
 
 use self::map::{parse_topsky_maps, ColourDef, LineStyleDef, MapDef, OverrideSct};
 use self::settings::{parse_topsky_settings, Settings};
-use self::symbol::{parse_topsky_symbols, SymbolDef};
+use self::symbol::parse_topsky_symbols;
 
 #[derive(Error, Debug)]
 pub enum TopskyError {
@@ -30,7 +31,9 @@ pub enum TopskyError {
 }
 
 #[derive(Parser)]
-#[grammar = "topsky/topsky.pest"]
+#[grammar = "pest/base.pest"]
+#[grammar = "pest/symbol_rule.pest"]
+#[grammar = "pest/topsky.pest"]
 pub struct TopskyParser;
 
 type ColourMap = phf::Map<&'static str, (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>)>;

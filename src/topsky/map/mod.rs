@@ -14,16 +14,13 @@ use crate::{
     adaptation::{
         colours::Colour,
         maps::{active::Active, LineStyle, LineStyleType},
+        symbols::SymbolDef,
         Alignment,
     },
     read_to_string, DegMinSec, FromDegMinSec, Location,
 };
 
-use super::{
-    parse_point,
-    symbol::{parse_symbol, SymbolDef},
-    Rule, TopskyError, TopskyParser,
-};
+use super::{parse_point, symbol::parse_symbol, Rule, TopskyError, TopskyParser};
 
 enum CoordinatePart {
     Decimal(f64),
@@ -74,7 +71,7 @@ fn parse_coord(pair: Pair<Rule>) -> Coord {
 impl Location {
     fn parse(pair: Pair<Rule>) -> Self {
         match pair.as_rule() {
-            Rule::name => Self::Fix(pair.as_str().to_string()),
+            Rule::colon_delimited_text => Self::Fix(pair.as_str().to_string()),
             Rule::coordinate => Self::Coordinate(parse_coord(pair)),
             rule => unreachable!("{rule:?}"),
         }
