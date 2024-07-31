@@ -6,7 +6,9 @@ fn main() {
     let path = args_os()
         .nth(1)
         .expect("missing argument: path to topsky folder");
-    let topsky = Topsky::parse(path.into()).unwrap();
 
-    println!("{}", serde_json::to_string(&topsky).unwrap());
+    match Topsky::parse(path.into()) {
+        Ok(topsky) => println!("{}", serde_json::to_string(&topsky).unwrap()),
+        Err(e) => eprintln!("{e}"),
+    }
 }
