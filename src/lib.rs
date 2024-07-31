@@ -4,6 +4,7 @@ use bevy_reflect::Reflect;
 use geo::Coord;
 use multimap::MultiMap;
 use serde::{Serialize, Serializer};
+use tracing::warn;
 
 pub mod adaptation;
 pub mod airway;
@@ -19,7 +20,7 @@ fn read_to_string(contents: &[u8]) -> Result<String, io::Error> {
     String::from_utf8(contents.to_vec()).or_else(|_| {
         let (string, _, errors) = encoding_rs::WINDOWS_1252.decode(contents);
         if errors {
-            eprintln!("errors while decoding win-1252");
+            warn!("errors while decoding win-1252");
         }
         Ok(string.to_string())
     })

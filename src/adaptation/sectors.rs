@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use geo::{Coord, Line, LineString, Polygon};
 use multimap::MultiMap;
 use serde::Serialize;
+use tracing::warn;
 
 use crate::{
     ese::{self, Ese},
@@ -133,7 +134,7 @@ impl Sector {
                         },
                     );
                 } else {
-                    eprintln!("Could not compute valid polygon for {id}");
+                    warn!("Could not compute valid polygon for {id}");
                 }
                 (sectors, volumes)
             },

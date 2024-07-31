@@ -7,6 +7,7 @@ use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
+use tracing::warn;
 
 use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, FromDegMinSec};
 
@@ -471,18 +472,18 @@ fn collect_sectors(
         }
         SectorRule::SectorLine((id, sector_line)) => {
             if let Some(_overwritten) = sector_lines.insert(id.clone(), sector_line) {
-                eprintln!("duplicate sector_line: {id}");
+                warn!("duplicate sector_line: {id}");
             }
         }
         SectorRule::CircleSectorLine((id, circle_sector_line)) => {
             if let Some(_overwritten) = circle_sector_lines.insert(id.clone(), circle_sector_line) {
-                eprintln!("duplicate cirle_sector_line: {id}");
+                warn!("duplicate cirle_sector_line: {id}");
             }
         }
         SectorRule::Sector((border, sector)) => {
             borders.insert(sector.id.clone(), border);
             if let Some(overwritten) = sectors.insert(sector.id.clone(), sector) {
-                eprintln!("duplicate sector: {}", overwritten.id);
+                warn!("duplicate sector: {}", overwritten.id);
             }
         }
         // TODO

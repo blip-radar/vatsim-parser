@@ -4,6 +4,7 @@ use pest_derive::Parser;
 use std::collections::HashMap;
 use std::io;
 use thiserror::Error;
+use tracing::warn;
 
 use crate::adaptation::locations::airways::{
     AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix, FixAirwayMap,
@@ -88,10 +89,7 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                                     if existing.previous.is_some() && previous.is_some()
                                         || existing.next.is_some() && next.is_some()
                                     {
-                                        eprintln!(
-                                            "Duplicate for airway {} and fix {}",
-                                            airway, fix
-                                        );
+                                        warn!("Duplicate for airway {} and fix {}", airway, fix);
                                     }
                                     existing.previous =
                                         existing.previous.clone().or(previous.clone());

@@ -7,6 +7,7 @@ use multimap::MultiMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
+use tracing::warn;
 use uom::si::f64::Length;
 use uom::si::length::{meter, nautical_mile};
 
@@ -144,7 +145,7 @@ impl Locations {
                                         designator: wpt,
                                     })
                                 } else {
-                                    eprintln!("Waypoint {wpt} not found in SID {}", sid.name);
+                                    warn!("Waypoint {wpt} not found in SID {}", sid.name);
                                     None
                                 }
                             })
@@ -167,7 +168,7 @@ impl Locations {
                                         designator: wpt,
                                     })
                                 } else {
-                                    eprintln!(
+                                    warn!(
                                         "STAR {} {} {}: waypoint {wpt} not found",
                                         star.airport,
                                         star.name,
@@ -200,7 +201,6 @@ impl Locations {
             // TODO magnetic
             let bearing: f64 = captures[2].parse().unwrap();
             let range = Length::new::<nautical_mile>(captures[3].parse::<f64>().unwrap());
-            eprintln!("bearing: {bearing}, range: {range:?}");
 
             self.convert_fix(fix).map(|c| {
                 Point::from(c)
@@ -217,7 +217,7 @@ impl Locations {
             let normalised_lat_str = if matches!(lat_str.len(), 1 | 3 | 5) {
                 // invalid syntax
                 if lat_str.starts_with('0') {
-                    eprintln!("Coordinate waypoints must not be abbreviated and start with a 0: {designator} (lat_str)");
+                    warn!("Coordinate waypoints must not be abbreviated and start with a 0: {designator} (lat_str)");
                     return None;
                 }
                 format!("0{lat_str}")
@@ -227,7 +227,7 @@ impl Locations {
             let normalised_lng_str = if matches!(lng_str.len(), 2 | 4 | 6) {
                 // invalid syntax
                 if lng_str.starts_with('0') {
-                    eprintln!("Coordinate waypoints must not be abbreviated and start with a 0: {designator} (lng_str)");
+                    warn!("Coordinate waypoints must not be abbreviated and start with a 0: {designator} (lng_str)");
                     return None;
                 }
                 format!("0{lng_str}")
@@ -235,7 +235,7 @@ impl Locations {
                 lng_str.to_string()
             };
             if normalised_lng_str.len() - normalised_lat_str.len() != 1 {
-                eprintln!("Coordinate waypoints must have the same precision in lat/lon: {designator}");
+                warn!("Coordinate waypoints must have the same precision in lat/lon: {designator}");
                 return None;
             }
             let lat: f64 = match normalised_lat_str.len() {

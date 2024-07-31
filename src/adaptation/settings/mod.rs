@@ -3,6 +3,7 @@ pub mod track;
 use std::{collections::HashMap, path::PathBuf};
 
 use serde::Serialize;
+use tracing::warn;
 
 use crate::{squawks::SquawksJson, topsky::Topsky};
 
@@ -58,7 +59,7 @@ impl SsrSettings {
                 .iter()
                 .flat_map(|sq| match (&sq.code, &sq.range) {
                     (None, None) | (Some(_), Some(_)) => {
-                        eprintln!("Specify either code or range: {sq:?}");
+                        warn!("Specify either code or range: {sq:?}");
                         vec![]
                     }
                     (Some(code), None) => u16::from_str_radix(code, 8)

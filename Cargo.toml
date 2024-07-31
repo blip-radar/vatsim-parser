@@ -27,11 +27,13 @@ regex = "1.10.5"
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.118"
 thiserror = "1.0.63"
+tracing = "0.1.40"
 uom = { version = "0.36", features = ["serde"] }
 
 [dev-dependencies]
 geojson = { version = "0.24", features = ["geo-types"] }
 pretty_assertions_sorted = "1.0.0"
+tracing-subscriber = "0.3.18"
 
 [lints.clippy]
 # TODO fix

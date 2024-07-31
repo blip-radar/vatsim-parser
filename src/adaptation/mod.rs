@@ -12,6 +12,7 @@ use sectors::{Sector, Volume};
 use serde::Serialize;
 use symbols::Symbols;
 use thiserror::Error;
+use tracing::warn;
 
 use crate::{
     airway::{parse_airway_txt, AirwayError},
@@ -138,7 +139,7 @@ impl Adaptation {
             .and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let topsky = prf.topsky_path().and_then(|path| {
             Topsky::parse(path).map(Some).unwrap_or_else(|e| {
-                eprintln!("Topsky: {e}");
+                warn!("Topsky: {e}");
                 None
             })
         });

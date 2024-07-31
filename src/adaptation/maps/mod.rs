@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use bevy_reflect::Reflect;
 use geo::{Coord, MultiLineString, Polygon};
 use serde::Serialize;
+use tracing::warn;
 
 use crate::{
     topsky::{
@@ -122,7 +123,7 @@ impl MapGroup {
                     .unwrap_or(settings.maps.label_offset),
             })
         } else {
-            eprintln!("Could not convert {:?}", symbol.location);
+            warn!("Could not convert {:?}", symbol.location);
         }
     }
     fn add_topsky_lines(&mut self, lines: &[MapLine], locations: &Locations) {
@@ -132,7 +133,7 @@ impl MapGroup {
                 .filter_map(|loc| {
                     let coord = locations.convert_location(loc);
                     if coord.is_none() {
-                        eprintln!("Could not convert {:?}", loc);
+                        warn!("Could not convert {:?}", loc);
                     }
                     coord
                 })
@@ -146,7 +147,7 @@ impl MapGroup {
                 .filter_map(|loc| {
                     let coord = locations.convert_location(loc);
                     if coord.is_none() {
-                        eprintln!("Could not convert {:?}", loc);
+                        warn!("Could not convert {:?}", loc);
                     }
                     coord
                 })
@@ -163,7 +164,7 @@ impl MapGroup {
                 alignment: text.alignment.clone().unwrap_or_default(),
             })
         } else {
-            eprintln!("Could not convert {:?}", text.location);
+            warn!("Could not convert {:?}", text.location);
         }
     }
 }
@@ -255,7 +256,7 @@ pub fn from_topsky(
                                 if let Some(actives) = map.active.last_mut() {
                                     actives.push(active.clone())
                                 } else {
-                                    eprintln!("AndActive unreachable?!")
+                                    warn!("AndActive unreachable?!")
                                 }
                             }
                             MapRule::Layer(layer) => {
@@ -350,7 +351,7 @@ pub fn from_topsky(
                         maps: HashMap::from([(map.name.clone(), map)]),
                     });
             } else {
-                eprintln!("No colour or colour not found in map `{}`", topsky_map.name)
+                warn!("No colour or colour not found in map `{}`", topsky_map.name)
             }
 
             folders

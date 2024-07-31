@@ -6,6 +6,7 @@ use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
+use tracing::warn;
 
 use crate::{
     adaptation::{
@@ -154,7 +155,7 @@ fn parse_airway(pair: Pair<Rule>) -> Option<Airway> {
     let (start, end) = if let (Some(start), Some(end)) = (airway.next(), airway.next()) {
         (parse_or_fix(start), parse_or_fix(end))
     } else {
-        eprintln!("broken airway (initial parse): {airway:?}");
+        warn!("broken airway (initial parse): {airway:?}");
         return None;
     };
 
@@ -176,7 +177,7 @@ fn parse_fix(pair: Pair<Rule>) -> Option<Fix> {
             coordinate,
         })
     } else {
-        eprintln!("broken fix: {pair:?}");
+        warn!("broken fix: {pair:?}");
         None
     }
 }
@@ -194,7 +195,7 @@ fn parse_ndb(pair: Pair<Rule>) -> Option<NDB> {
             coordinate,
         })
     } else {
-        eprintln!("broken ndb: {pair:?}");
+        warn!("broken ndb: {pair:?}");
         None
     }
 }

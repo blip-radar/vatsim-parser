@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io;
 use std::{env::args_os, fs};
 
 use geojson::feature::Id;
@@ -18,6 +19,7 @@ struct OpenDataSector {
 }
 
 fn main() {
+    tracing_subscriber::fmt().with_writer(io::stderr).init();
     let ese_path = args_os().nth(1).expect("missing argument: path to .ese");
     let geojson_path = args_os()
         .nth(2)

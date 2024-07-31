@@ -3,6 +3,7 @@ use std::{collections::HashMap, num::ParseIntError, str::FromStr};
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
+use tracing::warn;
 
 use crate::adaptation::colours::Colour;
 
@@ -25,7 +26,7 @@ impl Settings {
             .get(key)
             .and_then(|font_str| {
                 font_str.parse().map(Some).unwrap_or_else(|_| {
-                    eprintln!("Could not parse {key}");
+                    warn!("Could not parse {key}");
                     None
                 })
             })
@@ -49,7 +50,7 @@ fn parse_setting(pair: Pair<Rule>) -> Option<Setting> {
             symbol.next().and_then(|rgb| match parse_colour(rgb) {
                 Ok(colour) => Some(Setting::Colour(ColourDef { name, colour })),
                 Err(e) => {
-                    eprintln!("Could not parse colour {name}: {e:?}");
+                    warn!("Could not parse colour {name}: {e:?}");
                     None
                 }
             })
