@@ -4,13 +4,17 @@ use pest::{
     iterators::{Pair, Pairs},
     Parser,
 };
+use serde::Serialize;
 
-use crate::{
-    adaptation::symbols::{SymbolDef, SymbolRule},
-    read_to_string,
-};
+use crate::{adaptation::symbols::SymbolRule, read_to_string};
 
 use super::{parse_point, Rule, TopskyError, TopskyParser};
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SymbolDef {
+    pub name: String,
+    pub rules: Vec<SymbolRule>,
+}
 
 fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
     pairs

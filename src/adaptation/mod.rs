@@ -1,4 +1,5 @@
 pub mod colours;
+pub mod line_styles;
 pub mod locations;
 pub mod maps;
 pub mod sectors;
@@ -8,6 +9,7 @@ pub mod symbols;
 use std::{collections::HashMap, io};
 
 use bevy_reflect::Reflect;
+use line_styles::{line_styles_from_topsky, Dash, LineStyle};
 use sectors::{Sector, Volume};
 use serde::Serialize;
 use symbols::Symbols;
@@ -106,6 +108,7 @@ pub struct Adaptation {
     // TODO convert to svg?
     pub symbols: Symbols,
     pub colours: Colours,
+    pub line_styles: HashMap<String, Option<Vec<Dash>>>,
     pub settings: Settings,
     // TODO
     // approaches: Vec<String>,
@@ -155,6 +158,7 @@ impl Adaptation {
                 .unwrap_or_default(),
             locations,
             symbols: Symbols::from_euroscope(&symbology, &topsky),
+            line_styles: line_styles_from_topsky(&topsky),
             colours,
             settings,
         })

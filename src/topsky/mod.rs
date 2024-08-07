@@ -11,9 +11,9 @@ use pest_derive::Parser;
 
 use phf::phf_map;
 use serde::Serialize;
+use symbol::SymbolDef;
 use thiserror::Error;
 
-use crate::adaptation::symbols::SymbolDef;
 use crate::read_to_string;
 
 use self::map::{parse_topsky_maps, ColourDef, LineStyleDef, MapDef, OverrideSct};

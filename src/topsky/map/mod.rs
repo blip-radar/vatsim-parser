@@ -11,16 +11,15 @@ use pest::{
 use serde::Serialize;
 
 use crate::{
-    adaptation::{
-        colours::Colour,
-        maps::{active::Active, LineStyle, LineStyleType},
-        symbols::SymbolDef,
-        Alignment,
-    },
+    adaptation::{colours::Colour, line_styles::LineStyle, maps::active::Active, Alignment},
     read_to_string, DegMinSec, FromDegMinSec, Location,
 };
 
-use super::{parse_point, symbol::parse_symbol, Rule, TopskyError, TopskyParser};
+use super::{
+    parse_point,
+    symbol::{parse_symbol, SymbolDef},
+    Rule, TopskyError, TopskyParser,
+};
 
 enum CoordinatePart {
     Decimal(f64),
@@ -180,16 +179,7 @@ impl FontSize {
 impl LineStyle {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut linestyle = pair.into_inner();
-        let upper_style = linestyle.next().unwrap().as_str().to_uppercase();
-        let style = match &*upper_style {
-            "DEFAULT" | "SOLID" => LineStyleType::Solid,
-            "ALTERNATE" => LineStyleType::Alternate,
-            "DASH" => LineStyleType::Dash,
-            "DOT" => LineStyleType::Dot,
-            "DASHDOT" => LineStyleType::DashDot,
-            "DASHDOTDOT" => LineStyleType::DashDotDot,
-            _ => LineStyleType::Custom(upper_style),
-        };
+        let style = linestyle.next().unwrap().as_str().to_uppercase();
         let width = linestyle
             .next()
             .and_then(|w| w.as_str().parse().ok())

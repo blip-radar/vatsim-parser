@@ -2,7 +2,6 @@ pub mod active;
 
 use std::collections::HashMap;
 
-use bevy_reflect::Reflect;
 use geo::{Coord, MultiLineString, Polygon};
 use serde::Serialize;
 use tracing::warn;
@@ -19,6 +18,7 @@ use self::active::Active;
 
 use super::{
     colours::{Colour, Colours},
+    line_styles::LineStyle,
     settings::Settings,
     Alignment, Locations,
 };
@@ -165,31 +165,6 @@ impl MapGroup {
             })
         } else {
             warn!("Could not convert {:?}", text.location);
-        }
-    }
-}
-
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub enum LineStyleType {
-    Solid,
-    Alternate,
-    Dot,
-    Dash,
-    DashDot,
-    DashDotDot,
-    Custom(String),
-}
-
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub struct LineStyle {
-    pub width: i32,
-    pub style: LineStyleType,
-}
-impl Default for LineStyle {
-    fn default() -> Self {
-        Self {
-            width: 1,
-            style: LineStyleType::Solid,
         }
     }
 }

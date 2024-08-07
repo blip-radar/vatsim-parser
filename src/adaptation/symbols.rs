@@ -21,12 +21,6 @@ pub enum SymbolRule {
     Polygon(Vec<(f64, f64)>),
 }
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
-pub struct SymbolDef {
-    pub name: String,
-    pub rules: Vec<SymbolRule>,
-}
-
 type Symbol = Vec<SymbolRule>;
 #[derive(Clone, Debug, Serialize)]
 pub struct Symbols {
@@ -39,7 +33,7 @@ pub struct Symbols {
     pub coasted: Symbol,
     pub uncontrolled: Symbol,
     pub controlled: Symbol,
-    other: HashMap<String, Vec<SymbolRule>>,
+    other: HashMap<String, Symbol>,
 }
 
 // FIXME check all these, probably have some ES-specific workaround offsets
