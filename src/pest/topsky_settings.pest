@@ -9,7 +9,7 @@ colour_setting = {
 colour_setting_rgb = { number ~ "," ~ number ~ "," ~ number }
 other_setting = { name ~ "=" ~ setting_value }
 
-section = { "[" ~ name ~ "]" ~ NL ~ setting+ }
+section = { ("[" ~ name ~ "]" | "{" ~ name ~ "}") ~ NL ~ setting+ }
 
 name = @{ ("/" | "_" | ASCII_ALPHA | ASCII_DIGIT)+ }
 number = @{ ASCII_DIGIT+ }
