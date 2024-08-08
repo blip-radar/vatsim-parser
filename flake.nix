@@ -61,8 +61,6 @@
             };
           };
 
-          formatter = pkgs.nixfmt-rfc-style;
-
           pre-commit = {
             check.enable = true;
             settings.hooks.treefmt = {
