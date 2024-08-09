@@ -51,9 +51,9 @@ pub fn line_styles_from_topsky(topsky: &Option<Topsky>) -> HashMap<String, Optio
                         },
                     )
                 })
-                .collect()
+                .collect::<Vec<_>>()
         })
-        .unwrap_or(HashMap::new())
+        .unwrap_or_default()
         .into_iter()
         .chain([
             ("SOLID".to_string(), None),

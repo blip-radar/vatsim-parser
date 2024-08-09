@@ -9,7 +9,7 @@ pub mod symbols;
 use std::{collections::HashMap, io};
 
 use bevy_reflect::Reflect;
-use line_styles::{line_styles_from_topsky, Dash, LineStyle};
+use line_styles::{line_styles_from_topsky, Dash};
 use sectors::{Sector, Volume};
 use serde::Serialize;
 use symbols::Symbols;
