@@ -41,7 +41,7 @@ fn main() {
             (
                 id.clone(),
                 OpenDataSector {
-                    description: "".to_string(),
+                    description: String::new(),
                     volumes: s.volumes,
                     position_priority: s.position_priority.into_iter().map(|p| vec![p]).collect(),
                     runway_filter: s.runway_filter,
@@ -49,20 +49,19 @@ fn main() {
             )
         })
         .collect::<HashMap<_, _>>();
-    let feature_collection = FeatureCollection::from_iter(
-        volumes
-            .into_iter()
-            .filter(|(id, _v)| id.starts_with(&filter))
-            .map(|(id, v)| Feature {
-                id: Some(Id::String(id)),
-                geometry: Some((&v.lateral_border).into()),
-                properties: Some(Map::from_iter(vec![
-                    ("lower_level".to_string(), v.lower_level.into()),
-                    ("upper_level".to_string(), v.upper_level.into()),
-                ])),
-                ..Default::default()
-            }),
-    );
+    let feature_collection: FeatureCollection = volumes
+        .into_iter()
+        .filter(|(id, _v)| id.starts_with(&filter))
+        .map(|(id, v)| Feature {
+            id: Some(Id::String(id)),
+            geometry: Some((&v.lateral_border).into()),
+            properties: Some(Map::from_iter(vec![
+                ("lower_level".to_string(), v.lower_level.into()),
+                ("upper_level".to_string(), v.upper_level.into()),
+            ])),
+            ..Default::default()
+        })
+        .collect();
 
     fs::write(geojson_path, feature_collection.to_string()).expect("could not write .geojson");
     fs::write(

@@ -54,7 +54,7 @@ pub struct Airport {
 impl Airport {
     fn from_sct_airports(
         airports: Vec<sct::Airport>,
-        runways: Vec<Runway>,
+        runways: &[Runway],
     ) -> HashMap<String, Airport> {
         airports
             .into_iter()
@@ -124,7 +124,7 @@ impl Locations {
             fixes,
             vors,
             ndbs,
-            airports: Airport::from_sct_airports(sct.airports, sct.runways),
+            airports: Airport::from_sct_airports(sct.airports, &sct.runways),
             airways,
             sids: TwoKeyMultiMap(MultiMap::new()),
             stars: TwoKeyMultiMap(MultiMap::new()),
@@ -210,7 +210,7 @@ impl Locations {
         })
     }
 
-    fn convert_coordinate(&self, designator: &str) -> Option<Coord> {
+    fn convert_coordinate(designator: &str) -> Option<Coord> {
         COORD_RE.captures(designator).and_then(|captures| {
             let lat_str = &captures[1];
             let lng_str = &captures[3];
@@ -275,7 +275,7 @@ impl Locations {
 
     pub fn convert_designator(&self, designator: &str) -> Option<Coord> {
         self.convert_fix(designator)
-            .or(self.convert_coordinate(designator))
+            .or(Self::convert_coordinate(designator))
             .or(self.convert_range_bearing(designator))
     }
 
@@ -326,8 +326,8 @@ mod test {
                         designator: "SI".to_string(),
                         frequency: "410.000".to_string(),
                         coordinate: Coord {
-                            y: 47.81860777777778,
-                            x: 12.987674722222222,
+                            y: 47.818_607_777_777_78,
+                            x: 12.987_674_722_222_222,
                         },
                     },
                 ),
@@ -399,15 +399,15 @@ mod test {
         assert_eq!(
             locs.convert_designator("4620N05805W").unwrap(),
             Coord {
-                y: 46.333333333333336,
-                x: -58.083333333333336
+                y: 46.333_333_333_333_336,
+                x: -58.083_333_333_333_336
             }
         );
         assert_eq!(
             locs.convert_designator("462013N0580503W").unwrap(),
             Coord {
-                y: 46.33694444444445,
-                x: -58.08416666666667
+                y: 46.336_944_444_444_45,
+                x: -58.084_166_666_666_67
             }
         );
         assert_eq!(
@@ -433,22 +433,22 @@ mod test {
         assert_eq!(
             locs.convert_designator("ARMUT070005").unwrap(),
             Coord {
-                y: 49.750911853173,
-                x: 12.444077899400547,
+                y: 49.750_911_853_173,
+                x: 12.444_077_899_400_547,
             }
         );
         assert_eq!(
             locs.convert_designator("MIQ270060").unwrap(),
             Coord {
-                y: 48.5603816435381,
-                x: 10.09199177231163
+                y: 48.560_381_643_538_1,
+                x: 10.091_991_772_311_63
             }
         );
         assert_eq!(
             locs.convert_designator("SI123456").unwrap(),
             Coord {
-                y: 43.32784433371484,
-                x: 21.728708973319613,
+                y: 43.327_844_333_714_84,
+                x: 21.728_708_973_319_613,
             }
         );
         // TODO test runways

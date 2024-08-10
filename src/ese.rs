@@ -251,7 +251,7 @@ impl Sector {
     }
 }
 
-fn parse_wildcard_string(pair: Pair<Rule>) -> Option<String> {
+fn parse_wildcard_string(pair: &Pair<Rule>) -> Option<String> {
     match pair.as_rule() {
         Rule::wildcard => None,
         Rule::colon_delimited_text | Rule::designator => Some(pair.as_str().to_string()),
@@ -259,7 +259,7 @@ fn parse_wildcard_string(pair: Pair<Rule>) -> Option<String> {
     }
 }
 
-fn parse_wildcard_u32(pair: Pair<Rule>) -> Option<u32> {
+fn parse_wildcard_u32(pair: &Pair<Rule>) -> Option<u32> {
     match pair.as_rule() {
         Rule::wildcard => None,
         Rule::integer => Some(pair.as_str().parse().unwrap()),
@@ -283,15 +283,15 @@ pub struct Cop {
 impl Cop {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut cop = pair.into_inner();
-        let previous_fix = parse_wildcard_string(cop.next().unwrap());
-        let departure_runway = parse_wildcard_string(cop.next().unwrap());
-        let fix = parse_wildcard_string(cop.next().unwrap());
-        let subsequent_fix = parse_wildcard_string(cop.next().unwrap());
-        let arrival_runway = parse_wildcard_string(cop.next().unwrap());
+        let previous_fix = parse_wildcard_string(&cop.next().unwrap());
+        let departure_runway = parse_wildcard_string(&cop.next().unwrap());
+        let fix = parse_wildcard_string(&cop.next().unwrap());
+        let subsequent_fix = parse_wildcard_string(&cop.next().unwrap());
+        let arrival_runway = parse_wildcard_string(&cop.next().unwrap());
         let exit_sector = cop.next().unwrap().as_str().to_string();
         let entry_sector = cop.next().unwrap().as_str().to_string();
-        let climb_level = parse_wildcard_u32(cop.next().unwrap());
-        let descent_level = parse_wildcard_u32(cop.next().unwrap());
+        let climb_level = parse_wildcard_u32(&cop.next().unwrap());
+        let descent_level = parse_wildcard_u32(&cop.next().unwrap());
         let description = cop.next().unwrap().as_str().to_string();
 
         Self {
@@ -539,15 +539,15 @@ fn parse_sid_star(pair: Pair<Rule>) -> SidStar {
         .collect();
     match rule {
         Rule::sid => SidStar::Sid(SID {
+            name,
             airport,
             runway,
-            name,
             waypoints,
         }),
         Rule::star => SidStar::Star(STAR {
+            name,
             airport,
             runway,
-            name,
             waypoints,
         }),
         rule => unreachable!("{rule:?}"),

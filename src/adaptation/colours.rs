@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, num::TryFromIntError};
 
 use bevy_reflect::Reflect;
 use once_cell::sync::Lazy;
@@ -25,21 +25,20 @@ impl Colour {
         Self { r, g, b, a: 255 }
     }
 
-    pub fn from_euroscope(colour_num: i32) -> Self {
-        Self::from_rgb(
-            (colour_num % 256) as u8,
-            (colour_num / 256 % 256) as u8,
-            (colour_num / 256 / 256) as u8,
-        )
+    pub fn from_euroscope(colour_num: i32) -> Result<Self, TryFromIntError> {
+        Ok(Self::from_rgb(
+            u8::try_from(colour_num % 256)?,
+            u8::try_from(colour_num / 256 % 256)?,
+            u8::try_from(colour_num / 256 / 256)?,
+        ))
     }
 
-    fn from_symbology(symbology: &Symbology, key: (String, String), default: Colour) -> Self {
+    fn from_symbology(symbology: &Symbology, key: &(String, String), default: Colour) -> Self {
         symbology
             .items
             .0
-            .get(&key)
-            .map(|item| item.colour)
-            .unwrap_or(default)
+            .get(key)
+            .map_or(default, |item| item.colour)
     }
 
     fn from_topsky_default(settings: &Settings, key: &str) -> Option<Self> {
@@ -105,12 +104,12 @@ impl SectorColours {
         Self {
             active_background: Colour::from_symbology(
                 symbology,
-                ("Sector".to_string(), "active sector background".to_string()),
+                &("Sector".to_string(), "active sector background".to_string()),
                 Self::DEFAULT_ACTIVE_BACKGROUND,
             ),
             inactive_background: Colour::from_symbology(
                 symbology,
-                (
+                &(
                     "Sector".to_string(),
                     "inactive sector background".to_string(),
                 ),

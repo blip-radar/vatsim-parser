@@ -4,7 +4,7 @@ pub mod symbol;
 
 use std::collections::HashMap;
 use std::io;
-use std::path::PathBuf;
+use std::path::Path;
 
 use pest::iterators::Pair;
 use pest_derive::Parser;
@@ -226,7 +226,7 @@ fn parse_point(pair: Pair<Rule>) -> (f64, f64) {
 
 pub type TopskyResult = Result<Topsky, TopskyError>;
 impl Topsky {
-    pub fn parse(path: PathBuf) -> TopskyResult {
+    pub fn parse(path: &Path) -> TopskyResult {
         let (mut colours, settings) = parse_topsky_settings(&read_to_string(&fs_err::read(
             path.join("TopSkySettings.txt"),
         )?)?)?;

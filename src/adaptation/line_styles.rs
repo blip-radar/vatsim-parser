@@ -41,8 +41,8 @@ pub fn line_styles_from_topsky(topsky: &Option<Topsky>) -> HashMap<String, Optio
                                     .dash_lengths
                                     .chunks_exact(2)
                                     .map(|chunk| Dash {
-                                        length: chunk[0] as f32,
-                                        gap: chunk[1] as f32,
+                                        length: chunk[0],
+                                        gap: chunk[1],
                                     })
                                     .collect(),
                             )

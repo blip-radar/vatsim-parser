@@ -25,10 +25,13 @@ impl Settings {
         self.0
             .get(key)
             .and_then(|font_str| {
-                font_str.parse().map(Some).unwrap_or_else(|_| {
-                    warn!("Could not parse {key}");
-                    None
-                })
+                font_str.parse().map_or_else(
+                    |_| {
+                        warn!("Could not parse {key}");
+                        None
+                    },
+                    Some,
+                )
             })
             .unwrap_or(default)
     }

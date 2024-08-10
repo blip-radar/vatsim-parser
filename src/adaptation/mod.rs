@@ -127,7 +127,7 @@ pub struct Adaptation {
 }
 
 impl Adaptation {
-    pub fn from_prf(prf: Prf) -> AdaptationResult {
+    pub fn from_prf(prf: &Prf) -> AdaptationResult {
         // TODO parallelise/asyncify where able
         let sct = Sct::parse(&fs_err::read(prf.sct_path())?)?;
         let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
@@ -141,10 +141,13 @@ impl Adaptation {
             .and_then(|path| fs_err::read(path).ok())
             .and_then(|bytes| serde_json::from_slice(&bytes).ok());
         let topsky = prf.topsky_path().and_then(|path| {
-            Topsky::parse(path).map(Some).unwrap_or_else(|e| {
-                warn!("Topsky: {e}");
-                None
-            })
+            Topsky::parse(&path).map_or_else(
+                |e| {
+                    warn!("Topsky: {e}");
+                    None
+                },
+                Some,
+            )
         });
         let settings = Settings::from_euroscope(&topsky, &squawks);
         let colours = Colours::from_euroscope(&symbology, &topsky, &settings);

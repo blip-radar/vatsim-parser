@@ -63,12 +63,12 @@ impl Map {
                     symbols: vec![],
                 };
                 change_fn(&mut map_group);
-                self.map_groups.push(map_group)
+                self.map_groups.push(map_group);
             }
         } else {
             let mut default_map_group = MapGroup::default_from_settings(settings, colour);
             change_fn(&mut default_map_group);
-            self.map_groups.push(default_map_group)
+            self.map_groups.push(default_map_group);
         }
     }
 }
@@ -93,13 +93,13 @@ impl MapGroup {
             colour,
             font_size: settings.maps.font_size,
             layer: settings.maps.layer,
-            asr_data: Default::default(),
-            zoom: Default::default(),
+            asr_data: None,
+            zoom: None,
             lines: MultiLineString::new(vec![]),
-            labels: Default::default(),
-            symbols: Default::default(),
-            polygons: Default::default(),
-            line_style: Default::default(),
+            labels: vec![],
+            symbols: vec![],
+            polygons: vec![],
+            line_style: LineStyle::default(),
         }
     }
 
@@ -119,9 +119,8 @@ impl MapGroup {
                 label_offset: symbol
                     .label
                     .as_ref()
-                    .map(|l| l.pos)
-                    .unwrap_or(settings.maps.label_offset),
-            })
+                    .map_or(settings.maps.label_offset, |l| l.pos),
+            });
         } else {
             warn!("Could not convert {:?}", symbol.location);
         }
@@ -138,7 +137,7 @@ impl MapGroup {
                     coord
                 })
                 .collect()
-        }))
+        }));
     }
     fn add_topsky_polygon(&mut self, coords: &[Location], locations: &Locations) {
         self.polygons.push(Polygon::new(
@@ -153,7 +152,7 @@ impl MapGroup {
                 })
                 .collect(),
             vec![],
-        ))
+        ));
     }
     fn add_topsky_text(&mut self, text: &Text, locations: &Locations) {
         if let Some(coordinate) = locations.convert_location(&text.location) {
@@ -162,7 +161,7 @@ impl MapGroup {
                 text: text.content.clone(),
                 // TODO global/map-level alignment
                 alignment: text.alignment.clone().unwrap_or_default(),
-            })
+            });
         } else {
             warn!("Could not convert {:?}", text.location);
         }
@@ -217,32 +216,32 @@ pub fn from_topsky(
                             MapRule::Colour(new_colour_name) => {
                                 if let Some(new_colour) = colours.get(new_colour_name, settings) {
                                     map.config_change(settings, colour, |map_group| {
-                                        map_group.colour = new_colour
-                                    })
+                                        map_group.colour = new_colour;
+                                    });
                                 }
                             }
                             MapRule::AsrData(asr_data) => {
                                 map.config_change(settings, colour, |map_group| {
-                                    map_group.asr_data.clone_from(asr_data)
-                                })
+                                    map_group.asr_data.clone_from(asr_data);
+                                });
                             }
                             MapRule::Active(active) => map.active.push(vec![active.clone()]),
                             MapRule::AndActive(active) => {
                                 if let Some(actives) = map.active.last_mut() {
-                                    actives.push(active.clone())
+                                    actives.push(active.clone());
                                 } else {
-                                    warn!("AndActive unreachable?!")
+                                    warn!("AndActive unreachable?!");
                                 }
                             }
                             MapRule::Layer(layer) => {
                                 map.config_change(settings, colour, |map_group| {
-                                    map_group.layer = *layer as f32
-                                })
+                                    map_group.layer = *layer;
+                                });
                             }
                             MapRule::Zoom(zoom) => {
                                 map.config_change(settings, colour, |map_group| {
-                                    map_group.zoom = Some(*zoom)
-                                })
+                                    map_group.zoom = Some(*zoom);
+                                });
                             }
                             MapRule::FontSize(font_size_mod) => {
                                 map.config_change(settings, colour, |map_group| {
@@ -253,12 +252,12 @@ pub fn from_topsky(
                                         FontSize::Multiply(fs) => map_group.font_size * fs,
                                         FontSize::Default => settings.maps.font_size,
                                     }
-                                })
+                                });
                             }
                             MapRule::LineStyle(ls) => {
                                 map.config_change(settings, colour, |map_group| {
-                                    map_group.line_style = ls.clone()
-                                })
+                                    map_group.line_style = ls.clone();
+                                });
                             }
                             // safe unwrap due to initial element above
                             MapRule::Symbol(s) => map
@@ -284,7 +283,7 @@ pub fn from_topsky(
                                     .last_mut()
                                     .unwrap()
                                     .add_topsky_polygon(&coord_buffer, locations);
-                                coord_buffer.clear()
+                                coord_buffer.clear();
                             }
                             MapRule::CoordLine => {
                                 map.map_groups.last_mut().unwrap().add_topsky_lines(
@@ -293,7 +292,7 @@ pub fn from_topsky(
                                     }],
                                     locations,
                                 );
-                                coord_buffer.clear()
+                                coord_buffer.clear();
                             }
                             MapRule::Coord(loc) => coord_buffer.push(loc.clone()),
                             // intentionally ignored
@@ -326,7 +325,7 @@ pub fn from_topsky(
                         maps: HashMap::from([(map.name.clone(), map)]),
                     });
             } else {
-                warn!("No colour or colour not found in map `{}`", topsky_map.name)
+                warn!("No colour or colour not found in map `{}`", topsky_map.name);
             }
 
             folders

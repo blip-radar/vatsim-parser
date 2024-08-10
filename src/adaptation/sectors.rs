@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use geo::{Coord, Line, LineString, Polygon};
+use geo::{Coord, Line, Polygon};
 use multimap::MultiMap;
 use serde::Serialize;
 use tracing::warn;
@@ -38,12 +38,12 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
                 // i64 to be able to use as key below
                 Line::<i64>::new(
                     (
-                        (line.start.x * 1000000.0) as i64,
-                        (line.start.y * 1000000.0) as i64,
+                        (line.start.x * 1_000_000.0) as i64,
+                        (line.start.y * 1_000_000.0) as i64,
                     ),
                     (
-                        (line.end.x * 1000000.0) as i64,
-                        (line.end.y * 1000000.0) as i64,
+                        (line.end.x * 1_000_000.0) as i64,
+                        (line.end.y * 1_000_000.0) as i64,
                     ),
                 )
             })
@@ -78,7 +78,10 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
 
         while !stack.is_empty() {
             if let Some(neighbors) = adj_list.get_mut(&current) {
-                if !neighbors.is_empty() {
+                if neighbors.is_empty() {
+                    polygon.push(current);
+                    current = stack.pop().unwrap();
+                } else {
                     stack.push(current);
                     let next = neighbors.pop().unwrap();
                     if let Some(rev_neighbors) = adj_list.get_mut(&next) {
@@ -87,9 +90,6 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
                         }
                     }
                     current = next;
-                } else {
-                    polygon.push(current);
-                    current = stack.pop().unwrap();
                 }
             }
         }
@@ -101,11 +101,10 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
 
     if polygon.len() == lines.len() + 1 {
         Some(Polygon::new(
-            LineString::from_iter(
-                polygon
-                    .iter()
-                    .map(|c| Coord::from((c.x as f64, c.y as f64)) / 1000000.0),
-            ),
+            polygon
+                .iter()
+                .map(|c| Coord::from((c.x as f64, c.y as f64)) / 1_000_000.0)
+                .collect(),
             vec![],
         ))
     } else {

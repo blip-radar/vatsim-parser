@@ -165,6 +165,7 @@ fn parse_setting(pair: Pair<Rule>) -> Option<AsrData> {
         Rule::leader => {
             let leader = inner.next().unwrap().as_str().parse::<i8>().unwrap();
             Some(if leader > 0 {
+                #[allow(clippy::cast_sign_loss)]
                 AsrData::Leader(Leader::Miles(leader as u8))
             } else {
                 AsrData::Leader(Leader::Minutes(leader.unsigned_abs()))
@@ -513,7 +514,7 @@ mod test {
         assert_eq!(asr.simulation_mode, SimulationMode::Radar);
         assert!(!asr.disable_panning);
         assert!(!asr.disable_zooming);
-        assert_eq!(asr.display_rotation, 0.0);
+        assert!((asr.display_rotation - 0.0).abs() < f64::EPSILON);
         assert_eq!(asr.tag_family, "iCAS2-APP".to_string());
         assert_eq!(
             asr.window_area,

@@ -7,6 +7,7 @@ use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
+use tracing::warn;
 
 use crate::{
     adaptation::{colours::Colour, symbols::SymbolRule},
@@ -78,7 +79,7 @@ pub struct Symbology {
 pub type SymbologyResult = Result<Symbology, SymbologyError>;
 
 impl Item {
-    fn parse(pair: Pair<Rule>) -> Self {
+    fn parse(pair: Pair<Rule>) -> Option<Self> {
         let mut item = pair.into_inner();
         let folder = item.next().unwrap().as_str().to_string();
         let name = item.next().unwrap().as_str().to_string();
@@ -86,11 +87,17 @@ impl Item {
         let colour_num = colour_str.parse::<i32>().unwrap();
         let font_size = item.next().unwrap().as_str().parse().unwrap();
 
-        Self {
-            folder,
-            name,
-            colour: Colour::from_euroscope(colour_num),
-            font_size,
+        match Colour::from_euroscope(colour_num) {
+            Ok(colour) => Some(Self {
+                folder,
+                name,
+                colour,
+                font_size,
+            }),
+            Err(e) => {
+                warn!("Could not parse colour {folder}.{name}: {e}");
+                None
+            }
         }
     }
 }
@@ -186,8 +193,9 @@ impl Symbology {
                     |(mut items, mut symbols), pair| {
                         match pair.as_rule() {
                             Rule::item => {
-                                let item = Item::parse(pair);
-                                items.insert((item.folder.clone(), item.name.clone()), item);
+                                if let Some(item) = Item::parse(pair) {
+                                    items.insert((item.folder.clone(), item.name.clone()), item);
+                                }
                             }
                             Rule::symbol => {
                                 if let Some((symbol_type, symbol_rules)) = parse_symbol_rules(pair)

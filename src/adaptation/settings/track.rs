@@ -52,10 +52,10 @@ impl VectorSettings {
             .settings
             .parse_with_default("Track_PredictionLine", DEFAULT_VECTOR_LENGTH);
         Self {
-            length: if topsky_length != 0.0 {
-                topsky_length
-            } else {
+            length: if topsky_length == 0.0 {
                 DEFAULT_VECTOR_LENGTH
+            } else {
+                topsky_length
             },
             enabled: topsky_length != 0.0,
             ..Default::default()

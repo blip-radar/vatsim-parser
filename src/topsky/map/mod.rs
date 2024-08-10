@@ -235,7 +235,7 @@ pub enum MapRule {
     Global,
     ScreenSpecific,
     Hidden,
-    Layer(i32),
+    Layer(f32),
     Symbol(MapSymbol),
     Zoom(f32),
     FontSize(FontSize),
@@ -326,7 +326,7 @@ pub struct LineStyleDef {
     pub name: String,
     pub brush: String,
     pub hatch: String,
-    pub dash_lengths: Vec<i32>,
+    pub dash_lengths: Vec<f32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]

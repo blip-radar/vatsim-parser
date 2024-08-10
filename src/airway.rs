@@ -30,7 +30,7 @@ fn parse_coord(pair: Pair<Rule>) -> Coord {
     let lng = coord.next().unwrap().as_str().parse().unwrap();
     Coord { x: lng, y: lat }
 }
-fn parse_level(pair: Pair<Rule>) -> Option<u32> {
+fn parse_level(pair: &Pair<Rule>) -> Option<u32> {
     match pair.as_rule() {
         Rule::not_established => None,
         Rule::level => Some(pair.as_str().parse().unwrap()),
@@ -45,13 +45,13 @@ impl AirwayFix {
                 let mut airway_fix = pair.into_inner();
                 let name = airway_fix.next().unwrap().as_str().to_string();
                 let coord = parse_coord(airway_fix.next().unwrap());
-                let minimum_level = parse_level(airway_fix.next().unwrap());
+                let minimum_level = parse_level(&airway_fix.next().unwrap());
                 let valid_direction = airway_fix.next().unwrap().as_str() == "Y";
                 Some(AirwayFix {
                     name,
                     coord,
-                    minimum_level,
                     valid_direction,
+                    minimum_level,
                 })
             }
             rule => unreachable!("{rule:?}"),
@@ -159,7 +159,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 previous: Some(AirwayFix {
                                     name: "REDNI".to_string(),
                                     coord: Coord {
-                                        x: 10.890278,
+                                        x: 10.890_278,
                                         y: 49.08
                                     },
                                     valid_direction: false,
@@ -168,8 +168,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 next: Some(AirwayFix {
                                     name: "DEBHI".to_string(),
                                     coord: Coord {
-                                        x: 10.466111,
-                                        y: 49.360833,
+                                        x: 10.466_111,
+                                        y: 49.360_833,
                                     },
                                     valid_direction: true,
                                     minimum_level: None
@@ -189,8 +189,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 previous: Some(AirwayFix {
                                     name: "ASPAT".to_string(),
                                     coord: Coord {
-                                        x: 10.725828,
-                                        y: 49.196175
+                                        x: 10.725_828,
+                                        y: 49.196_175
                                     },
                                     valid_direction: false,
                                     minimum_level: Some(5500)
@@ -198,8 +198,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 next: Some(AirwayFix {
                                     name: "TOSTU".to_string(),
                                     coord: Coord {
-                                        x: 9.805942,
-                                        y: 49.713536
+                                        x: 9.805_942,
+                                        y: 49.713_536
                                     },
                                     valid_direction: true,
                                     minimum_level: Some(5000)
@@ -220,8 +220,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     previous: Some(AirwayFix {
                                         name: "NIMDI".to_string(),
                                         coord: Coord {
-                                            x: 11.633611,
-                                            y: 48.802222
+                                            x: 11.633_611,
+                                            y: 48.802_222
                                         },
                                         valid_direction: false,
                                         minimum_level: Some(5000)
@@ -229,7 +229,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     next: Some(AirwayFix {
                                         name: "GOLMO".to_string(),
                                         coord: Coord {
-                                            x: 11.055278,
+                                            x: 11.055_278,
                                             y: 48.9625
                                         },
                                         valid_direction: true,
@@ -244,8 +244,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     previous: Some(AirwayFix {
                                         name: "GIVMI".to_string(),
                                         coord: Coord {
-                                            x: 11.364803,
-                                            y: 48.701094
+                                            x: 11.364_803,
+                                            y: 48.701_094
                                         },
                                         valid_direction: false,
                                         minimum_level: Some(4000)
@@ -253,8 +253,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     next: Some(AirwayFix {
                                         name: "TALAL".to_string(),
                                         coord: Coord {
-                                            x: 11.085278,
-                                            y: 49.108333
+                                            x: 11.085_278,
+                                            y: 49.108_333
                                         },
                                         valid_direction: true,
                                         minimum_level: Some(5000)
@@ -276,8 +276,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 next: Some(AirwayFix {
                                     name: "ERNAS".to_string(),
                                     coord: Coord {
-                                        x: 11.219353,
-                                        y: 48.844669
+                                        x: 11.219_353,
+                                        y: 48.844_669
                                     },
                                     valid_direction: true,
                                     minimum_level: Some(4000)
@@ -297,8 +297,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 previous: Some(AirwayFix {
                                     name: "ERNAS".to_string(),
                                     coord: Coord {
-                                        x: 11.219353,
-                                        y: 48.844669
+                                        x: 11.219_353,
+                                        y: 48.844_669
                                     },
                                     valid_direction: false,
                                     minimum_level: Some(5500)
@@ -306,7 +306,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 next: Some(AirwayFix {
                                     name: "REDNI".to_string(),
                                     coord: Coord {
-                                        x: 10.890278,
+                                        x: 10.890_278,
                                         y: 49.08
                                     },
                                     valid_direction: true,
@@ -327,7 +327,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 previous: Some(AirwayFix {
                                     name: "GOLMO".to_string(),
                                     coord: Coord {
-                                        x: 11.055278,
+                                        x: 11.055_278,
                                         y: 48.9625
                                     },
                                     valid_direction: false,
@@ -336,8 +336,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 next: Some(AirwayFix {
                                     name: "ASPAT".to_string(),
                                     coord: Coord {
-                                        x: 10.725828,
-                                        y: 49.196175
+                                        x: 10.725_828,
+                                        y: 49.196_175
                                     },
                                     valid_direction: true,
                                     minimum_level: Some(5500)
@@ -347,6 +347,6 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                     }
                 )
             ])
-        )
+        );
     }
 }

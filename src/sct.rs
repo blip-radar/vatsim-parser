@@ -261,17 +261,23 @@ fn parse_info_section(pair: Pair<Rule>, colours: &mut HashMap<String, Colour>) -
     sct_info
 }
 
-fn parse_colour_definition(pair: Pair<Rule>) -> (String, Colour) {
+fn parse_colour_definition(pair: Pair<Rule>) -> Option<(String, Colour)> {
     let mut pairs = pair.into_inner();
     let colour_name = pairs.next().unwrap().as_str().to_string();
-    let colour_value = Colour::from_euroscope(pairs.next().unwrap().as_str().parse().unwrap());
-    (colour_name, colour_value)
+    match Colour::from_euroscope(pairs.next().unwrap().as_str().parse().unwrap()) {
+        Ok(colour_value) => Some((colour_name, colour_value)),
+        Err(e) => {
+            warn!("Could not parse colour {colour_name}: {e}");
+            None
+        }
+    }
 }
 
 #[inline]
 fn store_colour(colours: &mut HashMap<String, Colour>, pair: Pair<Rule>) {
-    let (colour_name, colour) = parse_colour_definition(pair);
-    colours.insert(colour_name, colour);
+    if let Some((colour_name, colour)) = parse_colour_definition(pair) {
+        colours.insert(colour_name, colour);
+    }
 }
 
 fn parse_independent_section(

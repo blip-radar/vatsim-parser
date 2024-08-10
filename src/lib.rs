@@ -72,7 +72,7 @@ where
     K2: Eq + Hash + Display,
 {
     fn default() -> Self {
-        Self(Default::default())
+        Self(HashMap::default())
     }
 }
 
@@ -100,6 +100,6 @@ where
     K2: Eq + Hash + Display,
 {
     fn default() -> Self {
-        Self(Default::default())
+        Self(MultiMap::default())
     }
 }
