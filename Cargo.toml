@@ -40,6 +40,9 @@ tracing-subscriber = "0.3.18"
 result_large_err = "allow"
 large_enum_variant = "allow"
 
+let-underscore-must-use = "warn"
+print_stderr = "warn"
+
 pedantic = { level = "warn", priority = -1 }
 
 # TODO some are valid, recheck
