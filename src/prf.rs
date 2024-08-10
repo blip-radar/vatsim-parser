@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env::current_dir;
 use std::ffi::OsStr;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -33,38 +34,34 @@ pub struct Prf {
 
 pub type PrfResult = Result<Prf, PrfError>;
 
-fn from_prf_path(prf_path: &str) -> PathBuf {
-    let abs_path = prf_path.replace('\\', "/");
-    let rel_path = abs_path.strip_prefix('/').unwrap_or(&abs_path);
-    PathBuf::from(rel_path.strip_suffix('\r').unwrap_or(rel_path))
-}
-
 impl Prf {
+    fn join_settings_path(&self, path: &str) -> PathBuf {
+        let normalised_path = path.trim_end().replace('\\', "/");
+        if let Some(rel_path) = normalised_path.strip_prefix('/') {
+            self.path.parent().unwrap().join(rel_path)
+        } else {
+            current_dir().unwrap().join(normalised_path)
+        }
+    }
     pub fn sct_path(&self) -> PathBuf {
-        let sct_path =
-            from_prf_path(&self.settings.0[&("Settings".to_string(), "sector".to_string())]);
-        self.path.parent().unwrap().join(sct_path)
+        self.join_settings_path(&self.settings.0[&("Settings".to_string(), "sector".to_string())])
     }
 
     pub fn ese_path(&self) -> PathBuf {
-        let ese_path = from_prf_path(
+        self.join_settings_path(
             &self.settings.0[&("Settings".to_string(), "sector".to_string())]
                 .replace(".sct", ".ese"),
-        );
-        self.path.parent().unwrap().join(ese_path)
+        )
     }
 
     pub fn airways_path(&self) -> PathBuf {
-        let airways_path =
-            from_prf_path(&self.settings.0[&("Settings".to_string(), "airways".to_string())]);
-        self.path.parent().unwrap().join(airways_path)
+        self.join_settings_path(&self.settings.0[&("Settings".to_string(), "airways".to_string())])
     }
 
     pub fn symbology_path(&self) -> PathBuf {
-        let symbology_path = from_prf_path(
+        self.join_settings_path(
             &self.settings.0[&("Settings".to_string(), "SettingsfileSYMBOLOGY".to_string())],
-        );
-        self.path.parent().unwrap().join(symbology_path)
+        )
     }
 
     pub fn squawks_path(&self) -> Option<PathBuf> {
@@ -72,7 +69,7 @@ impl Prf {
             .0
             .iter()
             .find_map(|(_, v)| {
-                let path = from_prf_path(v);
+                let path = self.join_settings_path(v);
                 if path.file_name() == Some(OsStr::new("Squawks.dll")) {
                     path.parent()
                         .map(Path::to_path_buf)
@@ -89,7 +86,7 @@ impl Prf {
             .0
             .iter()
             .find_map(|(_, v)| {
-                let path = from_prf_path(v);
+                let path = self.join_settings_path(v);
                 if path.file_name() == Some(OsStr::new("TopSky.dll")) {
                     path.parent().map(Path::to_path_buf)
                 } else {
@@ -103,7 +100,7 @@ impl Prf {
         self.settings
             .0
             .get(&("RecentFiles".to_string(), format!("Recent{num}")))
-            .map(|recent_path| self.path.parent().unwrap().join(from_prf_path(recent_path)))
+            .map(|recent_path| self.join_settings_path(recent_path))
     }
 
     pub fn parse(path: &Path, contents: &[u8]) -> PrfResult {
@@ -163,7 +160,7 @@ mod test {
                 PathBuf::from(".")
                     .canonicalize()
                     .unwrap()
-                    .join("./fixtures/EDMM/Plugins/Topsky/iCAS2")
+                    .join("fixtures/EDMM/Plugins/Topsky/iCAS2")
             )
         );
         assert_eq!(
