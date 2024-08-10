@@ -256,6 +256,7 @@ impl MapRule {
                     Rule::folder => Some(MapRule::Folder(
                         pair.into_inner().next().unwrap().as_str().to_string(),
                     )),
+                    // TODO missing optional :FillColorName:FillBgColorName
                     Rule::colour => Some(MapRule::Colour(
                         pair.into_inner().next().unwrap().as_str().to_string(),
                     )),

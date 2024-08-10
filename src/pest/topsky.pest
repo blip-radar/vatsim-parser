@@ -37,7 +37,7 @@ map_setting = _{
 
 folder = { "FOLDER:" ~ colon_delimited_text }
 
-colour = { "COLOR:" ~ colon_delimited_text }
+colour = { "COLOR:" ~ colon_delimited_text ~ (":" ~ colon_delimited_text)? ~ (":" ~ colon_delimited_text)? }
 
 asrdata = { "ASRDATA:" ~ (wildcard | names) }
 
