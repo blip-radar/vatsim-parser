@@ -1,7 +1,7 @@
 airlines = { SOI ~ NL? ~ (COMMENT | definition)+ ~ EOI }
 
 definition = {
-    designator ~ "\t" ~ airline ~ "\t" ~ callsign ~ "\t" ~ country ~ NL
+    designator ~ "\t" ~ airline ~ "\t" ~ callsign ~ "\t" ~ country ~ NL?
 }
 
 // tab_delimited_text       = @{ (!(NL | (" "* ~ "\t")) ~ ANY)* }
