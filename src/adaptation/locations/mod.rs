@@ -234,7 +234,7 @@ impl Locations {
             } else {
                 lng_str.to_string()
             };
-            if normalised_lng_str.len() - normalised_lat_str.len() != 1 {
+            if normalised_lng_str.len().saturating_sub(normalised_lat_str.len()) != 1 {
                 warn!("Coordinate waypoints must have the same precision in lat/lon: {designator}");
                 return None;
             }
