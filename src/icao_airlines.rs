@@ -102,7 +102,7 @@ CNW	NORTH-WESTERN CARGO INTERNATIONAL AIRLINES CO.,LTD 	TANG	CHINA
                     "CNW".to_string(),
                     Airline {
                         designator: "CNW".to_string(),
-                        airline: "NORTH-WESTERN CARGO INTERNATIONAL AIRLINES CO.,LTD ".to_string(),
+                        airline: "NORTH-WESTERN CARGO INTERNATIONAL AIRLINES CO.,LTD".to_string(),
                         callsign: "TANG".to_string(),
                         country: "CHINA".to_string()
                     }

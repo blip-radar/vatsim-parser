@@ -17,4 +17,4 @@ runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 colon_delimited_text     = @{ (!(NL | ":") ~ ANY)* }
 comma_delimited_text     = @{ (!(NL | ":" | ",") ~ ANY)* }
 backslash_delimited_text = @{ (!(NL | "\\") ~ ANY)* }
-tab_delimited_text       = @{ (!(NL | "\t") ~ ANY)* }
+tab_delimited_text       = @{ (!(NL | (" "* ~ "\t")) ~ ANY)* }
