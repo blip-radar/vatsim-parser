@@ -1,19 +1,20 @@
-point = { decimal ~ ":" ~ decimal }
-NL = _{ ((" " | "\t")* ~ NEWLINE)+ }
-decimal = @{ ("-"|"+")? ~ ((ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+) | ASCII_DIGIT+) }
-integer = @{ ("-"|"+")? ~ ASCII_DIGIT+ }
+point       =  { decimal ~ ":" ~ decimal }
+NL          = _{ ((" " | "\t")* ~ NEWLINE)+ }
+decimal     = @{ ("-" | "+")? ~ ((ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+) | ASCII_DIGIT+) }
+integer     = @{ ("-" | "+")? ~ ASCII_DIGIT+ }
 pos_integer = @{ "+"? ~ ASCII_DIGIT+ }
- 
-coordinate = { coord_part ~ ":" ~ coord_part }
-coord_part = { sct_coord_part | decimal }
+
+coordinate     =  { coord_part ~ ":" ~ coord_part }
+coord_part     =  { sct_coord_part | decimal }
 sct_coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
-deg = @{ ASCII_DIGIT+ }
-min = @{ ASCII_DIGIT+ }
-sec = @{ decimal }
-hemi = @{ "N" | "S" | "W" | "E" | "n" | "s" | "w" | "e" } 
+deg            = @{ ASCII_DIGIT+ }
+min            = @{ ASCII_DIGIT+ }
+sec            = @{ decimal }
+hemi           = @{ "N" | "S" | "W" | "E" | "n" | "s" | "w" | "e" }
 
 runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 
-colon_delimited_text = @{ (!(NL | ":") ~ ANY)* }
-comma_delimited_text = @{ (!(NL | ":" | ",") ~ ANY)* }
+colon_delimited_text     = @{ (!(NL | ":") ~ ANY)* }
+comma_delimited_text     = @{ (!(NL | ":" | ",") ~ ANY)* }
 backslash_delimited_text = @{ (!(NL | "\\") ~ ANY)* }
+tab_delimited_text       = @{ (!(NL | "\t") ~ ANY)* }

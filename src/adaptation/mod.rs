@@ -1,4 +1,5 @@
 pub mod colours;
+pub mod icao;
 pub mod line_styles;
 pub mod locations;
 pub mod maps;
@@ -9,6 +10,7 @@ pub mod symbols;
 use std::{collections::HashMap, io};
 
 use bevy_reflect::Reflect;
+use icao::Airline;
 use line_styles::{line_styles_from_topsky, Dash};
 use sectors::{Sector, Volume};
 use serde::Serialize;
@@ -19,6 +21,7 @@ use tracing::warn;
 use crate::{
     airway::{parse_airway_txt, AirwayError},
     ese::{self, Ese, EseError},
+    icao_airlines::{parse_airlines, AirlinesError},
     prf::Prf,
     sct::{Sct, SctError},
     symbology::{Symbology, SymbologyError},
@@ -90,6 +93,8 @@ pub enum AdaptationError {
     Topsky(#[from] TopskyError),
     #[error("airway.txt: {0}")]
     Airways(#[from] AirwayError),
+    #[error("ICAO_Airlines.txt: {0}")]
+    Airlines(#[from] AirlinesError),
     #[error("failed to read file: {0}")]
     FileRead(#[from] io::Error),
 }
@@ -124,6 +129,7 @@ pub struct Adaptation {
     // stca_blanking
     // cpdlc
     // external/extra_plugin_settings?
+    pub airlines: HashMap<String, Airline>,
 }
 
 impl Adaptation {
@@ -151,6 +157,7 @@ impl Adaptation {
         });
         let settings = Settings::from_euroscope(&topsky, &squawks);
         let colours = Colours::from_euroscope(&symbology, &topsky, &settings);
+        let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
         Ok(Adaptation {
             positions,
             volumes,
@@ -164,6 +171,7 @@ impl Adaptation {
             line_styles: line_styles_from_topsky(&topsky),
             colours,
             settings,
+            airlines,
         })
     }
 }

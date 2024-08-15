@@ -10,6 +10,7 @@ pub mod adaptation;
 pub mod airway;
 pub mod asr;
 pub mod ese;
+pub mod icao_airlines;
 pub mod prf;
 pub mod sct;
 pub mod squawks;

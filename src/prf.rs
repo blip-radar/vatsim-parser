@@ -58,6 +58,18 @@ impl Prf {
         self.join_settings_path(&self.settings.0[&("Settings".to_string(), "airways".to_string())])
     }
 
+    pub fn airlines_path(&self) -> PathBuf {
+        self.join_settings_path(&self.settings.0[&("Settings".to_string(), "airlines".to_string())])
+    }
+
+    pub fn aircraft_path(&self) -> PathBuf {
+        self.join_settings_path(&self.settings.0[&("Settings".to_string(), "aircraft".to_string())])
+    }
+
+    pub fn airports_path(&self) -> PathBuf {
+        self.join_settings_path(&self.settings.0[&("Settings".to_string(), "airports".to_string())])
+    }
+
     pub fn symbology_path(&self) -> PathBuf {
         self.join_settings_path(
             &self.settings.0[&("Settings".to_string(), "SettingsfileSYMBOLOGY".to_string())],
