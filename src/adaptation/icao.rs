@@ -89,3 +89,10 @@ pub struct Aircraft {
     pub manufacturer: String,
     pub name: String,
 }
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct Airport {
+    pub designator: String,
+    pub name: String,
+    pub country: String,
+}

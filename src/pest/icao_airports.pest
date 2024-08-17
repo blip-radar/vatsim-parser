@@ -1,0 +1,12 @@
+aircraft = { SOI ~ NL? ~ (COMMENT | definition)+ ~ EOI }
+
+definition = {
+    designator ~ "\t" ~ name ~ "\t" ~ country ~ NL?
+}
+
+designator = @{ (LETTER | ASCII_DIGIT)+ }
+name       = @{ tab_delimited_text }
+country    = @{ tab_delimited_text }
+
+COMMENT    = _{ (";" | "//") ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " }

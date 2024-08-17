@@ -12,6 +12,7 @@ use std::{collections::HashMap, io};
 use bevy_reflect::Reflect;
 use icao::Aircraft;
 use icao::Airline;
+use icao::Airport;
 use line_styles::{line_styles_from_topsky, Dash};
 use sectors::{Sector, Volume};
 use serde::Serialize;
@@ -24,6 +25,7 @@ use crate::{
     ese::{self, Ese, EseError},
     icao_aircraft::{parse_aircraft, AircraftError},
     icao_airlines::{parse_airlines, AirlinesError},
+    icao_airports::{parse_airports, AirportsError},
     prf::Prf,
     sct::{Sct, SctError},
     symbology::{Symbology, SymbologyError},
@@ -99,6 +101,8 @@ pub enum AdaptationError {
     Aircraft(#[from] AircraftError),
     #[error("ICAO_Airlines.txt: {0}")]
     Airlines(#[from] AirlinesError),
+    #[error("ICAO_Airports.txt: {0}")]
+    Airports(#[from] AirportsError),
     #[error("failed to read file: {0}")]
     FileRead(#[from] io::Error),
 }
@@ -135,6 +139,7 @@ pub struct Adaptation {
     // external/extra_plugin_settings?
     pub aircraft: HashMap<String, Aircraft>,
     pub airlines: HashMap<String, Airline>,
+    pub airports: HashMap<String, Airport>,
 }
 
 impl Adaptation {
@@ -164,6 +169,7 @@ impl Adaptation {
         let colours = Colours::from_euroscope(&symbology, &topsky, &settings);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
+        let airports = parse_airports(&fs_err::read(prf.airports_path())?)?;
         Ok(Adaptation {
             positions,
             volumes,
@@ -179,6 +185,7 @@ impl Adaptation {
             settings,
             aircraft,
             airlines,
+            airports,
         })
     }
 }
