@@ -6,9 +6,9 @@ definition = {
 
 designator   = @{ (LETTER | ASCII_DIGIT)+ }
 wtc          = @{ ("L" | "M" | "H" | "J" | "-") }
-aircrafttype = @{ ("L" | "H" | "S" | "-") }
+aircrafttype = @{ ("L" | "S" | "A" | "G" | "H" | "T" | "-") }
 num_engines  = @{ NUMBER }
-enginetype   = @{ ("P" | "T" | "J" | "-") }
+enginetype   = @{ ("P" | "T" | "J" | "E" | "R" | "-") }
 manufacturer = @{ tab_delimited_text }
 name         = @{ tab_delimited_text }
 
