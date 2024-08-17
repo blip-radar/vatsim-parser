@@ -1,0 +1,16 @@
+aircraft = { SOI ~ NL? ~ (COMMENT | definition)+ ~ EOI }
+
+definition = {
+    designator ~ "\t" ~ wtc ~ aircrafttype ~ num_engines ~ enginetype ~ "\t" ~ manufacturer ~ "\t" ~ name ~ NL?
+}
+
+designator   = @{ (LETTER | ASCII_DIGIT)+ }
+wtc          = @{ ("L" | "M" | "H" | "J" | "-") }
+aircrafttype = @{ ("L" | "H" | "S" | "-") }
+num_engines  = @{ NUMBER }
+enginetype   = @{ ("P" | "T" | "J" | "-") }
+manufacturer = @{ tab_delimited_text }
+name         = @{ tab_delimited_text }
+
+COMMENT    = _{ (";" | "//") ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " }

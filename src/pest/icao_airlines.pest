@@ -4,8 +4,6 @@ definition = {
     designator ~ "\t" ~ airline ~ "\t" ~ callsign ~ "\t" ~ country ~ NL?
 }
 
-// tab_delimited_text       = @{ (!(NL | (" "* ~ "\t")) ~ ANY)* }
-
 designator = @{ ASCII_ALPHA_UPPER{3} }
 airline    = @{ tab_delimited_text }
 callsign   = @{ tab_delimited_text }
