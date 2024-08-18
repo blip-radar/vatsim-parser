@@ -77,7 +77,11 @@ EUFI	ML2J	ALENIA	Eurofighter 2000, Typhoon
 F260	LL1P	AERMACCHI	SF260E/F, Warrior
 A388	JL4J	AIRBUS	A380-800
 C208	LL1T	CESSNA	208 Caravan 1, (Super)Cargomaster, Grand  Caravan (C98, U27)
-EC45	LH2T	EUROCOPTER	EC145";
+EC45	LH2T	EUROCOPTER	EC145
+C08T	LLCT	SOLOY	208 DualPac Caravan, Pathfinder 21
+continued model name from the previous line we ignore
+ZZZZ	----	-	Aircraft type not assigned
+";
 
         let parsed = parse_aircraft(aircraft_bytes).unwrap();
 
@@ -143,6 +147,30 @@ EC45	LH2T	EUROCOPTER	EC145";
                         enginetype: EngineType::PISTON,
                         manufacturer: "AERMACCHI".to_string(),
                         name: "SF260E/F, Warrior".to_string(),
+                    }
+                ),
+                (
+                    "C08T".to_string(),
+                    Aircraft {
+                        designator: "C08T".to_string(),
+                        wtc: Wtc::LIGHT,
+                        aircrafttype: AircraftType::LANDPLANE,
+                        num_engines: 0,
+                        enginetype: EngineType::TURBOPROP,
+                        manufacturer: "SOLOY".to_string(),
+                        name: "208 DualPac Caravan, Pathfinder 21".to_string(),
+                    }
+                ),
+                (
+                    "ZZZZ".to_string(),
+                    Aircraft {
+                        designator: "ZZZZ".to_string(),
+                        wtc: Wtc::UNKNOWN,
+                        aircrafttype: AircraftType::UNKNOWN,
+                        num_engines: 0,
+                        enginetype: EngineType::UNKNOWN,
+                        manufacturer: "-".to_string(),
+                        name: "Aircraft type not assigned".to_string(),
                     }
                 ),
             ])

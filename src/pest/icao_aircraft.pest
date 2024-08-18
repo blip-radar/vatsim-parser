@@ -1,13 +1,14 @@
-aircraft = { SOI ~ NL? ~ (COMMENT | definition)+ ~ EOI }
+aircraft = { SOI ~ NL? ~ (COMMENT | definition | continued_name)+ ~ EOI }
 
-definition = {
+definition     = {
     designator ~ "\t" ~ wtc ~ aircrafttype ~ num_engines ~ enginetype ~ "\t" ~ manufacturer ~ "\t" ~ name ~ NL?
 }
+continued_name = { (!("\t" | NEWLINE) ~ ANY)+ ~ NL? }
 
-designator   = @{ (LETTER | ASCII_DIGIT)+ }
+designator   = @{ (LETTER | ASCII_DIGIT){1, 4} }
 wtc          = @{ ("L" | "M" | "H" | "J" | "-") }
 aircrafttype = @{ ("L" | "S" | "A" | "G" | "H" | "T" | "-") }
-num_engines  = @{ (NUMBER | "-") }
+num_engines  = @{ (NUMBER | "C" | "-") }
 enginetype   = @{ ("P" | "T" | "J" | "E" | "R" | "-") }
 manufacturer = @{ tab_delimited_text }
 name         = @{ tab_delimited_text }
