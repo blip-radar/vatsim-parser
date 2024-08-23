@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::Serialize;
 
 #[derive(Clone, Debug, Default, Serialize, PartialEq)]
@@ -27,6 +29,18 @@ impl Wtc {
             b'J' => Self::SUPER,
             _ => Self::UNKNOWN,
         }
+    }
+}
+
+impl Display for Wtc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::LIGHT => "L",
+            Self::MEDIUM => "M",
+            Self::HEAVY => "H",
+            Self::SUPER => "J",
+            Self::UNKNOWN => "?",
+        })
     }
 }
 
