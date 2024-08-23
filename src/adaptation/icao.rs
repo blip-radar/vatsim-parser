@@ -10,7 +10,7 @@ pub struct Airline {
     pub country: String,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
 pub enum Wtc {
     LIGHT,
     MEDIUM,
@@ -44,7 +44,7 @@ impl Display for Wtc {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
 pub enum AircraftType {
     LANDPLANE,
     SEAPLANE,
@@ -70,7 +70,7 @@ impl AircraftType {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
 pub enum EngineType {
     JET,
     TURBOPROP,
