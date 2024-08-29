@@ -1,11 +1,11 @@
 airlines = { SOI ~ NL? ~ (COMMENT | definition)+ ~ EOI }
 
 definition = {
-    designator ~ "\t" ~ airline ~ "\t" ~ callsign ~ "\t" ~ country ~ NL?
+    designator ~ "\t" ~ name ~ "\t" ~ callsign ~ "\t" ~ country ~ NL?
 }
 
 designator = @{ ASCII_ALPHA_UPPER{3} }
-airline    = @{ tab_delimited_text }
+name       = @{ tab_delimited_text }
 callsign   = @{ tab_delimited_text }
 country    = @{ tab_delimited_text }
 

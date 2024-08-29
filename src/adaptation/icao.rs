@@ -2,13 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use serde::Serialize;
 
-#[derive(Clone, Debug, Default, Serialize, PartialEq)]
-pub struct Airline {
-    pub designator: String,
-    pub airline: String,
-    pub callsign: String,
-    pub country: String,
-}
+pub use crate::icao_airlines::ast::Airline;
 
 #[derive(Copy, Clone, Debug, Serialize, PartialEq)]
 pub enum Wtc {
