@@ -1,7 +1,7 @@
 use pest::Parser;
 use pest_derive::Parser;
-use std::collections::HashMap;
 use std::io;
+use std::{collections::HashMap, str::FromStr};
 use thiserror::Error;
 
 use crate::adaptation::icao::{Aircraft, AircraftType, EngineType, Wtc};
@@ -36,10 +36,11 @@ pub fn parse_aircraft(content: &[u8]) -> AircraftResult {
                 if matches!(pair.as_rule(), Rule::definition) {
                     let mut line = pair.into_inner();
                     let designator = line.next().unwrap().as_str().to_string();
-                    let wtc = Wtc::parse(line.next().unwrap().as_str());
-                    let aircrafttype = AircraftType::parse(line.next().unwrap().as_str());
+                    let wtc = Wtc::from_str(line.next().unwrap().as_str()).unwrap();
+                    let aircrafttype =
+                        AircraftType::from_str(line.next().unwrap().as_str()).unwrap();
                     let num_engines = line.next().unwrap().as_str().parse::<u8>().unwrap_or(0);
-                    let enginetype = EngineType::parse(line.next().unwrap().as_str());
+                    let enginetype = EngineType::from_str(line.next().unwrap().as_str()).unwrap();
                     let manufacturer = line.next().unwrap().as_str().to_string();
                     let name = line.next().unwrap().as_str().to_string();
 

@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use serde::Serialize;
 
@@ -19,15 +19,24 @@ pub enum Wtc {
     UNKNOWN,
 }
 
-impl Wtc {
-    pub fn parse(wtc_string: &str) -> Self {
-        assert!(wtc_string.len() == 1);
-        match wtc_string.as_bytes()[0] {
-            b'L' => Self::LIGHT,
-            b'M' => Self::MEDIUM,
-            b'H' => Self::HEAVY,
-            b'J' => Self::SUPER,
-            _ => Self::UNKNOWN,
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseWtcError;
+
+impl FromStr for Wtc {
+    type Err = ParseWtcError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 1 {
+            match s.as_bytes()[0] {
+                b'L' => Ok(Self::LIGHT),
+                b'M' => Ok(Self::MEDIUM),
+                b'H' => Ok(Self::HEAVY),
+                b'J' => Ok(Self::SUPER),
+                b'-' => Ok(Self::UNKNOWN),
+                _ => Err(ParseWtcError),
+            }
+        } else {
+            Err(ParseWtcError)
         }
     }
 }
@@ -55,17 +64,26 @@ pub enum AircraftType {
     UNKNOWN,
 }
 
-impl AircraftType {
-    pub fn parse(wtc_string: &str) -> Self {
-        assert!(wtc_string.len() == 1);
-        match wtc_string.as_bytes()[0] {
-            b'L' => Self::LANDPLANE,
-            b'S' => Self::SEAPLANE,
-            b'A' => Self::AMPHIBIAN,
-            b'G' => Self::GYROCOPTER,
-            b'H' => Self::HELICOPTER,
-            b'T' => Self::TILTROTOR,
-            _ => Self::UNKNOWN,
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseAircraftTypeError;
+
+impl FromStr for AircraftType {
+    type Err = ParseAircraftTypeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 1 {
+            match s.as_bytes()[0] {
+                b'L' => Ok(Self::LANDPLANE),
+                b'S' => Ok(Self::SEAPLANE),
+                b'A' => Ok(Self::AMPHIBIAN),
+                b'G' => Ok(Self::GYROCOPTER),
+                b'H' => Ok(Self::HELICOPTER),
+                b'T' => Ok(Self::TILTROTOR),
+                b'-' => Ok(Self::UNKNOWN),
+                _ => Err(ParseAircraftTypeError),
+            }
+        } else {
+            Err(ParseAircraftTypeError)
         }
     }
 }
@@ -80,15 +98,25 @@ pub enum EngineType {
     UNKNOWN,
 }
 
-impl EngineType {
-    pub fn parse(enginetype_string: &str) -> Self {
-        match enginetype_string.as_bytes()[0] {
-            b'J' => Self::JET,
-            b'T' => Self::TURBOPROP,
-            b'P' => Self::PISTON,
-            b'E' => Self::ELECTRIC,
-            b'R' => Self::ROCKET,
-            _ => Self::UNKNOWN,
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseEngineTypeError;
+
+impl FromStr for EngineType {
+    type Err = ParseEngineTypeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 1 {
+            match s.as_bytes()[0] {
+                b'J' => Ok(Self::JET),
+                b'T' => Ok(Self::TURBOPROP),
+                b'P' => Ok(Self::PISTON),
+                b'E' => Ok(Self::ELECTRIC),
+                b'R' => Ok(Self::ROCKET),
+                b'-' => Ok(Self::UNKNOWN),
+                _ => Err(ParseEngineTypeError),
+            }
+        } else {
+            Err(ParseEngineTypeError)
         }
     }
 }
