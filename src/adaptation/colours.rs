@@ -127,9 +127,13 @@ impl Default for SectorColours {
     }
 }
 
+// TODO Euroscope colour fallback?
 #[derive(Clone, Debug, Serialize)]
 pub struct TrackColours {
     pub assumed: Colour,
+    pub advanced: Colour,
+    pub concerned: Colour,
+    pub unconcerned: Colour,
     pub flight_leg: Colour,
     pub predicted_alert: Colour,
     pub current_alert: Colour,
@@ -138,6 +142,9 @@ pub struct TrackColours {
 }
 impl TrackColours {
     const DEFAULT_ASSUMED: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_ADVANCED: Colour = Colour::from_rgb(0, 0, 255);
+    const DEFAULT_CONCERNED: Colour = Colour::from_rgb(0, 0, 255);
+    const DEFAULT_UNCONCERNED: Colour = Colour::from_rgb(255, 255, 255);
     const DEFAULT_VFR: Colour = Colour::from_rgb(180, 150, 95);
     const DEFAULT_FLIGHT_LEG: Colour = Colour::from_rgb(0, 0, 0);
     const DEFAULT_PREDICTED_ALERT: Colour = Colour::from_rgb(255, 140, 0);
@@ -150,6 +157,21 @@ impl TrackColours {
                 .copied()
                 .or(Colour::from_topsky_default(settings, "Assumed"))
                 .unwrap_or(Self::DEFAULT_ASSUMED),
+            advanced: topsky_colours
+                .get("Concerned")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Concerned"))
+                .unwrap_or(Self::DEFAULT_ADVANCED),
+            concerned: topsky_colours
+                .get("Redundant")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Redundant"))
+                .unwrap_or(Self::DEFAULT_CONCERNED),
+            unconcerned: topsky_colours
+                .get("Unconcerned")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Unconcerned"))
+                .unwrap_or(Self::DEFAULT_UNCONCERNED),
             vfr: topsky_colours
                 .get("VFR")
                 .copied()
@@ -178,6 +200,9 @@ impl Default for TrackColours {
     fn default() -> Self {
         Self {
             assumed: Self::DEFAULT_ASSUMED,
+            advanced: Self::DEFAULT_ADVANCED,
+            concerned: Self::DEFAULT_CONCERNED,
+            unconcerned: Self::DEFAULT_UNCONCERNED,
             vfr: Self::DEFAULT_VFR,
             flight_leg: Self::DEFAULT_FLIGHT_LEG,
             predicted_alert: Self::DEFAULT_PREDICTED_ALERT,
