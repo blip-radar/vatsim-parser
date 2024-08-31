@@ -1,70 +1,61 @@
 use from_pest::FromPest;
+use pest_ast::FromPest;
 use std::collections::HashMap;
 use std::io;
 use thiserror::Error;
 
 use super::read_to_string;
 
-mod airlines {
-    use pest_derive::Parser;
+#[derive(pest_derive::Parser)]
+#[grammar = "pest/base.pest"]
+#[grammar = "pest/icao_airlines.pest"]
+pub struct AirlinesParser;
 
-    #[derive(Parser)]
-    #[grammar = "pest/base.pest"]
-    #[grammar = "pest/icao_airlines.pest"]
-    pub struct Parser;
+use pest::{Parser, Span};
+use serde::Serialize;
+
+fn span_into_string(span: Span) -> String {
+    span.as_str().to_string()
 }
 
-pub mod ast {
-    use pest::Span;
-    use serde::Serialize;
+#[derive(Debug, FromPest, Serialize, Default, Clone)]
+#[pest_ast(rule(Rule::airlines))]
+pub struct Airlines {
+    pub definitions: Vec<Airline>,
+    _eoi: Eoi,
+}
 
-    use super::airlines::Rule;
+#[derive(Debug, FromPest, Serialize, Default, Clone)]
+#[pest_ast(rule(Rule::EOI))]
+struct Eoi;
 
-    fn span_into_string(span: Span) -> String {
-        span.as_str().to_string()
-    }
-
-    #[derive(Debug, FromPest, Serialize, Default, Clone)]
-    #[pest_ast(rule(Rule::airlines))]
-    pub struct Airlines {
-        pub definitions: Vec<Airline>,
-        _eoi: Eoi,
-    }
-
-    #[derive(Debug, FromPest, Serialize, Default, Clone)]
-    #[pest_ast(rule(Rule::EOI))]
-    struct Eoi;
-
-    #[derive(Debug, FromPest, Serialize, Default, Clone, PartialEq)]
-    #[pest_ast(rule(Rule::definition))]
-    pub struct Airline {
-        #[pest_ast(inner(rule(Rule::designator), with(span_into_string)))]
-        pub designator: String,
-        #[pest_ast(inner(rule(Rule::name), with(span_into_string)))]
-        pub name: String,
-        #[pest_ast(inner(rule(Rule::callsign), with(span_into_string)))]
-        pub callsign: String,
-        #[pest_ast(inner(rule(Rule::country), with(span_into_string)))]
-        pub country: String,
-    }
+#[derive(Debug, FromPest, Serialize, Default, Clone, PartialEq)]
+#[pest_ast(rule(Rule::definition))]
+pub struct Airline {
+    #[pest_ast(inner(rule(Rule::designator), with(span_into_string)))]
+    pub designator: String,
+    #[pest_ast(inner(rule(Rule::name), with(span_into_string)))]
+    pub name: String,
+    #[pest_ast(inner(rule(Rule::callsign), with(span_into_string)))]
+    pub callsign: String,
+    #[pest_ast(inner(rule(Rule::country), with(span_into_string)))]
+    pub country: String,
 }
 
 #[derive(Error, Debug)]
 pub enum AirlinesError {
     #[error("failed to parse ICAO_Airlines.txt: {0}")]
-    Parse(#[from] pest::error::Error<airlines::Rule>),
+    Parse(#[from] pest::error::Error<Rule>),
     #[error("failed to read ICAO_Airlines.txt: {0}")]
     FileRead(#[from] io::Error),
 }
 
-pub type AirlinesResult = Result<HashMap<String, ast::Airline>, AirlinesError>;
+pub type AirlinesResult = Result<HashMap<String, Airline>, AirlinesError>;
 
 pub fn parse_airlines(content: &[u8]) -> AirlinesResult {
-    use pest::Parser;
-
     let unparsed_file = read_to_string(content)?;
-    let mut parse_tree = airlines::Parser::parse(airlines::Rule::airlines, &unparsed_file)?;
-    let syntax_tree: ast::Airlines = ast::Airlines::from_pest(&mut parse_tree).expect("infallible");
+    let mut parse_tree = AirlinesParser::parse(Rule::airlines, &unparsed_file)?;
+    let syntax_tree: Airlines = Airlines::from_pest(&mut parse_tree).expect("infallible");
     Ok(syntax_tree
         .definitions
         .into_iter()
@@ -80,7 +71,7 @@ mod test {
 
     use pretty_assertions_sorted::assert_eq_sorted;
 
-    use super::ast::Airline;
+    use super::Airline;
 
     use super::parse_airlines;
 

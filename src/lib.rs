@@ -19,14 +19,6 @@ pub mod squawks;
 pub mod symbology;
 pub mod topsky;
 
-#[allow(unused_imports)]
-#[macro_use]
-extern crate pest_derive;
-extern crate from_pest;
-#[macro_use]
-extern crate pest_ast;
-extern crate pest;
-
 fn read_to_string(contents: &[u8]) -> Result<String, io::Error> {
     String::from_utf8(contents.to_vec()).or_else(|_| {
         let (string, _, errors) = encoding_rs::WINDOWS_1252.decode(contents);

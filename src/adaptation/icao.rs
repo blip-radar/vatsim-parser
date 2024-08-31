@@ -2,7 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use serde::Serialize;
 
-pub use crate::icao_airlines::ast::Airline;
+pub use crate::icao_airlines::Airline;
 
 #[derive(Copy, Clone, Debug, Serialize, PartialEq)]
 pub enum Wtc {
