@@ -108,8 +108,8 @@ fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
         .parse::<f64>()
         .unwrap()
         * match hemi {
-            "N" | "E" => 1.0,
-            "S" | "W" => -1.0,
+            "N" | "n" | "E" | "e" => 1.0,
+            "S" | "s" | "W" | "w" => -1.0,
             _ => unreachable!("{hemi} is not a hemisphere"),
         };
     let min = coordinate_part.next().unwrap().as_str().parse().unwrap();

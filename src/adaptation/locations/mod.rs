@@ -261,6 +261,7 @@ impl Locations {
         })
     }
 
+    // TODO convert runway e.g. EDDM/26R
     fn convert_fix(&self, designator: &str) -> Option<Coord> {
         self.vors
             .get(designator)

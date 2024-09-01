@@ -223,7 +223,7 @@ pub struct UIColours {
     pub alert: Colour,
 }
 impl UIColours {
-    const DEFAULT_ARMED: Colour = Colour::from_rgb(120, 120, 120);
+    const DEFAULT_ARMED: Colour = Colour::from_rgb(160, 160, 160);
     const DEFAULT_BACKGROUND: Colour = Colour::from_rgb(192, 192, 192);
     const DEFAULT_FOREGROUND: Colour = Colour::from_rgb(0, 0, 0);
     const DEFAULT_WINDOW_TITLE_BACKGROUND_SELECTED: Colour = Colour::from_rgb(192, 192, 192);

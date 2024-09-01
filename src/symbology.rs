@@ -95,7 +95,7 @@ impl Item {
                 font_size,
             }),
             Err(e) => {
-                warn!("Could not parse colour {folder}.{name}: {e}");
+                warn!("Could not parse colour {folder}.{name}={colour_num}: {e}");
                 None
             }
         }
