@@ -1,7 +1,7 @@
 use pest::Parser;
 use pest_derive::Parser;
-use std::{collections::HashMap, str::FromStr};
 use std::io;
+use std::{collections::HashMap, str::FromStr};
 use thiserror::Error;
 
 use crate::adaptation::icao::{Aircraft, AircraftType, EngineType, Wtc};
