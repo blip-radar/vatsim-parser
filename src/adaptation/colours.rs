@@ -147,8 +147,8 @@ impl TrackColours {
     const DEFAULT_UNCONCERNED: Colour = Colour::from_rgb(255, 255, 255);
     const DEFAULT_VFR: Colour = Colour::from_rgb(180, 150, 95);
     const DEFAULT_FLIGHT_LEG: Colour = Colour::from_rgb(0, 0, 0);
-    const DEFAULT_PREDICTED_ALERT: Colour = Colour::from_rgb(255, 140, 0);
-    const DEFAULT_CURRENT_ALERT: Colour = Colour::from_rgb(255, 25, 26);
+    const DEFAULT_PREDICTED_ALERT: Colour = Colour::from_rgb(255, 255, 0);
+    const DEFAULT_CURRENT_ALERT: Colour = Colour::from_rgb(255, 0, 0);
 
     pub fn from_euroscope(topsky_colours: &HashMap<String, Colour>, settings: &Settings) -> Self {
         Self {
@@ -215,13 +215,21 @@ impl Default for TrackColours {
 pub struct UIColours {
     pub foreground: Colour,
     pub background: Colour,
-    // TODO check use for better name
+    // TODO check use for better name (disabled/checkbox background)
     pub armed: Colour,
+    pub window_title_background_selected: Colour,
+    pub text_input: Colour,
+    pub warning: Colour,
+    pub alert: Colour,
 }
 impl UIColours {
     const DEFAULT_ARMED: Colour = Colour::from_rgb(120, 120, 120);
     const DEFAULT_BACKGROUND: Colour = Colour::from_rgb(192, 192, 192);
     const DEFAULT_FOREGROUND: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_WINDOW_TITLE_BACKGROUND_SELECTED: Colour = Colour::from_rgb(192, 192, 192);
+    const DEFAULT_TEXT_INPUT: Colour = Colour::from_rgb(170, 224, 224);
+    const DEFAULT_WARNING: Colour = Colour::from_rgb(255, 255, 0);
+    const DEFAULT_ALERT: Colour = Colour::from_rgb(255, 0, 0);
 
     pub fn from_euroscope(topsky_colours: &HashMap<String, Colour>, settings: &Settings) -> Self {
         Self {
@@ -240,6 +248,26 @@ impl UIColours {
                 .copied()
                 .or(Colour::from_topsky_default(settings, "Foreground"))
                 .unwrap_or(Self::DEFAULT_FOREGROUND),
+            window_title_background_selected: topsky_colours
+                .get("Background")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Background"))
+                .unwrap_or(Self::DEFAULT_WINDOW_TITLE_BACKGROUND_SELECTED),
+            warning: topsky_colours
+                .get("Warning")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Warning"))
+                .unwrap_or(Self::DEFAULT_WARNING),
+            alert: topsky_colours
+                .get("Urgency")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Urgency"))
+                .unwrap_or(Self::DEFAULT_ALERT),
+            text_input: topsky_colours
+                .get("Field_Highlight")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Field_Highlight"))
+                .unwrap_or(Self::DEFAULT_TEXT_INPUT),
         }
     }
 }
@@ -250,6 +278,10 @@ impl Default for UIColours {
             armed: Self::DEFAULT_ARMED,
             background: Self::DEFAULT_BACKGROUND,
             foreground: Self::DEFAULT_FOREGROUND,
+            window_title_background_selected: Self::DEFAULT_WINDOW_TITLE_BACKGROUND_SELECTED,
+            text_input: Self::DEFAULT_TEXT_INPUT,
+            warning: Self::DEFAULT_WARNING,
+            alert: Self::DEFAULT_ALERT,
         }
     }
 }
