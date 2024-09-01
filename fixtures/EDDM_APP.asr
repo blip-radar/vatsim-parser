@@ -7,6 +7,17 @@ Runways:EDDM 08L-26R:centerline
 Runways:EDDM 08R-26L:centerline
 Runways:EDMA 07-25:centerline
 Runways:EDMO 04-22:centerline
+ARTCC high boundary:EGPX Scottish FIR:
+ARTCC low boundary:Channel Islands CTA:
+Free Text:Airspace Bases\FL95:freetext
+Geo:Merseyside Coastline:
+Fixes:UPTON:name
+Fixes:UPTON:symbol
+NDBs:BHX:name
+NDBs:BHX:symbol
+Regions:Coastline:polygon
+VORs:LAM:name
+VORs:LAM:symbol
 SHOWC:1
 SHOWSB:0
 BELOW:0

@@ -27,6 +27,7 @@ setting = _{
   | ndbs
   | vors
   | low_airways
+  | high_airways
   | sids
   | stars
   | geo
@@ -61,21 +62,22 @@ window_area = { "WINDOWAREA:" ~ coordinate ~ ":" ~ coordinate }
 
 plugin = { "PLUGIN:" ~ multivalue ~ ":" ~ multivalue ~ ":" ~ value }
 
-runways = { "Runways:" ~ multivalue ~ ":" ~ value }
-free_text = { "Free Text:" ~ multivalue ~ ":" ~ value }
-airports = { "Airports:" ~ multivalue ~ ":" ~ value }
-ndbs = { "NDBs:" ~ multivalue ~ ":" ~ value }
-vors = { "VORs:" ~ multivalue ~ ":" ~ value }
-fixes = { "Fixes:" ~ multivalue ~ ":" ~ value }
-low_airways = { "Low airways:" ~ multivalue ~ ":" ~ value }
-sids = { "Sids:" ~ multivalue ~ ":" ~ value }
-stars = { "Stars:" ~ multivalue ~ ":" ~ value }
-geo = { "Geo:" ~ multivalue ~ ":" ~ value }
-ground_network = { "Ground Network:" ~ multivalue ~ ":" ~ value }
-regions = { "Regions:" ~ multivalue ~ ":" ~ value }
-artcc_boundary = { "ARTCC boundary:" ~ multivalue ~ ":" ~ value }
-artcc_low_boundary = { "ARTCC low boundary:" ~ multivalue ~ ":" ~ value }
-artcc_high_boundary = { "ARTCC high boundary:" ~ multivalue ~ ":" ~ value }
+runways = { "Runways:" ~ runway ~ ":" ~ runway_type }
+airports = { "Airports:" ~ multivalue ~ ":" ~ fix_type }
+ndbs = { "NDBs:" ~ multivalue ~ ":" ~ navaid_type }
+vors = { "VORs:" ~ multivalue ~ ":" ~ navaid_type }
+fixes = { "Fixes:" ~ multivalue ~ ":" ~ fix_type }
+low_airways = { "Low airways:" ~ multivalue ~ ":" ~ airway_type }
+high_airways = { "High airways:" ~ multivalue ~ ":" ~ airway_type }
+sids = { "Sids:" ~ multivalue ~ ":"  }
+stars = { "Stars:" ~ multivalue ~ ":" }
+free_text = { "Free Text:" ~ multivalue_backslash ~ "\\" ~ multivalue ~ ":freetext" }
+geo = { "Geo:" ~ multivalue ~ ":" }
+ground_network = { "Ground Network:" ~ multivalue ~ ":" ~ ground_network_type }
+regions = { "Regions:" ~ multivalue ~ ":polygon"  }
+artcc_boundary = { "ARTCC boundary:" ~ multivalue ~ ":" }
+artcc_low_boundary = { "ARTCC low boundary:" ~ multivalue ~ ":" }
+artcc_high_boundary = { "ARTCC high boundary:" ~ multivalue ~ ":" }
 
 // EDGG has invalid WPT with spaces
 broken = @{ !("[") ~ (!NL ~ ANY)* }
@@ -84,8 +86,38 @@ coordinate = _{ coord_part ~ ":" ~ coord_part }
 coord_part = { DECIMAL | sct_coord_part }
 sct_coord_part = ${ hemi ~ deg ~ "." ~ min ~ "." ~ sec }
 
+navaid_type = _{ symbol | name | frequency }
+fix_type = _{ symbol | name }
+airway_type = _{ line | name }
+runway_type = _{
+  centerline | name | ext_centerline
+}
+ground_network_type = _{ exit | taxiway | terminal_taxiway }
+
+centerline = { "centerline" }
+ext_centerline = {
+  "extended centerline 1 left ticks" | "extended centerline 1 left vectoring" | "extended centerline 1 left base"
+  | "extended centerline 1 right ticks" | "extended centerline 1 right vectoring" | "extended centerline 1 right base"
+  | "extended centerline 1"
+  | "extended centerline 2 left ticks" | "extended centerline 2 left vectoring" | "extended centerline 2 left base"
+  | "extended centerline 2 right ticks" | "extended centerline 2 right vectoring" | "extended centerline 2 right base"
+  | "extended centerline 2"
+}
+name = { "name" }
+frequency = { "frequency" }
+symbol = { "symbol" }
+line = { "line" }
+exit = { "exit" }
+taxiway = { "taxiway" }
+terminal_taxiway = { "terminal taxiway" }
+
+runway = _{ airport ~ " " ~ runway_desig ~ "-" ~ runway_desig }
+airport = @{ (!(" " ~ runway_desig) ~ ANY)* }
+runway_desig = @{ ASCII_DIGIT{2} ~ ("L" | "R" | "C" | "W" | "G")? }
+
 value = @{ (!NL ~ ANY)* }
 multivalue = @{ (!(NL|":") ~ ANY)* }
+multivalue_backslash = @{ (!"\\" ~ ANY)* }
 
 deg = @{ ASCII_DIGIT+ }
 min = @{ ASCII_DIGIT+ }

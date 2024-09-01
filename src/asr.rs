@@ -5,6 +5,7 @@ use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
+use tracing::warn;
 
 use crate::TwoKeyMap;
 
@@ -42,8 +43,8 @@ pub enum DisplayType {
 }
 
 enum AsrData {
-    Above(Option<u16>),
-    Below(Option<u16>),
+    Above(Option<u32>),
+    Below(Option<u32>),
     DisablePanning(bool),
     DisableZooming(bool),
     DisplayRotation(f64),
@@ -62,15 +63,106 @@ enum AsrData {
     TurnLeader(bool),
     WindowArea((Coord, Coord)),
     PluginSetting((String, String, String)),
+    Runway((String, String, String, AsrMapRunwayType)),
+    Airport((String, AsrMapFixType)),
+    Vor((String, AsrMapNavaidType)),
+    Ndb((String, AsrMapNavaidType)),
+    Fix((String, AsrMapFixType)),
+    LowAirway((String, AsrMapAirwayType)),
+    HighAirway((String, AsrMapAirwayType)),
+    Sid(String),
+    Star(String),
+    FreeText((String, String)),
+    Geo(String),
+    GroundNetwork((String, AsrMapGroundNetworkType)),
+    Region(String),
+    ArtccBoundary(String),
+    ArtccLowBoundary(String),
+    ArtccHighBoundary(String),
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub enum AsrMapFixType {
+    Name,
+    Symbol,
+}
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub enum AsrMapNavaidType {
+    Name,
+    Symbol,
+    Frequency,
+}
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub enum AsrMapRunwayType {
+    Name,
+    Centerline,
+    // TODO extended centerline types
+}
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub enum AsrMapAirwayType {
+    Name,
+    Line,
+}
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub enum AsrMapGroundNetworkType {
+    Exit,
+    Taxiway,
+    TerminalTaxiway,
+}
+
+#[derive(Default, Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct AsrMap {
+    pub runways: Vec<(String, String, String, AsrMapRunwayType)>,
+    pub airports: Vec<(String, AsrMapFixType)>,
+    pub vors: Vec<(String, AsrMapNavaidType)>,
+    pub ndbs: Vec<(String, AsrMapNavaidType)>,
+    pub fixes: Vec<(String, AsrMapFixType)>,
+    pub low_airways: Vec<(String, AsrMapAirwayType)>,
+    pub high_airways: Vec<(String, AsrMapAirwayType)>,
+    pub sids: Vec<String>,
+    pub stars: Vec<String>,
+    pub free_text: Vec<(String, String)>,
+    pub geo: Vec<String>,
+    pub ground_network: Vec<(String, AsrMapGroundNetworkType)>,
+    pub regions: Vec<String>,
+    pub artcc_boundary: Vec<String>,
+    pub artcc_low_boundary: Vec<String>,
+    pub artcc_high_boundary: Vec<String>,
+}
+impl From<Vec<AsrData>> for AsrMap {
+    fn from(data: Vec<AsrData>) -> Self {
+        data.into_iter().fold(AsrMap::default(), |mut acc, data| {
+            match data {
+                AsrData::Runway(rwy) => acc.runways.push(rwy),
+                AsrData::Airport(airport) => acc.airports.push(airport),
+                AsrData::Vor(v) => acc.vors.push(v),
+                AsrData::Ndb(n) => acc.ndbs.push(n),
+                AsrData::Fix(f) => acc.fixes.push(f),
+                AsrData::LowAirway(la) => acc.low_airways.push(la),
+                AsrData::HighAirway(ha) => acc.high_airways.push(ha),
+                AsrData::Sid(sid) => acc.sids.push(sid),
+                AsrData::Star(star) => acc.stars.push(star),
+                AsrData::FreeText(ft) => acc.free_text.push(ft),
+                AsrData::Geo(geo) => acc.geo.push(geo),
+                AsrData::GroundNetwork(gn) => acc.ground_network.push(gn),
+                AsrData::Region(r) => acc.regions.push(r),
+                AsrData::ArtccBoundary(ab) => acc.artcc_boundary.push(ab),
+                AsrData::ArtccLowBoundary(alb) => acc.artcc_low_boundary.push(alb),
+                AsrData::ArtccHighBoundary(ahb) => acc.artcc_high_boundary.push(ahb),
+                _ => (),
+            };
+            acc
+        })
+    }
 }
 
 /// Data of Euroscope .asr files, these settings are not necessarily all respected in this client
 #[derive(Clone, Debug, Serialize)]
 pub struct Asr {
     // ABOVE – xxxxx. The value if you choose not to display aircraft above xxxxx feet altitude (your ceiling level). Zero indicates no filter at all.
-    pub above: Option<u16>,
+    pub above: Option<u32>,
     // BELOW – xxxxx. The value if you choose not to display aircraft below xxxxx feet altitude (your floor level). Zero indicates no filter at all.
-    pub below: Option<u16>,
+    pub below: Option<u32>,
     /// DISABLEPANNING
     pub disable_panning: bool,
     /// DISABLEZOOOMING
@@ -107,6 +199,8 @@ pub struct Asr {
     pub window_area: (Coord, Coord),
     /// plugin name, key -> value (Euroscope example: PLUGIN:TopSky plugin:HideMapData:TWR)
     pub plugin_settings: TwoKeyMap<String, String, String>,
+    /// Elements to show on the map if ASR is selected
+    pub map: AsrMap,
 }
 // ?? individual sector file elements – Then follows the list of all your checked items in the display dialog. You can not save the SECTORLINE and SECTOR elements as they can be switched on just for debugging purposes and not for next session display.
 
@@ -211,22 +305,120 @@ fn parse_setting(pair: Pair<Rule>) -> Option<AsrData> {
             let value = inner.next().unwrap().as_str().to_string();
             Some(AsrData::PluginSetting((plugin, key, value)))
         }
-        // TODO
-        Rule::runways => None,
-        Rule::airports => None,
-        Rule::fixes => None,
-        Rule::ndbs => None,
-        Rule::vors => None,
-        Rule::sids => None,
-        Rule::stars => None,
-        Rule::low_airways => None,
-        Rule::free_text => None,
-        Rule::artcc_boundary => None,
-        Rule::artcc_high_boundary => None,
-        Rule::artcc_low_boundary => None,
-        Rule::geo => None,
-        Rule::ground_network => None,
-        Rule::regions => None,
+        Rule::runways => {
+            let airport = inner.next().unwrap().as_str().to_string();
+            let desig_a = inner.next().unwrap().as_str().to_string();
+            let desig_b = inner.next().unwrap().as_str().to_string();
+            let val = inner.next().unwrap();
+            match val.as_rule() {
+                Rule::centerline => Some(AsrData::Runway((
+                    airport,
+                    desig_a,
+                    desig_b,
+                    AsrMapRunwayType::Centerline,
+                ))),
+                Rule::name => Some(AsrData::Runway((
+                    airport,
+                    desig_a,
+                    desig_b,
+                    AsrMapRunwayType::Name,
+                ))),
+                Rule::ext_centerline => {
+                    warn!(
+                        "extended centerline not implemented: {airport} {desig_a}-{desig_b}, {}",
+                        val.as_str()
+                    );
+                    None
+                }
+
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::airports => {
+            let name = inner.next().unwrap().as_str().to_string();
+            match inner.next().unwrap().as_rule() {
+                Rule::symbol => Some(AsrData::Airport((name, AsrMapFixType::Symbol))),
+                Rule::name => Some(AsrData::Airport((name, AsrMapFixType::Name))),
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::fixes => {
+            let name = inner.next().unwrap().as_str().to_string();
+            match inner.next().unwrap().as_rule() {
+                Rule::symbol => Some(AsrData::Fix((name, AsrMapFixType::Symbol))),
+                Rule::name => Some(AsrData::Fix((name, AsrMapFixType::Name))),
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::ndbs => {
+            let name = inner.next().unwrap().as_str().to_string();
+            match inner.next().unwrap().as_rule() {
+                Rule::symbol => Some(AsrData::Ndb((name, AsrMapNavaidType::Symbol))),
+                Rule::name => Some(AsrData::Ndb((name, AsrMapNavaidType::Name))),
+                Rule::frequency => Some(AsrData::Ndb((name, AsrMapNavaidType::Frequency))),
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::vors => {
+            let name = inner.next().unwrap().as_str().to_string();
+            match inner.next().unwrap().as_rule() {
+                Rule::symbol => Some(AsrData::Vor((name, AsrMapNavaidType::Symbol))),
+                Rule::name => Some(AsrData::Vor((name, AsrMapNavaidType::Name))),
+                Rule::frequency => Some(AsrData::Vor((name, AsrMapNavaidType::Frequency))),
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::sids => Some(AsrData::Sid(inner.next().unwrap().as_str().to_string())),
+        Rule::stars => Some(AsrData::Star(inner.next().unwrap().as_str().to_string())),
+        Rule::low_airways => {
+            let name = inner.next().unwrap().as_str().to_string();
+            match inner.next().unwrap().as_rule() {
+                Rule::line => Some(AsrData::LowAirway((name, AsrMapAirwayType::Line))),
+                Rule::name => Some(AsrData::LowAirway((name, AsrMapAirwayType::Name))),
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::high_airways => {
+            let name = inner.next().unwrap().as_str().to_string();
+            match inner.next().unwrap().as_rule() {
+                Rule::line => Some(AsrData::HighAirway((name, AsrMapAirwayType::Line))),
+                Rule::name => Some(AsrData::HighAirway((name, AsrMapAirwayType::Name))),
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::free_text => Some(AsrData::FreeText((
+            inner.next().unwrap().as_str().to_string(),
+            inner.next().unwrap().as_str().to_string(),
+        ))),
+        Rule::artcc_boundary => Some(AsrData::ArtccBoundary(
+            inner.next().unwrap().as_str().to_string(),
+        )),
+        Rule::artcc_high_boundary => Some(AsrData::ArtccHighBoundary(
+            inner.next().unwrap().as_str().to_string(),
+        )),
+        Rule::artcc_low_boundary => Some(AsrData::ArtccLowBoundary(
+            inner.next().unwrap().as_str().to_string(),
+        )),
+        Rule::geo => Some(AsrData::Geo(inner.next().unwrap().as_str().to_string())),
+        Rule::ground_network => {
+            let name = inner.next().unwrap().as_str().to_string();
+            match inner.next().unwrap().as_rule() {
+                Rule::exit => Some(AsrData::GroundNetwork((
+                    name,
+                    AsrMapGroundNetworkType::Exit,
+                ))),
+                Rule::taxiway => Some(AsrData::GroundNetwork((
+                    name,
+                    AsrMapGroundNetworkType::Taxiway,
+                ))),
+                Rule::terminal_taxiway => Some(AsrData::GroundNetwork((
+                    name,
+                    AsrMapGroundNetworkType::TerminalTaxiway,
+                ))),
+                rule => unreachable!("{rule:?}"),
+            }
+        }
+        Rule::regions => Some(AsrData::Region(inner.next().unwrap().as_str().to_string())),
         Rule::EOI => None,
         rule => unreachable!("Unhandled rule: {rule:?}"),
     }
@@ -445,16 +637,17 @@ impl Asr {
             ));
         let plugin_settings = TwoKeyMap(
             sections
-                .into_iter()
+                .iter()
                 .filter_map(|data| {
                     if let AsrData::PluginSetting((plugin, key, value)) = data {
-                        Some(((plugin, key), value))
+                        Some(((plugin.clone(), key.clone()), value.clone()))
                     } else {
                         None
                     }
                 })
                 .collect(),
         );
+        let map = AsrMap::from(sections);
         Ok(Asr {
             above,
             below,
@@ -476,6 +669,7 @@ impl Asr {
             turn_leader,
             window_area,
             plugin_settings,
+            map,
         })
     }
 }
@@ -485,9 +679,13 @@ mod test {
     use std::{collections::HashMap, fs};
 
     use geo::Coord;
+    use pretty_assertions_sorted::assert_eq_sorted;
 
     use crate::{
-        asr::{DisplayType, Leader, SimulationMode},
+        asr::{
+            AsrMap, AsrMapFixType, AsrMapNavaidType, AsrMapRunwayType, DisplayType, Leader,
+            SimulationMode,
+        },
         TwoKeyMap,
     };
 
@@ -529,7 +727,55 @@ mod test {
                 }
             )
         );
-        // TODO
+        assert_eq_sorted!(
+            asr.map,
+            AsrMap {
+                runways: vec![
+                    (
+                        "EDDM".to_string(),
+                        "08L".to_string(),
+                        "26R".to_string(),
+                        AsrMapRunwayType::Centerline
+                    ),
+                    (
+                        "EDDM".to_string(),
+                        "08R".to_string(),
+                        "26L".to_string(),
+                        AsrMapRunwayType::Centerline
+                    ),
+                    (
+                        "EDMA".to_string(),
+                        "07".to_string(),
+                        "25".to_string(),
+                        AsrMapRunwayType::Centerline
+                    ),
+                    (
+                        "EDMO".to_string(),
+                        "04".to_string(),
+                        "22".to_string(),
+                        AsrMapRunwayType::Centerline
+                    ),
+                ],
+                vors: vec![
+                    ("LAM".to_string(), AsrMapNavaidType::Name),
+                    ("LAM".to_string(), AsrMapNavaidType::Symbol)
+                ],
+                ndbs: vec![
+                    ("BHX".to_string(), AsrMapNavaidType::Name),
+                    ("BHX".to_string(), AsrMapNavaidType::Symbol)
+                ],
+                fixes: vec![
+                    ("UPTON".to_string(), AsrMapFixType::Name),
+                    ("UPTON".to_string(), AsrMapFixType::Symbol)
+                ],
+                free_text: vec![("Airspace Bases".to_string(), "FL95".to_string())],
+                geo: vec!["Merseyside Coastline".to_string()],
+                regions: vec!["Coastline".to_string()],
+                artcc_low_boundary: vec!["Channel Islands CTA".to_string()],
+                artcc_high_boundary: vec!["EGPX Scottish FIR".to_string()],
+                ..Default::default()
+            }
+        );
         assert_eq!(
             asr.plugin_settings,
             TwoKeyMap(HashMap::from([
