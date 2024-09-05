@@ -1,4 +1,4 @@
-settings = { ((SOI | NL) ~ setting)* ~ ((SOI | NL) ~ section)* ~ NL? ~ EOI}
+settings = { SOI? ~ ((SOI | NL) ~ setting)* ~ ((SOI | NL) ~ section)* ~ NL? ~ EOI}
 
 setting = _{
   (colour_setting | other_setting)

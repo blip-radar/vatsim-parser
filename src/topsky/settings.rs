@@ -104,6 +104,13 @@ mod test {
     use crate::{adaptation::colours::Colour, topsky::settings::parse_topsky_settings};
 
     #[test]
+    fn test_comment_beginning() {
+        let settings_str = r"//For function of each setting, refer to the TopSky developer guide.
+System_GUI_Scale_Windows=1";
+        parse_topsky_settings(settings_str).unwrap();
+    }
+
+    #[test]
     fn test_settings_colours() {
         let settings_str = r"Setup_COOPANS=1
 
