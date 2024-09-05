@@ -36,13 +36,17 @@ fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
                 }
                 Rule::arc_ellipse => {
                     let pos = parse_point(symbolrule.next().unwrap());
-                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
-                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_x = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
                     let start_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
                     let end_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
-                    SymbolRule::EllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                    if (radius_x - radius_y).abs() < f64::EPSILON {
+                        SymbolRule::Arc(pos, radius_x, start_angle, end_angle)
+                    } else {
+                        SymbolRule::EllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                    }
                 }
                 Rule::fillarc => {
                     let pos = parse_point(symbolrule.next().unwrap());
@@ -55,13 +59,23 @@ fn parse_symbol_rules(pairs: Pairs<Rule>) -> Vec<SymbolRule> {
                 }
                 Rule::fillarc_ellipse => {
                     let pos = parse_point(symbolrule.next().unwrap());
-                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
-                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_x = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
                     let start_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
                     let end_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
-                    SymbolRule::FilledEllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                    if (radius_x - radius_y).abs() < f64::EPSILON {
+                        SymbolRule::FilledArc(pos, radius_x, start_angle, end_angle)
+                    } else {
+                        SymbolRule::FilledEllipticArc(
+                            pos,
+                            radius_x,
+                            radius_y,
+                            start_angle,
+                            end_angle,
+                        )
+                    }
                 }
                 Rule::ellipse_circle => {
                     let pos = parse_point(symbolrule.next().unwrap());

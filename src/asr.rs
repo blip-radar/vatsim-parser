@@ -95,7 +95,7 @@ pub enum AsrMapNavaidType {
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub enum AsrMapRunwayType {
     Name,
-    Centerline,
+    Centreline,
     // TODO extended centerline types
 }
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -315,7 +315,7 @@ fn parse_setting(pair: Pair<Rule>) -> Option<AsrData> {
                     airport,
                     desig_a,
                     desig_b,
-                    AsrMapRunwayType::Centerline,
+                    AsrMapRunwayType::Centreline,
                 ))),
                 Rule::name => Some(AsrData::Runway((
                     airport,
@@ -735,25 +735,25 @@ mod test {
                         "EDDM".to_string(),
                         "08L".to_string(),
                         "26R".to_string(),
-                        AsrMapRunwayType::Centerline
+                        AsrMapRunwayType::Centreline
                     ),
                     (
                         "EDDM".to_string(),
                         "08R".to_string(),
                         "26L".to_string(),
-                        AsrMapRunwayType::Centerline
+                        AsrMapRunwayType::Centreline
                     ),
                     (
                         "EDMA".to_string(),
                         "07".to_string(),
                         "25".to_string(),
-                        AsrMapRunwayType::Centerline
+                        AsrMapRunwayType::Centreline
                     ),
                     (
                         "EDMO".to_string(),
                         "04".to_string(),
                         "22".to_string(),
-                        AsrMapRunwayType::Centerline
+                        AsrMapRunwayType::Centreline
                     ),
                 ],
                 vors: vec![

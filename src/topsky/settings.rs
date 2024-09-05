@@ -1,5 +1,6 @@
 use std::{collections::HashMap, num::ParseIntError, str::FromStr};
 
+use bevy_derive::Deref;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use serde::Serialize;
@@ -18,7 +19,7 @@ enum Setting {
     Other(String, String),
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deref)]
 pub struct Settings(pub HashMap<String, String>);
 impl Settings {
     pub fn parse_with_default<T: FromStr>(&self, key: &str, default: T) -> T {
@@ -104,12 +105,17 @@ mod test {
 
     #[test]
     fn test_settings_colours() {
-        let settings_str = r"
+        let settings_str = r"Setup_COOPANS=1
+
+Airspace_ASSR_Type=2
 Color_Active_Map_Type_16=160,160,160
 Color_Active_Map_Type_17=255,255,255
 Color_Active_Map_Type_18=0,160,0 //MVA - light gray
 Color_Active_Map_Type_19=225,225,225 //Airspace C TMZ and AWYs
 Color_Active_Map_Type_20=140,140,140 //Sectorlines and Labels
+[_APP]
+Color_Active_Map_Type_17=205,255,255
+[EDMM_]
         ";
         let colours = parse_topsky_settings(settings_str).unwrap().0;
 

@@ -91,6 +91,216 @@ impl<'de> Deserialize<'de> for Colour {
     }
 }
 
+/// Colours used in the ASR map
+#[derive(Clone, Debug, Serialize)]
+pub struct MapColours {
+    pub fix_symbol: Colour,
+    pub fix_name: Colour,
+    pub airport_symbol: Colour,
+    pub airport_name: Colour,
+    pub ndb_symbol: Colour,
+    pub ndb_name: Colour,
+    pub ndb_frequency: Colour,
+    pub vor_symbol: Colour,
+    pub vor_name: Colour,
+    pub vor_frequency: Colour,
+    pub low_airway_line: Colour,
+    pub low_airway_name: Colour,
+    pub high_airway_line: Colour,
+    pub high_airway_name: Colour,
+    pub sid: Colour,
+    pub star: Colour,
+    pub artcc_boundary: Colour,
+    pub artcc_low_boundary: Colour,
+    pub artcc_high_boundary: Colour,
+    pub geo: Colour,
+    pub runway_centreline: Colour,
+    pub runway_extended_centreline: Colour,
+    pub runway_name: Colour,
+    pub free_text: Colour,
+}
+impl MapColours {
+    const DEFAULT_FIX_SYMBOL: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_FIX_NAME: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_AIRPORT_SYMBOL: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_AIRPORT_NAME: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_NDB_SYMBOL: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_NDB_NAME: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_NDB_FREQUENCY: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_VOR_SYMBOL: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_VOR_NAME: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_VOR_FREQUENCY: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_LOW_AIRWAY_LINE: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_LOW_AIRWAY_NAME: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_HIGH_AIRWAY_LINE: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_HIGH_AIRWAY_NAME: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_SID: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_STAR: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_ARTCC_BOUNDARY: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_ARTCC_LOW_BOUNDARY: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_ARTCC_HIGH_BOUNDARY: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_GEO: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_RUNWAY_CENTRELINE: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_RUNWAY_EXTENDED_CENTRELINE: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_RUNWAY_NAME: Colour = Colour::from_rgb(0, 0, 0);
+    const DEFAULT_FREE_TEXT: Colour = Colour::from_rgb(0, 0, 0);
+
+    pub fn from_euroscope(symbology: &Symbology) -> Self {
+        Self {
+            fix_symbol: Colour::from_symbology(
+                symbology,
+                &("Fixes".to_string(), "symbol".to_string()),
+                Self::DEFAULT_FIX_SYMBOL,
+            ),
+            fix_name: Colour::from_symbology(
+                symbology,
+                &("Fixes".to_string(), "name".to_string()),
+                Self::DEFAULT_FIX_NAME,
+            ),
+            airport_symbol: Colour::from_symbology(
+                symbology,
+                &("Airports".to_string(), "symbol".to_string()),
+                Self::DEFAULT_AIRPORT_SYMBOL,
+            ),
+            airport_name: Colour::from_symbology(
+                symbology,
+                &("Airports".to_string(), "name".to_string()),
+                Self::DEFAULT_AIRPORT_NAME,
+            ),
+            ndb_symbol: Colour::from_symbology(
+                symbology,
+                &("NDBs".to_string(), "symbol".to_string()),
+                Self::DEFAULT_NDB_SYMBOL,
+            ),
+            ndb_name: Colour::from_symbology(
+                symbology,
+                &("NDBs".to_string(), "name".to_string()),
+                Self::DEFAULT_NDB_NAME,
+            ),
+            ndb_frequency: Colour::from_symbology(
+                symbology,
+                &("NDBs".to_string(), "frequency".to_string()),
+                Self::DEFAULT_NDB_FREQUENCY,
+            ),
+            vor_symbol: Colour::from_symbology(
+                symbology,
+                &("VORs".to_string(), "symbol".to_string()),
+                Self::DEFAULT_VOR_SYMBOL,
+            ),
+            vor_name: Colour::from_symbology(
+                symbology,
+                &("VORs".to_string(), "name".to_string()),
+                Self::DEFAULT_VOR_NAME,
+            ),
+            vor_frequency: Colour::from_symbology(
+                symbology,
+                &("VORs".to_string(), "frequency".to_string()),
+                Self::DEFAULT_VOR_FREQUENCY,
+            ),
+            low_airway_line: Colour::from_symbology(
+                symbology,
+                &("Low airways".to_string(), "line".to_string()),
+                Self::DEFAULT_LOW_AIRWAY_LINE,
+            ),
+            low_airway_name: Colour::from_symbology(
+                symbology,
+                &("Low airways".to_string(), "name".to_string()),
+                Self::DEFAULT_LOW_AIRWAY_NAME,
+            ),
+            high_airway_line: Colour::from_symbology(
+                symbology,
+                &("High airways".to_string(), "line".to_string()),
+                Self::DEFAULT_HIGH_AIRWAY_LINE,
+            ),
+            high_airway_name: Colour::from_symbology(
+                symbology,
+                &("High airways".to_string(), "line".to_string()),
+                Self::DEFAULT_HIGH_AIRWAY_NAME,
+            ),
+            sid: Colour::from_symbology(
+                symbology,
+                &("Sids".to_string(), "line".to_string()),
+                Self::DEFAULT_SID,
+            ),
+            star: Colour::from_symbology(
+                symbology,
+                &("Stars".to_string(), "line".to_string()),
+                Self::DEFAULT_STAR,
+            ),
+            artcc_boundary: Colour::from_symbology(
+                symbology,
+                &("ARTCC boundary".to_string(), "line".to_string()),
+                Self::DEFAULT_ARTCC_BOUNDARY,
+            ),
+            artcc_low_boundary: Colour::from_symbology(
+                symbology,
+                &("ARTCC low boundary".to_string(), "line".to_string()),
+                Self::DEFAULT_ARTCC_LOW_BOUNDARY,
+            ),
+            artcc_high_boundary: Colour::from_symbology(
+                symbology,
+                &("ARTCC high boundary".to_string(), "line".to_string()),
+                Self::DEFAULT_ARTCC_HIGH_BOUNDARY,
+            ),
+            geo: Colour::from_symbology(
+                symbology,
+                &("Geo".to_string(), "line".to_string()),
+                Self::DEFAULT_GEO,
+            ),
+            runway_centreline: Colour::from_symbology(
+                symbology,
+                &("Runways".to_string(), "centerline".to_string()),
+                Self::DEFAULT_RUNWAY_CENTRELINE,
+            ),
+            runway_extended_centreline: Colour::from_symbology(
+                symbology,
+                &("Runways".to_string(), "extended centerline".to_string()),
+                Self::DEFAULT_RUNWAY_EXTENDED_CENTRELINE,
+            ),
+            runway_name: Colour::from_symbology(
+                symbology,
+                &("Runways".to_string(), "name".to_string()),
+                Self::DEFAULT_RUNWAY_NAME,
+            ),
+            free_text: Colour::from_symbology(
+                symbology,
+                &("Other".to_string(), "freetext".to_string()),
+                Self::DEFAULT_FREE_TEXT,
+            ),
+        }
+    }
+}
+impl Default for MapColours {
+    fn default() -> Self {
+        Self {
+            fix_symbol: Self::DEFAULT_FIX_SYMBOL,
+            fix_name: Self::DEFAULT_FIX_NAME,
+            airport_symbol: Self::DEFAULT_AIRPORT_SYMBOL,
+            airport_name: Self::DEFAULT_AIRPORT_NAME,
+            ndb_symbol: Self::DEFAULT_NDB_SYMBOL,
+            ndb_name: Self::DEFAULT_NDB_NAME,
+            ndb_frequency: Self::DEFAULT_NDB_FREQUENCY,
+            vor_symbol: Self::DEFAULT_VOR_SYMBOL,
+            vor_name: Self::DEFAULT_VOR_NAME,
+            vor_frequency: Self::DEFAULT_VOR_FREQUENCY,
+            low_airway_line: Self::DEFAULT_LOW_AIRWAY_LINE,
+            low_airway_name: Self::DEFAULT_LOW_AIRWAY_NAME,
+            high_airway_line: Self::DEFAULT_HIGH_AIRWAY_LINE,
+            high_airway_name: Self::DEFAULT_HIGH_AIRWAY_NAME,
+            sid: Self::DEFAULT_SID,
+            star: Self::DEFAULT_STAR,
+            artcc_boundary: Self::DEFAULT_ARTCC_BOUNDARY,
+            artcc_low_boundary: Self::DEFAULT_ARTCC_LOW_BOUNDARY,
+            artcc_high_boundary: Self::DEFAULT_ARTCC_HIGH_BOUNDARY,
+            geo: Self::DEFAULT_GEO,
+            runway_centreline: Self::DEFAULT_RUNWAY_CENTRELINE,
+            runway_extended_centreline: Self::DEFAULT_RUNWAY_EXTENDED_CENTRELINE,
+            runway_name: Self::DEFAULT_RUNWAY_NAME,
+            free_text: Self::DEFAULT_FREE_TEXT,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct SectorColours {
     pub active_background: Colour,
@@ -290,6 +500,7 @@ impl Default for UIColours {
 pub struct Colours {
     pub track: TrackColours,
     pub sector: SectorColours,
+    pub map: MapColours,
     pub ui: UIColours,
     other: HashMap<String, Colour>,
 }
@@ -317,6 +528,7 @@ impl Colours {
             })
             .unwrap_or_default();
         Self {
+            map: MapColours::from_euroscope(symbology),
             sector: SectorColours::from_euroscope(symbology),
             track: TrackColours::from_euroscope(&topsky_colours, settings),
             ui: UIColours::from_euroscope(&topsky_colours, settings),

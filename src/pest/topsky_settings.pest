@@ -1,7 +1,7 @@
-settings = { SOI ~ NL? ~ setting+ ~ section* ~ EOI}
+settings = { ((SOI | NL) ~ setting)* ~ ((SOI | NL) ~ section)* ~ NL? ~ EOI}
 
 setting = _{
-  (colour_setting | other_setting) ~ NL?
+  (colour_setting | other_setting)
 }
 colour_setting = {
   "Color_" ~ name ~ ("=" ~ colour_setting_rgb)?
@@ -9,12 +9,12 @@ colour_setting = {
 colour_setting_rgb = { number ~ "," ~ number ~ "," ~ number }
 other_setting = { name ~ "=" ~ setting_value }
 
-section = { ("[" ~ name ~ "]" | "{" ~ name ~ "}") ~ NL ~ setting+ }
+section = { ("[" ~ name ~ "]" | "{" ~ name ~ "}") ~ (NL ~ setting)* }
 
 name = @{ ("/" | "_" | ASCII_ALPHA | ASCII_DIGIT)+ }
 number = @{ ASCII_DIGIT+ }
-setting_value = { (!NL ~ ANY)* }
+setting_value = { (!(NL | EOI) ~ ANY)* }
 
 WHITESPACE = _{ (" " | "\t") }
 NL = _{ NEWLINE+ }
-COMMENT = _{ (";" | "//") ~ (!NL ~ ANY)* ~ NL }
+COMMENT = _{ (";" | "//") ~ (!NL ~ ANY)* }

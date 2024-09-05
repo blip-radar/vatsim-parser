@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, io};
 
+use bevy_derive::{Deref, DerefMut};
 use bevy_reflect::Reflect;
 use geo::Coord;
 use multimap::MultiMap;
@@ -51,7 +52,7 @@ pub enum Location {
     Coordinate(#[reflect(ignore)] Coord),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deref, DerefMut)]
 pub struct TwoKeyMap<K1: Eq + Hash, K2: Eq + Hash, V>(pub HashMap<(K1, K2), V>);
 
 impl<K1, K2, V> Serialize for TwoKeyMap<K1, K2, V>
@@ -79,7 +80,7 @@ where
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deref, DerefMut)]
 pub struct TwoKeyMultiMap<K1: Eq + Hash, K2: Eq + Hash, V>(pub MultiMap<(K1, K2), V>);
 
 impl<K1, K2, V> Serialize for TwoKeyMultiMap<K1, K2, V>

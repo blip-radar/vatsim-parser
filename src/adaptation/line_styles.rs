@@ -16,7 +16,16 @@ pub struct LineStyle {
     pub width: i32,
     pub style: String,
 }
-//
+
+impl LineStyle {
+    pub const SOLID: &'static str = "SOLID";
+    pub const ALTERNATE: &'static str = "ALTERNATE";
+    pub const DASH: &'static str = "DASH";
+    pub const DOT: &'static str = "DOT";
+    pub const DASHDOT: &'static str = "DASHDOT";
+    pub const DASHDOTDOT: &'static str = "DASHDOTDOT";
+}
+
 impl Default for LineStyle {
     fn default() -> Self {
         Self {
@@ -56,30 +65,30 @@ pub fn line_styles_from_topsky(topsky: &Option<Topsky>) -> HashMap<String, Optio
         .unwrap_or_default()
         .into_iter()
         .chain([
-            ("SOLID".to_string(), None),
+            (LineStyle::SOLID.to_string(), None),
             (
-                "DOT".to_string(),
+                LineStyle::DOT.to_string(),
                 Some(vec![Dash {
                     length: 1.0,
                     gap: 1.0,
                 }]),
             ),
             (
-                "ALTERNATE".to_string(),
+                LineStyle::ALTERNATE.to_string(),
                 Some(vec![Dash {
                     length: 1.0,
                     gap: 1.0,
                 }]),
             ),
             (
-                "DASH".to_string(),
+                LineStyle::DASH.to_string(),
                 Some(vec![Dash {
                     length: 3.0,
                     gap: 3.0,
                 }]),
             ),
             (
-                "DASHDOT".to_string(),
+                LineStyle::DASHDOT.to_string(),
                 Some(vec![
                     Dash {
                         length: 3.0,
@@ -92,7 +101,7 @@ pub fn line_styles_from_topsky(topsky: &Option<Topsky>) -> HashMap<String, Optio
                 ]),
             ),
             (
-                "DASHDOTDOT".to_string(),
+                LineStyle::DASHDOTDOT.to_string(),
                 Some(vec![
                     Dash {
                         length: 3.0,

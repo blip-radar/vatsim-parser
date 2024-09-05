@@ -9,6 +9,8 @@ use serde::Serialize;
 use thiserror::Error;
 use tracing::warn;
 
+use crate::adaptation::line_styles::LineStyle;
+use crate::adaptation::{Alignment, HorizontalAlignment, VerticalAlignment};
 use crate::{
     adaptation::{colours::Colour, symbols::SymbolRule},
     TwoKeyMap,
@@ -35,11 +37,43 @@ pub struct Item {
     pub folder: String,
     pub name: String,
     pub colour: Colour,
-    pub font_size: f64,
-    // TODO
-    // line_weight,
-    // line_style,
-    // text_alignment,
+    pub font_size_symbol_scale: f32,
+    pub line_style: String,
+    pub line_weight: i32,
+    pub text_alignment: Alignment,
+}
+
+fn parse_linestyle(pair: &Pair<Rule>) -> String {
+    match pair.as_str().parse::<u8>().unwrap() {
+        0 => LineStyle::SOLID.to_string(),
+        1 => LineStyle::DASH.to_string(),
+        2 => LineStyle::DOT.to_string(),
+        3 => LineStyle::DASHDOT.to_string(),
+        4 => LineStyle::DASHDOTDOT.to_string(),
+        val => unreachable!("{val} is no valid line_style"),
+    }
+}
+
+fn parse_alignment(pair: &Pair<Rule>) -> Alignment {
+    let alignment_val = pair.as_str().parse::<u8>().unwrap();
+
+    let horizontal = match alignment_val {
+        0..=2 => HorizontalAlignment::Left,
+        6..=8 => HorizontalAlignment::Center,
+        12..=14 => HorizontalAlignment::Right,
+        val => unreachable!("{val} is no valid alignment"),
+    };
+    let vertical = match alignment_val {
+        0 | 6 | 12 => VerticalAlignment::Top,
+        1 | 7 | 13 => VerticalAlignment::Center,
+        2 | 8 | 14 => VerticalAlignment::Bottom,
+        val => unreachable!("{val} is no valid alignment"),
+    };
+
+    Alignment {
+        horizontal,
+        vertical,
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, Serialize)]
@@ -85,14 +119,20 @@ impl Item {
         let name = item.next().unwrap().as_str().to_string();
         let colour_str = item.next().unwrap().as_str();
         let colour_num = colour_str.parse::<i32>().unwrap();
-        let font_size = item.next().unwrap().as_str().parse().unwrap();
+        let font_size_symbol_scale = item.next().unwrap().as_str().parse().unwrap();
+        let line_style = parse_linestyle(&item.next().unwrap());
+        let line_weight = item.next().unwrap().as_str().parse().unwrap();
+        let text_alignment = parse_alignment(&item.next().unwrap());
 
         match Colour::from_euroscope(colour_num) {
             Ok(colour) => Some(Self {
                 folder,
                 name,
                 colour,
-                font_size,
+                font_size_symbol_scale,
+                line_style,
+                line_weight,
+                text_alignment,
             }),
             Err(e) => {
                 warn!("Could not parse colour {folder}.{name}={colour_num}: {e}");
@@ -132,13 +172,17 @@ fn parse_symbol_rules(pair: Pair<Rule>) -> Option<(SymbolType, Vec<SymbolRule>)>
                 }
                 Rule::arc_ellipse => {
                     let pos = parse_point(symbolrule.next().unwrap());
-                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
-                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_x = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
                     let start_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
                     let end_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
-                    SymbolRule::EllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                    if (radius_x - radius_y).abs() < f64::EPSILON {
+                        SymbolRule::Arc(pos, radius_x, start_angle, end_angle)
+                    } else {
+                        SymbolRule::EllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                    }
                 }
                 Rule::fillarc => {
                     let pos = parse_point(symbolrule.next().unwrap());
@@ -151,13 +195,23 @@ fn parse_symbol_rules(pair: Pair<Rule>) -> Option<(SymbolType, Vec<SymbolRule>)>
                 }
                 Rule::fillarc_ellipse => {
                     let pos = parse_point(symbolrule.next().unwrap());
-                    let radius_x = symbolrule.next().unwrap().as_str().parse().unwrap();
-                    let radius_y = symbolrule.next().unwrap().as_str().parse().unwrap();
+                    let radius_x = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
+                    let radius_y = symbolrule.next().unwrap().as_str().parse::<f64>().unwrap();
                     let start_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
                     let end_angle =
                         symbolrule.next().unwrap().as_str().parse::<i64>().unwrap() % 360;
-                    SymbolRule::FilledEllipticArc(pos, radius_x, radius_y, start_angle, end_angle)
+                    if (radius_x - radius_y).abs() < f64::EPSILON {
+                        SymbolRule::FilledArc(pos, radius_x, start_angle, end_angle)
+                    } else {
+                        SymbolRule::FilledEllipticArc(
+                            pos,
+                            radius_x,
+                            radius_y,
+                            start_angle,
+                            end_angle,
+                        )
+                    }
                 }
                 Rule::ellipse_circle => {
                     let pos = parse_point(symbolrule.next().unwrap());
@@ -222,7 +276,10 @@ impl Symbology {
 mod test {
 
     use crate::{
-        adaptation::{colours::Colour, symbols::SymbolRule},
+        adaptation::{
+            colours::Colour, line_styles::LineStyle, symbols::SymbolRule, Alignment,
+            HorizontalAlignment, VerticalAlignment,
+        },
         symbology::{Item, SymbolType, Symbology},
     };
 
@@ -263,7 +320,13 @@ END
                 folder: "Sector".to_string(),
                 name: "msaw".to_string(),
                 colour: Colour::from_rgb(0, 128, 0),
-                font_size: 2.0
+                font_size_symbol_scale: 2.0,
+                line_style: LineStyle::SOLID.to_string(),
+                line_weight: 2,
+                text_alignment: Alignment {
+                    horizontal: HorizontalAlignment::Center,
+                    vertical: VerticalAlignment::Center,
+                }
             })
         );
         assert_eq!(
@@ -275,7 +338,13 @@ END
                 folder: "Sector".to_string(),
                 name: "inactive sector background".to_string(),
                 colour: Colour::from_rgb(200, 200, 200),
-                font_size: 3.5
+                font_size_symbol_scale: 3.5,
+                line_style: LineStyle::SOLID.to_string(),
+                line_weight: 0,
+                text_alignment: Alignment {
+                    horizontal: HorizontalAlignment::Center,
+                    vertical: VerticalAlignment::Center,
+                }
             })
         );
         assert_eq!(

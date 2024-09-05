@@ -3,7 +3,10 @@ symbology = { SOI ~ NL? ~ header ~ items ~ symbol+ ~ footer ~ EOI}
 header = { "SYMBOLOGY" ~ NL ~ "SYMBOLSIZE" ~ NL }
 
 items = _{ item+ }
-item = { colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ integer ~ ":" ~ decimal ~ ":" ~ integer ~ ":" ~ integer ~ ":" ~ integer ~ NL }
+item = { colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ integer ~ ":" ~ decimal ~ ":" ~ line_style ~ ":" ~ integer ~ ":" ~ alignment ~ NL }
+
+line_style = { '0'..'4' }
+alignment = { "12" | "13" | "14" | '0'..'2' | '6'..'8' }
 
 symbol = { "SYMBOL:" ~ integer ~ NL ~ symbolitem+ }
 symbolitem = _{ "SYMBOLITEM:" ~ symbolrule }

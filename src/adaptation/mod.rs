@@ -34,7 +34,7 @@ use crate::{
 
 use self::{colours::Colours, locations::Locations, maps::MapFolders, settings::Settings};
 
-#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
 pub enum HorizontalAlignment {
     Left,
     #[default]
@@ -42,7 +42,7 @@ pub enum HorizontalAlignment {
     Right,
 }
 
-#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
 pub enum VerticalAlignment {
     Top,
     #[default]
@@ -50,7 +50,7 @@ pub enum VerticalAlignment {
     Bottom,
 }
 
-#[derive(Clone, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
 pub struct Alignment {
     pub horizontal: HorizontalAlignment,
     pub vertical: VerticalAlignment,
@@ -165,7 +165,7 @@ impl Adaptation {
                 Some,
             )
         });
-        let settings = Settings::from_euroscope(&topsky, &squawks);
+        let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref());
         let colours = Colours::from_euroscope(&symbology, &topsky, &settings);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
