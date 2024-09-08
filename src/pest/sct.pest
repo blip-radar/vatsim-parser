@@ -1,4 +1,4 @@
-sct = { SOI ~ NL? ~ section+ ~ EOI}
+sct = { SOI ~ NL? ~ section* ~ EOI? }
 
 section = _{
   info_section
@@ -9,6 +9,8 @@ section = _{
   | runway_section
   | high_airway_section
   | low_airway_section
+  | region_section
+  | geo_section
   | unparsed_section
   | colour_definition
 }
@@ -29,6 +31,8 @@ airport_section = { "[AIRPORT]" ~ NL ~ colour_definition* ~ (aerodrome ~ NL?)* ~
 runway_section = { "[RUNWAY]" ~ NL ~ colour_definition* ~ (runway ~ NL)* ~ colour_definition* }
 high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ colour_definition* ~ (airway ~ NL)* ~ colour_definition* }
 low_airway_section = { "[LOW AIRWAY]" ~ NL ~ colour_definition* ~ (airway ~ NL)* ~ colour_definition* }
+region_section = { ("[Regions]" | "[REGIONS]") ~ NL ~ colour_definition* ~ region* ~ colour_definition* }
+geo_section = { "[GEO]" ~ NL ~ colour_definition* ~ geo* ~ colour_definition* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 sector_name = @{ (LETTER | ASCII_DIGIT | "\t" | ' '..'~')+ }
@@ -46,10 +50,18 @@ airway = { fix_designator ~ (sct_coordinate | airway_fix) ~ (sct_coordinate | ai
 // EDGG has invalid WPT with spaces
 broken = @{ !("[" | "#") ~ (!NL ~ ANY)* }
 
-airway_fix = { (designator ~ designator) }
+region = { "REGIONNAME"? ~ name ~ NL? ~ colour_name ~ sct_coordinate ~ (NL ~ sct_coordinate)* ~ NL }
+
+geo = { non_coordinate_name ~ geo_line_first ~ (NL ~ geo_line)* ~ NL  }
+geo_line_first = { sct_coordinate ~ sct_coordinate ~ colour_name? }
+geo_line = { (sct_coordinate | airway_fix) ~ (sct_coordinate | airway_fix) ~ colour_name? }
+
+airway_fix = { designator ~ designator }
 sct_coordinate = { sct_coord_part ~ sct_coord_part }
 frequency = @{ decimal }
 
+name = @{ (!(NL | "\t" | "[") ~ ANY)* }
+non_coordinate_name = { (!(sct_coordinate | NL) ~ ANY)* }
 fix_designator = @{ (LETTER | ASCII_DIGIT | "(" | ")" | "/" | "-" | "_" | "." | "[" | "]")+ }
 designator = @{ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
 header_name = @{ (ASCII_ALPHA_UPPER | WHITESPACE)+ }

@@ -6,6 +6,7 @@ use regex::Regex;
 use serde::{de::Visitor, Deserialize, Serialize};
 
 use crate::{
+    sct::Sct,
     symbology::Symbology,
     topsky::{Topsky, DEFAULT_COLOURS},
 };
@@ -506,6 +507,7 @@ pub struct Colours {
 }
 
 impl Colours {
+    // topsky and sct colours referenced by name in maps
     pub fn get(&self, name: &str, settings: &Settings) -> Option<Colour> {
         self.other
             .get(name)
@@ -515,6 +517,7 @@ impl Colours {
 
     pub fn from_euroscope(
         symbology: &Symbology,
+        sct: &Sct,
         topsky: &Option<Topsky>,
         settings: &Settings,
     ) -> Self {
@@ -532,7 +535,12 @@ impl Colours {
             sector: SectorColours::from_euroscope(symbology),
             track: TrackColours::from_euroscope(&topsky_colours, settings),
             ui: UIColours::from_euroscope(&topsky_colours, settings),
-            other: topsky_colours,
+            other: sct
+                .colours
+                .clone()
+                .into_iter()
+                .chain(topsky_colours)
+                .collect(),
         }
     }
 }

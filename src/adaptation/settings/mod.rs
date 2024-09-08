@@ -11,6 +11,8 @@ use self::track::TrackSettings;
 
 use super::{line_styles::LineStyle, Alignment};
 
+const EUROSCOPE_FONT_SIZE_FACTOR: f32 = 3.5;
+
 #[derive(Clone, Debug, Serialize)]
 pub struct LineSettings {
     /// line style of .sct runway centre lines
@@ -85,17 +87,22 @@ impl LabelSettings {
             .get(&("Airports".to_string(), "name".to_string()));
         Self {
             fix_alignment: fix.map(|item| item.text_alignment).unwrap_or_default(),
-            fix_font_size: fix.map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale),
+            fix_font_size: fix.map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale)
+                * EUROSCOPE_FONT_SIZE_FACTOR,
             airport_alignment: airport.map(|item| item.text_alignment).unwrap_or_default(),
             airport_font_size: airport
-                .map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale),
+                .map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale)
+                * EUROSCOPE_FONT_SIZE_FACTOR,
             runway_alignment: runway.map(|item| item.text_alignment).unwrap_or_default(),
             runway_font_size: runway
-                .map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale),
+                .map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale)
+                * EUROSCOPE_FONT_SIZE_FACTOR,
             vor_alignment: vor.map(|item| item.text_alignment).unwrap_or_default(),
-            vor_font_size: vor.map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale),
+            vor_font_size: vor.map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale)
+                * EUROSCOPE_FONT_SIZE_FACTOR,
             ndb_alignment: ndb.map(|item| item.text_alignment).unwrap_or_default(),
-            ndb_font_size: ndb.map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale),
+            ndb_font_size: ndb.map_or(Self::DEFAULT_FONT_SIZE, |item| item.font_size_symbol_scale)
+                * EUROSCOPE_FONT_SIZE_FACTOR,
         }
     }
 }

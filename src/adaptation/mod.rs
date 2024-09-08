@@ -3,6 +3,7 @@ pub mod icao;
 pub mod line_styles;
 pub mod locations;
 pub mod maps;
+pub mod sct_items;
 pub mod sectors;
 pub mod settings;
 pub mod symbols;
@@ -14,6 +15,7 @@ use icao::Aircraft;
 use icao::Airline;
 use icao::Airport;
 use line_styles::{line_styles_from_topsky, Dash};
+use sct_items::SctItems;
 use sectors::{Sector, Volume};
 use serde::Serialize;
 use symbols::Symbols;
@@ -140,6 +142,8 @@ pub struct Adaptation {
     pub aircraft: HashMap<String, Aircraft>,
     pub airlines: HashMap<String, Airline>,
     pub airports: HashMap<String, Airport>,
+    /// .sct items used for drawing maps and otherwise not usable
+    pub sct_items: SctItems,
 }
 
 impl Adaptation {
@@ -149,8 +153,8 @@ impl Adaptation {
         let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
         let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let (volumes, sectors) = Sector::from_ese(&ese);
+        let sct_items = SctItems::from_sct(&sct);
         let positions = Position::from_ese_positions(ese.positions.clone());
-        let locations = Locations::from_euroscope(sct, ese, airways);
         let symbology = Symbology::parse(&fs_err::read(prf.symbology_path())?)?;
         let squawks = prf
             .squawks_path()
@@ -166,7 +170,8 @@ impl Adaptation {
             )
         });
         let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref());
-        let colours = Colours::from_euroscope(&symbology, &topsky, &settings);
+        let colours = Colours::from_euroscope(&symbology, &sct, &topsky, &settings);
+        let locations = Locations::from_euroscope(sct, ese, airways);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
         let airports = parse_airports(&fs_err::read(prf.airports_path())?)?;
@@ -186,6 +191,7 @@ impl Adaptation {
             aircraft,
             airlines,
             airports,
+            sct_items,
         })
     }
 }

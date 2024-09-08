@@ -44,7 +44,27 @@ pub struct Airway {
     pub end: Location,
 }
 
-// TODO GEO, REGIONS, ARTCC, SID, STAR, AIRWAY
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct Region {
+    pub name: String,
+    pub colour_name: String,
+    pub polygon: Vec<Coord>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct Line {
+    pub start: Location,
+    pub end: Location,
+    pub colour: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct Geo {
+    pub name: String,
+    pub lines: Vec<Line>,
+}
+
+// TODO ARTCC, SID, STAR, AIRWAY
 #[derive(Debug, Serialize, PartialEq)]
 pub struct Sct {
     pub info: SctInfo,
@@ -56,6 +76,8 @@ pub struct Sct {
     pub runways: Vec<Runway>,
     pub high_airways: Vec<Airway>,
     pub low_airways: Vec<Airway>,
+    pub regions: Vec<Region>,
+    pub geo: Vec<Geo>,
 }
 
 #[derive(Debug, Default, Serialize, PartialEq)]
@@ -82,6 +104,8 @@ enum Section {
     NDBs(Vec<NDB>),
     VORs(Vec<VOR>),
     Runways(Vec<Runway>),
+    Regions(Vec<Region>),
+    Geo(Vec<Geo>),
     Unsupported,
 }
 
@@ -95,6 +119,8 @@ enum SectionName {
     NDBs,
     VORs,
     Runways,
+    Regions,
+    Geo,
     Unsupported,
 }
 
@@ -140,7 +166,7 @@ fn parse_airport(pair: Pair<Rule>) -> Airport {
     }
 }
 
-fn parse_or_fix(pair: Pair<Rule>) -> Location {
+fn parse_location(pair: Pair<Rule>) -> Location {
     match pair.as_rule() {
         Rule::sct_coordinate => Location::Coordinate(parse_coordinate(pair)),
         Rule::airway_fix => Location::Fix(pair.into_inner().next().unwrap().as_str().to_string()),
@@ -153,7 +179,7 @@ fn parse_airway(pair: Pair<Rule>) -> Option<Airway> {
     let designator = airway.next().unwrap().as_str().to_string();
 
     let (start, end) = if let (Some(start), Some(end)) = (airway.next(), airway.next()) {
-        (parse_or_fix(start), parse_or_fix(end))
+        (parse_location(start), parse_location(end))
     } else {
         warn!("broken airway (initial parse): {airway:?}");
         return None;
@@ -198,6 +224,41 @@ fn parse_ndb(pair: Pair<Rule>) -> Option<NDB> {
         warn!("broken ndb: {pair:?}");
         None
     }
+}
+
+fn parse_region(pair: Pair<Rule>) -> Region {
+    let mut region = pair.into_inner();
+    let name = region.next().unwrap().as_str().to_string();
+    let colour_name = region.next().unwrap().as_str().to_string();
+    let polygon = region.map(parse_coordinate).collect();
+
+    Region {
+        name,
+        colour_name,
+        polygon,
+    }
+}
+
+fn parse_line(pair: Pair<Rule>) -> Option<Line> {
+    let mut line = pair.into_inner();
+
+    let (start, end) = if let (Some(start), Some(end)) = (line.next(), line.next()) {
+        (parse_location(start), parse_location(end))
+    } else {
+        warn!("broken airway (initial parse): {line:?}");
+        return None;
+    };
+    let colour = line.next().map(|pair| pair.as_str().to_string());
+
+    Some(Line { start, end, colour })
+}
+
+fn parse_geo(pair: Pair<Rule>) -> Geo {
+    let mut geo = pair.into_inner();
+    let name = geo.next().unwrap().as_str().to_string();
+    let lines = geo.filter_map(parse_line).collect();
+
+    Geo { name, lines }
 }
 
 fn parse_vor(pair: Pair<Rule>) -> VOR {
@@ -400,6 +461,38 @@ fn parse_independent_section(
             ),
         ),
 
+        Rule::region_section => (
+            SectionName::Regions,
+            Section::Regions(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
+                            None
+                        } else {
+                            Some(parse_region(pair))
+                        }
+                    })
+                    .collect(),
+            ),
+        ),
+
+        Rule::geo_section => (
+            SectionName::Geo,
+            Section::Geo(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
+                            None
+                        } else {
+                            Some(parse_geo(pair))
+                        }
+                    })
+                    .collect(),
+            ),
+        ),
+
         _ => (SectionName::Unsupported, Section::Unsupported),
     }
 }
@@ -457,6 +550,14 @@ impl Sct {
             Some((_, Section::LowAirways(low_airways))) => low_airways,
             _ => vec![],
         };
+        let regions = match sections.remove_entry(&SectionName::Regions) {
+            Some((_, Section::Regions(regions))) => regions,
+            _ => vec![],
+        };
+        let geo = match sections.remove_entry(&SectionName::Geo) {
+            Some((_, Section::Geo(geo))) => geo,
+            _ => vec![],
+        };
 
         let sct = Sct {
             info,
@@ -468,6 +569,8 @@ impl Sct {
             runways,
             high_airways,
             low_airways,
+            regions,
+            geo,
         };
 
         Ok(sct)
@@ -479,13 +582,14 @@ mod test {
     use std::collections::HashMap;
 
     use geo::Coord;
+    use pretty_assertions_sorted::assert_eq_sorted;
 
     use crate::{
         adaptation::{
             colours::Colour,
             locations::{Fix, NDB, VOR},
         },
-        sct::{Airport, Airway, Runway, Sct, SctInfo},
+        sct::{Airport, Airway, Geo, Line, Region, Runway, Sct, SctInfo},
         Location,
     };
 
@@ -624,19 +728,15 @@ RMZ EDNX                                 N048.16.27.000 E011.27.21.000 N048.17.1
 
 EDDN Groundlayout Holding Points         N049.29.58.736 E011.03.33.028 N049.29.58.942 E011.03.34.353 colour_Stopbar
                                          N049.29.56.786 E011.03.52.659 N049.29.57.006 E011.03.54.022 colour_Stopbar
-                                         N049.29.54.726 E011.04.12.424 N049.29.55.069 E011.04.13.780 colour_Stopbar
-                                         N049.29.52.460 E011.04.35.712 N049.29.52.803 E011.04.36.718 colour_Stopbar
-                                         N049.29.49.782 E011.05.07.369 N049.29.49.453 E011.05.08.660 colour_Stopbar
-                                         N049.29.46.390 E011.05.42.055 N049.29.45.841 E011.05.43.456 colour_Stopbar
-                                         N049.29.48.890 E011.04.19.445 N049.29.48.739 E011.04.21.004 colour_Stopbar
-                                         N049.29.47.750 E011.04.38.414 N049.29.47.667 E011.04.39.214 colour_Stopbar
-                                         N049.29.47.667 E011.04.39.214 N049.29.48.038 E011.04.40.474 colour_Stopbar
-                                         N049.29.47.475 E011.05.03.614 N049.29.46.871 E011.05.04.269 colour_Stopbar
-                                         N049.29.43.547 E011.05.35.831 N049.29.42.669 E011.05.35.961 colour_Stopbar
+
+EDQC Groundlayout                        N050.15.52.011 E010.59.29.553 N050.15.52.239 E010.59.29.566
 
 EDQC Groundlayout                        N050.15.52.011 E010.59.29.553 N050.15.52.239 E010.59.29.566 colour_Stopbar
                                          N050.15.39.345 E011.00.04.860 N050.15.39.411 E011.00.05.139 colour_Stopbar
-
+                                         N050.15.39.345 E011.00.04.860 N050.15.39.411 E011.00.05.139
+                                         RAVSA RAVSA LCE13 LCE13 geoDefault
+HIGHWAYS LOVV                            N048.12.09.100 E016.13.16.700 N048.11.27.100 E016.12.10.100 COLOR_Landmark2
+                                         N050.15.39.345 E011.00.04.860 N050.15.39.411 E011.00.05.139 colour_Stopbar
 [REGIONS]
 REGIONNAME EDDM Groundlayout
 colour_Stopbar              N048.21.53.621 E011.48.32.152
@@ -648,6 +748,9 @@ colour_HardSurface1         N048.04.25.470 E011.16.20.093
                            N048.04.24.509 E011.16.21.717
                            N048.05.20.677 E011.17.38.446
                            N048.05.21.638 E011.17.36.829
+Surrounding Grass	grass	N51.11.37.165 E02.51.07.153
+ N51.11.38.619 E02.51.08.463
+ N51.11.39.660 E02.51.10.008
 
 [HIGH AIRWAY]
 B73        N054.54.46.000 E018.57.29.998 N055.36.12.999 E019.50.17.901
@@ -1014,7 +1117,190 @@ A5         RTT RTT NUB NUB
                 }
             ]
         );
-        // TODO GEO, REGIONS, ARTCC, SID, STAR, AIRWAY
+        assert_eq_sorted!(
+            sct.as_ref().unwrap().regions,
+            vec![
+                Region {
+                    name: "EDDM Groundlayout".to_string(),
+                    colour_name: "colour_Stopbar".to_string(),
+                    polygon: vec![
+                        Coord {
+                            x: 11.808_931_111_111_113,
+                            y: 48.364_894_722_222_225,
+                        },
+                        Coord {
+                            x: 11.809_087_5,
+                            y: 48.365_142_777_777_78,
+                        },
+                        Coord {
+                            x: 11.809_047_5,
+                            y: 48.365_146_388_888_89,
+                        },
+                        Coord {
+                            x: 11.808_900_555_555_557,
+                            y: 48.364_91,
+                        },
+                    ]
+                },
+                Region {
+                    name: "EDMO Groundlayout".to_string(),
+                    colour_name: "colour_HardSurface1".to_string(),
+                    polygon: vec![
+                        Coord {
+                            x: 11.272_248_055_555_556,
+                            y: 48.073_741_666_666_67,
+                        },
+                        Coord {
+                            x: 11.272_699_166_666_667,
+                            y: 48.073_474_722_222_22,
+                        },
+                        Coord {
+                            x: 11.294_012_777_777_777,
+                            y: 48.089_076_944_444_45,
+                        },
+                        Coord {
+                            x: 11.293_563_611_111_11,
+                            y: 48.089_343_888_888_89,
+                        },
+                    ],
+                },
+                Region {
+                    name: "Surrounding Grass".to_string(),
+                    colour_name: "grass".to_string(),
+                    polygon: vec![
+                        Coord {
+                            x: 2.851_986_944_444_444_6,
+                            y: 51.193_656_944_444_44,
+                        },
+                        Coord {
+                            x: 2.852_350_833_333_333_4,
+                            y: 51.194_060_833_333_33,
+                        },
+                        Coord {
+                            x: 2.852_78,
+                            y: 51.194_35,
+                        },
+                    ]
+                }
+            ]
+        );
+        assert_eq_sorted!(
+            sct.as_ref().unwrap().geo,
+            vec![
+                Geo {
+                    name: "EDDN Groundlayout Holding Points".to_string(),
+                    lines: vec![
+                        Line {
+                            start: Location::Coordinate(Coord {
+                                x: 11.059_174_444_444_444,
+                                y: 49.499_648_888_888_89,
+                            }),
+                            end: Location::Coordinate(Coord {
+                                x: 11.059_542_500_000_001,
+                                y: 49.499_706_111_111_11,
+                            }),
+                            colour: Some("colour_Stopbar".to_string()),
+                        },
+                        Line {
+                            start: Location::Coordinate(Coord {
+                                x: 11.064_627_5,
+                                y: 49.499_107_222_222_22,
+                            }),
+                            end: Location::Coordinate(Coord {
+                                x: 11.065_006_111_111_112,
+                                y: 49.499_168_333_333_34,
+                            }),
+                            colour: Some("colour_Stopbar".to_string()),
+                        },
+                    ],
+                },
+                Geo {
+                    name: "EDQC Groundlayout".to_string(),
+                    lines: vec![Line {
+                        start: Location::Coordinate(Coord {
+                            x: 10.991_542_5,
+                            y: 50.264_447_5,
+                        }),
+                        end: Location::Coordinate(Coord {
+                            x: 10.991_546_111_111_111,
+                            y: 50.264_510_833_333_33,
+                        }),
+                        colour: None,
+                    },],
+                },
+                Geo {
+                    name: "EDQC Groundlayout".to_string(),
+                    lines: vec![
+                        Line {
+                            start: Location::Coordinate(Coord {
+                                x: 10.991_542_5,
+                                y: 50.264_447_5,
+                            }),
+                            end: Location::Coordinate(Coord {
+                                x: 10.991_546_111_111_111,
+                                y: 50.264_510_833_333_33,
+                            }),
+                            colour: Some("colour_Stopbar".to_string()),
+                        },
+                        Line {
+                            start: Location::Coordinate(Coord {
+                                x: 11.001_35,
+                                y: 50.260_929_166_666_66,
+                            }),
+                            end: Location::Coordinate(Coord {
+                                x: 11.001_427_5,
+                                y: 50.260_947_5,
+                            }),
+                            colour: Some("colour_Stopbar".to_string()),
+                        },
+                        Line {
+                            start: Location::Coordinate(Coord {
+                                x: 11.001_35,
+                                y: 50.260_929_166_666_66,
+                            }),
+                            end: Location::Coordinate(Coord {
+                                x: 11.001_427_5,
+                                y: 50.260_947_5,
+                            }),
+                            colour: None,
+                        },
+                        Line {
+                            start: Location::Fix("RAVSA".to_string()),
+                            end: Location::Fix("LCE13".to_string()),
+                            colour: Some("geoDefault".to_string()),
+                        },
+                    ],
+                },
+                Geo {
+                    name: "HIGHWAYS LOVV".to_string(),
+                    lines: vec![
+                        Line {
+                            start: Location::Coordinate(Coord {
+                                x: 16.221_305_555_555_553,
+                                y: 48.202_527_777_777_78,
+                            }),
+                            end: Location::Coordinate(Coord {
+                                x: 16.202_805_555_555_553,
+                                y: 48.190_861_111_111_104,
+                            }),
+                            colour: Some("COLOR_Landmark2".to_string()),
+                        },
+                        Line {
+                            start: Location::Coordinate(Coord {
+                                x: 11.001_35,
+                                y: 50.260_929_166_666_66,
+                            }),
+                            end: Location::Coordinate(Coord {
+                                x: 11.001_427_5,
+                                y: 50.260_947_5,
+                            }),
+                            colour: Some("colour_Stopbar".to_string()),
+                        },
+                    ]
+                },
+            ]
+        );
+        // TODO ARTCC, SID, STAR, AIRWAY
     }
 
     #[test]
@@ -1048,7 +1334,20 @@ EDDN TRAN ILS10 DN430                    N049.33.11.289 E010.30.33.379 N049.32.3
                                          N049.32.37.168 E010.36.38.149 N049.32.02.731 E010.42.42.681 colour_APP
 
 EDQD STAR ALL LONLIxZ                    N050.04.29.060 E011.13.34.989 N049.53.50.819 E011.24.28.540
-        ";
+[Regions]
+REGIONNAME test
+colour N048.35.46.899 E012.16.26.140";
+        let sct = Sct::parse(sct_bytes);
+
+        assert!(sct.is_ok());
+    }
+
+    #[test]
+    fn test_geo_at_end() {
+        let sct_bytes = b"[GEO]
+
+EDDN Groundlayout Holding Points         N049.29.58.736 E011.03.33.028 N049.29.58.942 E011.03.34.353 colour_Stopbar
+                                         N049.29.56.786 E011.03.52.659 N049.29.57.006 E011.03.54.022 colour_Stopbar";
         let sct = Sct::parse(sct_bytes);
 
         assert!(sct.is_ok());
