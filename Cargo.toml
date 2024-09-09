@@ -13,7 +13,7 @@ license = "LGPL-3.0-or-later"
 
 [dependencies]
 bevy_derive = "0.14.1"
-bevy_reflect = "0.14.1"
+bevy_reflect = "0.14.2"
 encoding_rs = "0.8.34"
 from-pest = "0.3.2"
 fs-err = "2.11.0"
