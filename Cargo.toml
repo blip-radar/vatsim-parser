@@ -29,7 +29,7 @@ phf = { version = "0.11.2", features = ["macros"] }
 regex = "1.10.6"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
-thiserror = "1.0.63"
+thiserror = "1.0.64"
 tracing = "0.1.40"
 uom = { version = "0.36", features = ["serde"] }
 
