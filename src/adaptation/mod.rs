@@ -11,6 +11,7 @@ pub mod symbols;
 use std::{collections::HashMap, io};
 
 use bevy_reflect::Reflect;
+use geo::Point;
 use icao::Aircraft;
 use icao::Airline;
 use icao::Airport;
@@ -65,7 +66,7 @@ pub struct Position {
     pub frequency: String,
     pub prefix: String,
     pub suffix: String,
-    // TODO vis points?
+    pub visibility_points: Vec<Point>,
 }
 impl Position {
     fn from_ese_positions(positions: HashMap<String, ese::Position>) -> HashMap<String, Position> {
@@ -80,6 +81,11 @@ impl Position {
                         frequency: pos.frequency,
                         prefix: pos.prefix,
                         suffix: pos.suffix,
+                        visibility_points: pos
+                            .visibility_points
+                            .into_iter()
+                            .map(Point::from)
+                            .collect(),
                     },
                 )
             })
