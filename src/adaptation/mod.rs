@@ -118,6 +118,7 @@ pub enum AdaptationError {
 pub type AdaptationResult = Result<Adaptation, AdaptationError>;
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct Adaptation {
+    pub name: String,
     pub locations: Locations,
     // TODO id -> pos? something else might be more useful/efficient (freq, prefix, suffix)?
     pub positions: HashMap<String, Position>,
@@ -158,6 +159,7 @@ impl Adaptation {
         let sct = Sct::parse(&fs_err::read(prf.sct_path())?)?;
         let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
         let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
+        let name = sct.info.name.clone();
         let (volumes, sectors) = Sector::from_ese(&ese);
         let sct_items = SctItems::from_sct(&sct);
         let positions = Position::from_ese_positions(ese.positions.clone());
@@ -182,6 +184,7 @@ impl Adaptation {
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
         let airports = parse_airports(&fs_err::read(prf.airports_path())?)?;
         Ok(Adaptation {
+            name,
             positions,
             volumes,
             sectors,
