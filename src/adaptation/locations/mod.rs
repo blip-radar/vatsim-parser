@@ -2,7 +2,7 @@ pub mod airways;
 
 use std::collections::HashMap;
 
-use geo::{Coord, GeodesicDestination, Point};
+use geo::{Coord, Destination, Geodesic, Point};
 use multimap::MultiMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -202,11 +202,8 @@ impl Locations {
             let bearing: f64 = captures[2].parse().unwrap();
             let range = Length::new::<nautical_mile>(captures[3].parse::<f64>().unwrap());
 
-            self.convert_fix(fix).map(|c| {
-                Point::from(c)
-                    .geodesic_destination(bearing, range.get::<meter>())
-                    .0
-            })
+            self.convert_fix(fix)
+                .map(|c| Geodesic::destination(Point::from(c), bearing, range.get::<meter>()).0)
         })
     }
 
