@@ -116,7 +116,7 @@ global = { "GLOBAL" }
 
 hidden = { "HIDDEN" }
 
-circle = { "CIRCLE:" ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
+circle = { ("COORD_CIRCLE:" | "CIRCLE:") ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
 
 coord = { "COORD:" ~ (coordinate | colon_delimited_text) }
 
