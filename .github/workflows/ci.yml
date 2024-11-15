@@ -32,7 +32,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v15
+        uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v8
       - name: Run cargo test
         run: nix develop --command cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
@@ -58,7 +58,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.toml') }}
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v15
+        uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v8
       - name: Run clippy
         run: nix develop --command cargo clippy -- -D warnings
@@ -74,7 +74,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v15
+        uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v8
       - name: Run cargo fmt
         run: nix develop --command cargo fmt --all -- --check
