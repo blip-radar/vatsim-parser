@@ -15,7 +15,7 @@ license = "LGPL-3.0-or-later"
 bevy_derive = "0.15"
 bevy_reflect = "0.15"
 encoding_rs = "0.8.35"
-from-pest = "0.3.2"
+from-pest = "0.3.3"
 fs-err = "3.0.0"
 geo = { version = "0.29", features = ["use-serde"] }
 multimap = "0.10.0"
