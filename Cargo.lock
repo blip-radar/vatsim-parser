@@ -65,9 +65,9 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
 name = "bevy_derive"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e141b7eda52a23bb88740b37a291e26394524cb9ee3b034c7014669671fc2bb5"
+checksum = "b962df2a1bef274ae76ec75279eb6f8ef0ffd85b5e4c43433f5d08ba57b3d071"
 dependencies = [
  "bevy_macro_utils",
  "quote",
@@ -76,9 +76,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_macro_utils"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3954dbb56a66a6c09c783e767f6ceca0dc0492c22e536e2aeaefb5545eac33c6"
+checksum = "9bdb3a681c24abace65bf18ed467ad8befbedb42468b32e459811bfdb01e506c"
 dependencies = [
  "proc-macro2",
  "quote",
