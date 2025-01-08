@@ -115,7 +115,7 @@ impl MapGroup {
                 coordinate,
                 label: symbol.label.as_ref().map(|l| l.text.clone()),
                 // TODO global/map-level alignment
-                label_alignment: symbol.label_alignment.clone().unwrap_or_default(),
+                label_alignment: symbol.label_alignment.unwrap_or_default(),
                 label_offset: symbol
                     .label
                     .as_ref()
@@ -160,7 +160,7 @@ impl MapGroup {
                 coordinate,
                 text: text.content.clone(),
                 // TODO global/map-level alignment
-                alignment: text.alignment.clone().unwrap_or_default(),
+                alignment: text.alignment.unwrap_or_default(),
             });
         } else {
             warn!("Could not convert {:?}", text.location);
