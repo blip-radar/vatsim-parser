@@ -13,7 +13,7 @@ use crate::{
 
 use super::settings::Settings;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Reflect)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Reflect)]
 pub struct Colour {
     pub r: u8,
     pub g: u8,
