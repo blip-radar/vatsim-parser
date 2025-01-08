@@ -188,7 +188,7 @@ impl Locations {
         locations
     }
 
-    pub(crate) fn convert_location(&self, loc: &Location) -> Option<Coord> {
+    pub fn convert_location(&self, loc: &Location) -> Option<Coord> {
         match loc {
             Location::Coordinate(c) => Some(*c),
             Location::Fix(wpt) => self.convert_designator(wpt),
