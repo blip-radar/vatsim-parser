@@ -4,7 +4,7 @@ use std::io;
 use std::{collections::HashMap, str::FromStr};
 use thiserror::Error;
 
-use crate::adaptation::icao::{Aircraft, AircraftType, EngineType, Wtc};
+use crate::adaptation::icao::{Aircraft, AircraftMap, AircraftType, EngineType, Wtc};
 
 use super::read_to_string;
 
@@ -21,13 +21,13 @@ pub enum AircraftError {
     FileRead(#[from] io::Error),
 }
 
-pub type AircraftResult = Result<HashMap<String, Aircraft>, AircraftError>;
+pub type AircraftResult = Result<AircraftMap, AircraftError>;
 
 pub fn parse_aircraft(content: &[u8]) -> AircraftResult {
     let unparsed_file = read_to_string(content)?;
     let aircraft_parse = AircraftParser::parse(Rule::aircraft, &unparsed_file);
 
-    Ok(aircraft_parse.map(|mut pairs| {
+    Ok(AircraftMap(aircraft_parse.map(|mut pairs| {
         pairs
             .next()
             .unwrap()
@@ -57,7 +57,7 @@ pub fn parse_aircraft(content: &[u8]) -> AircraftResult {
 
                 acc
             })
-    })?)
+    })?))
 }
 
 #[cfg(test)]
@@ -87,7 +87,7 @@ ZZZZ	----	-	Aircraft type not assigned
         let parsed = parse_aircraft(aircraft_bytes).unwrap();
 
         assert_eq_sorted!(
-            parsed,
+            parsed.0,
             HashMap::from([
                 (
                     "EUFI".to_string(),

@@ -1,15 +1,17 @@
-use std::{fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
+use bevy_derive::{Deref, DerefMut};
 use serde::Serialize;
 
 pub use crate::icao_airlines::Airline;
 
-#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, PartialEq, Default)]
 pub enum Wtc {
     LIGHT,
     MEDIUM,
     HEAVY,
     SUPER,
+    #[default]
     UNKNOWN,
 }
 
@@ -112,6 +114,17 @@ impl FromStr for EngineType {
         } else {
             Err(ParseEngineTypeError)
         }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deref, DerefMut, Serialize)]
+pub struct AircraftMap(pub HashMap<String, Aircraft>);
+
+impl AircraftMap {
+    pub fn wtc(&self, ac_type: Option<&str>) -> Wtc {
+        ac_type
+            .and_then(|ac_type| self.get(ac_type))
+            .map_or(Wtc::UNKNOWN, |ac| ac.wtc)
     }
 }
 

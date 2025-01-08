@@ -12,7 +12,7 @@ use std::{collections::HashMap, io};
 
 use bevy_reflect::Reflect;
 use geo::Point;
-use icao::Aircraft;
+use icao::AircraftMap;
 use icao::Airline;
 use icao::Airport;
 use line_styles::{line_styles_from_topsky, Dash};
@@ -146,7 +146,7 @@ pub struct Adaptation {
     // stca_blanking
     // cpdlc
     // external/extra_plugin_settings?
-    pub aircraft: HashMap<String, Aircraft>,
+    pub aircraft: AircraftMap,
     pub airlines: HashMap<String, Airline>,
     pub airports: HashMap<String, Airport>,
     /// .sct items used for drawing maps and otherwise not usable
