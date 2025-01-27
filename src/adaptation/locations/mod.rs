@@ -258,7 +258,28 @@ impl Locations {
         })
     }
 
-    // TODO convert runway e.g. EDDM/26R
+    fn convert_rwy(&self, designator: &str) -> Option<Coord> {
+        matches!(designator.len(), 6..=7)
+            .then(|| {
+                designator
+                    .split_at_checked(4)
+                    .and_then(|(ad_designator, rwy_designator)| {
+                        self.airports.get(ad_designator).and_then(|airport| {
+                            airport.runways.iter().find_map(|rwy| {
+                                if rwy.designators.0 == rwy_designator {
+                                    Some(rwy.location.0)
+                                } else if rwy.designators.1 == rwy_designator {
+                                    Some(rwy.location.1)
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                    })
+            })
+            .flatten()
+    }
+
     fn convert_fix(&self, designator: &str) -> Option<Coord> {
         self.vors
             .get(designator)
@@ -269,6 +290,7 @@ impl Locations {
                 .airports
                 .get(designator)
                 .map(|airport| airport.coordinate))
+            .or(self.convert_rwy(designator))
     }
 
     pub fn convert_designator(&self, designator: &str) -> Option<Coord> {
@@ -282,14 +304,15 @@ impl Locations {
             || self.ndbs.contains_key(designator)
             || self.fixes.contains_key(designator)
             || self.airports.contains_key(designator)
+            || self.convert_rwy(designator).is_some()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use geo::Coord;
+    use geo::{coord, Coord};
 
-    use crate::adaptation::locations::{Airport, Fix, Locations, NDB, VOR};
+    use crate::adaptation::locations::{Airport, Fix, Locations, Runway, NDB, VOR};
 
     #[test]
     fn test_get_by_wpt() {
@@ -349,7 +372,38 @@ mod test {
                 "EDDM".to_string(),
                 Airport {
                     designator: "EDDM".to_string(),
-                    runways: vec![],
+                    runways: vec![
+                        Runway {
+                            designators: ("08R".to_string(), "26L".to_string()),
+                            headings: (80, 260),
+                            location: (
+                                coord! {
+                                  x: 11.751_016_944_444_444,
+                                  y: 48.340_668_888_888_89
+                                },
+                                coord! {
+                                  x: 11.804_613_888_888_89,
+                                  y: 48.344_796_944_444_45
+                                },
+                            ),
+                            aerodrome: "EDDM".to_string(),
+                        },
+                        Runway {
+                            designators: ("08L".to_string(), "26R".to_string()),
+                            headings: (80, 260),
+                            location: (
+                                coord! {
+                                  x: 11.767_549_722_222_222,
+                                  y: 48.362_766_944_444_445
+                                },
+                                coord! {
+                                  x: 11.821_171_944_444_444,
+                                  y: 48.366_885_833_333_335
+                                },
+                            ),
+                            aerodrome: "EDDM".to_string(),
+                        },
+                    ],
                     coordinate: Coord {
                         y: 48.353_782_777_777_78,
                         x: 11.786_085_833_333_333,
@@ -380,6 +434,13 @@ mod test {
             Coord {
                 y: 48.353_782_777_777_78,
                 x: 11.786_085_833_333_333
+            }
+        );
+        assert_eq!(
+            locs.convert_designator("EDDM26R").unwrap(),
+            Coord {
+                y: 48.366_885_833_333_335,
+                x: 11.821_171_944_444_444,
             }
         );
         assert_eq!(
