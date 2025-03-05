@@ -9,7 +9,7 @@ use serde::Serialize;
 use thiserror::Error;
 use tracing::warn;
 
-use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, FromDegMinSec};
+use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, DegMinSecExt as _};
 
 use super::read_to_string;
 
@@ -357,11 +357,11 @@ fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
         .next()
         .unwrap()
         .as_str()
-        .parse::<f64>()
+        .parse::<i16>()
         .unwrap()
         * match hemi {
-            "N" | "E" | "n" | "e" => 1.0,
-            "S" | "W" | "s" | "w" => -1.0,
+            "N" | "E" | "n" | "e" => 1,
+            "S" | "W" | "s" | "w" => -1,
             _ => unreachable!("{hemi} is not a hemisphere"),
         };
     let min = coordinate_part.next().unwrap().as_str().parse().unwrap();

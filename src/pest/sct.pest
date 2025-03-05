@@ -7,6 +7,11 @@ section = _{
   | fixes_section
   | airport_section
   | runway_section
+  | sid_section
+  | star_section
+  | artcc_high_section
+  | artcc_section
+  | artcc_low_section
   | high_airway_section
   | low_airway_section
   | region_section
@@ -29,10 +34,15 @@ ndb_section = { "[NDB]" ~ NL ~ colour_definition* ~ ((location | broken) ~ NL)* 
 fixes_section = { "[FIXES]" ~ NL ~ colour_definition* ~ ((fix | broken) ~ NL)* ~ colour_definition* }
 airport_section = { "[AIRPORT]" ~ NL ~ colour_definition* ~ (aerodrome ~ NL?)* ~ colour_definition* }
 runway_section = { "[RUNWAY]" ~ NL ~ colour_definition* ~ (runway ~ NL)* ~ colour_definition* }
+sid_section = { "[SID]" ~ NL ~ colour_definition* ~ coloured_lines* ~ colour_definition* }
+star_section = { "[STAR]" ~ NL ~ colour_definition* ~ coloured_lines* ~ colour_definition* }
+artcc_high_section = { "[ARTCC HIGH]" ~ NL ~ colour_definition* ~ coloured_lines* ~ colour_definition* }
+artcc_section = { "[ARTCC]" ~ NL ~ colour_definition* ~ coloured_lines* ~ colour_definition* }
+artcc_low_section = { "[ARTCC LOW]" ~ NL ~ colour_definition* ~ coloured_lines* ~ colour_definition* }
 high_airway_section = { "[HIGH AIRWAY]" ~ NL ~ colour_definition* ~ (airway ~ NL)* ~ colour_definition* }
 low_airway_section = { "[LOW AIRWAY]" ~ NL ~ colour_definition* ~ (airway ~ NL)* ~ colour_definition* }
 region_section = { ("[Regions]" | "[REGIONS]") ~ NL ~ colour_definition* ~ region* ~ colour_definition* }
-geo_section = { "[GEO]" ~ NL ~ colour_definition* ~ geo* ~ colour_definition* }
+geo_section = { "[GEO]" ~ NL ~ colour_definition* ~ coloured_lines* ~ colour_definition* }
 unparsed_section = { (section_header ~ NL ~ line*) }
 
 sector_name = @{ (LETTER | ASCII_DIGIT | "\t" | ' '..'~')+ }
@@ -43,7 +53,7 @@ colour_definition = { "#define" ~ colour_name ~ pos_integer ~ NL }
 colour_name = @{ (ASCII_ALPHANUMERIC | "-" | "_")+ }
 
 fix = { fix_designator ~ sct_coordinate }
-aerodrome = { designator ~ (frequency | ".")? ~ sct_coordinate ~ ("A" | "B" | "C" | "D" | "E" | "F" | "G") }
+aerodrome = { designator ~ (frequency | ".")? ~ sct_coordinate ~ ctr_airspace }
 location = { designator ~ frequency ~ sct_coordinate }
 runway = { runway_designator ~ runway_designator ~ pos_integer ~ pos_integer ~ sct_coordinate ~ sct_coordinate ~ designator ~ (!NEWLINE ~ ANY)* }
 airway = { fix_designator ~ (sct_coordinate | airway_fix) ~ (sct_coordinate | airway_fix) }
@@ -52,9 +62,11 @@ broken = @{ !("[" | "#") ~ (!NL ~ ANY)* }
 
 region = { "REGIONNAME"? ~ name ~ NL? ~ colour_name ~ sct_coordinate ~ (NL ~ sct_coordinate)* ~ NL }
 
-geo = { non_coordinate_name ~ geo_line_first ~ (NL ~ geo_line)* ~ NL  }
-geo_line_first = { sct_coordinate ~ sct_coordinate ~ colour_name? }
-geo_line = { (sct_coordinate | airway_fix) ~ (sct_coordinate | airway_fix) ~ colour_name? }
+ctr_airspace = { "A" | "B" | "C" | "D" | "E" | "F" | "G" }
+
+coloured_lines = { non_coordinate_name ~ coloured_line_first ~ (NL ~ coloured_line)* ~ NL  }
+coloured_line_first = { sct_coordinate ~ sct_coordinate ~ colour_name? }
+coloured_line = { (sct_coordinate | airway_fix) ~ (sct_coordinate | airway_fix) ~ colour_name? }
 
 airway_fix = { designator ~ designator }
 sct_coordinate = { sct_coord_part ~ sct_coord_part }

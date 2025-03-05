@@ -12,7 +12,7 @@ use serde::Serialize;
 
 use crate::{
     adaptation::{colours::Colour, line_styles::LineStyle, maps::active::Active, Alignment},
-    read_to_string, DegMinSec, FromDegMinSec, Location,
+    read_to_string, DegMinSec, DegMinSecExt as _, Location,
 };
 
 use super::{
@@ -37,11 +37,11 @@ impl CoordinatePart {
                     .next()
                     .unwrap()
                     .as_str()
-                    .parse::<f64>()
+                    .parse::<i16>()
                     .unwrap()
                     * match hemi {
-                        "N" | "n" | "E" | "e" => 1.0,
-                        "S" | "s" | "W" | "w" => -1.0,
+                        "N" | "n" | "E" | "e" => 1,
+                        "S" | "s" | "W" | "w" => -1,
                         _ => unreachable!("{hemi} is not a hemisphere"),
                     };
                 let min = sct_coord_part.next().unwrap().as_str().parse().unwrap();
