@@ -34,6 +34,10 @@ impl Colour {
         ))
     }
 
+    pub fn to_euroscope(&self) -> i32 {
+        i32::from(self.r) + i32::from(self.g) * 256 + i32::from(self.b) * 256 * 256
+    }
+
     fn from_symbology(symbology: &Symbology, key: &(String, String), default: Colour) -> Self {
         symbology
             .items
@@ -55,7 +59,7 @@ struct ColourVisitor;
 static HASH_RGB_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$").unwrap());
 
-impl<'de> Visitor<'de> for ColourVisitor {
+impl Visitor<'_> for ColourVisitor {
     type Value = Colour;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
