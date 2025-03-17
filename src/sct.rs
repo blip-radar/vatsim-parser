@@ -40,7 +40,7 @@ pub struct Airport {
     pub ctr_airspace: String,
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Airway {
     pub designator: String,
     pub start: Location,
