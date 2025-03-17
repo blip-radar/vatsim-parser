@@ -2042,7 +2042,7 @@ A5         RTT RTT NUB NUB
                         },
                         Line {
                             start: Location::Coordinate(Coord {
-                                x: 10.5033_333_333_333_34,
+                                x: 10.503_333_333_333_334,
                                 y: 49.511_111_111_111_11
                             }),
                             end: Location::Coordinate(Coord {

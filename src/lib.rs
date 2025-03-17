@@ -82,7 +82,7 @@ impl DegMinSecExt for Coord {
         let lat = decimal_to_dms(self.y, true);
         let deg = lat.0;
         let carry_rounded_sec = (lat.2 - 60.).abs() < 0.000_001;
-        let min = lat.1 + if carry_rounded_sec { 1 } else { 0 };
+        let min = lat.1 + u8::from(carry_rounded_sec);
         let sec = if carry_rounded_sec { 0.0 } else { lat.2 };
         format!("{}{deg:03}.{min:02}.{sec:06.3}", lat.3)
     }
@@ -91,7 +91,7 @@ impl DegMinSecExt for Coord {
         let lon = decimal_to_dms(self.x, false);
         let deg = lon.0;
         let carry_rounded_sec = (lon.2 - 60.).abs() < 0.000_001;
-        let min = lon.1 + if carry_rounded_sec { 1 } else { 0 };
+        let min = lon.1 + u8::from(carry_rounded_sec);
         let sec = if carry_rounded_sec { 0.0 } else { lon.2 };
         format!("{}{deg:03}.{min:02}.{sec:06.3}", lon.3)
     }
