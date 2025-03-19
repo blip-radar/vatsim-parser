@@ -4,7 +4,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use geo::Coord;
 use itertools::Itertools as _;
-use pest::{iterators::Pair, Parser};
+use pest::{iterators::Pair, Parser as _};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
@@ -27,7 +27,7 @@ pub struct SctParser;
 
 #[derive(Error, Debug)]
 pub enum SctError {
-    #[error("failed to parse .sct file: {0}")]
+    #[error("failed to parse .sct file: {0}\n{0:?}")]
     Parse(#[from] pest::error::Error<Rule>),
     #[error("failed to read .sct file: {0}")]
     FileRead(#[from] io::Error),
@@ -55,10 +55,17 @@ pub struct Region {
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct Label {
+    pub name: String,
+    pub coordinate: Coord,
+    pub colour_name: String,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Line {
     pub start: Location,
     pub end: Location,
-    pub colour: Option<String>,
+    pub colour_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -103,6 +110,7 @@ pub struct Sct {
     pub high_airways: Vec<Airway>,
     pub low_airways: Vec<Airway>,
     pub regions: Vec<Region>,
+    pub labels: Vec<Label>,
     pub geo: Vec<Geo>,
 }
 
@@ -258,7 +266,7 @@ impl ToEuroscope for Line {
             "{} {}{}",
             self.start.to_euroscope(),
             self.end.to_euroscope(),
-            self.colour
+            self.colour_name
                 .as_ref()
                 .map_or(String::new(), |c| format!(" {c}"))
         )
@@ -324,6 +332,27 @@ impl ToEuroscope for Region {
                         .join("")
                 )
                 .unwrap_or_else(String::new)
+        )
+    }
+}
+impl ToEuroscope for Vec<Label> {
+    fn to_euroscope(&self) -> String {
+        format!(
+            "[LABELS]\n{}\n",
+            self.iter()
+                .sorted_by_key(|label| &label.name)
+                .map(ToEuroscope::to_euroscope)
+                .join("\n")
+        )
+    }
+}
+impl ToEuroscope for Label {
+    fn to_euroscope(&self) -> String {
+        format!(
+            "\"{}\" {} {}",
+            self.name,
+            self.coordinate.deg_min_sec_fmt(),
+            self.colour_name,
         )
     }
 }
@@ -460,6 +489,7 @@ enum Section {
     Artcc(Vec<Artcc>),
     ArtccLow(Vec<Artcc>),
     Regions(Vec<Region>),
+    Labels(Vec<Label>),
     Geo(Vec<Geo>),
     Unsupported,
 }
@@ -480,6 +510,7 @@ enum SectionName {
     Artcc,
     ArtccLow,
     Regions,
+    Labels,
     Geo,
     Unsupported,
 }
@@ -600,6 +631,19 @@ fn parse_region(pair: Pair<Rule>) -> Region {
     }
 }
 
+fn parse_label(pair: Pair<Rule>) -> Label {
+    let mut label = pair.into_inner();
+    let name = label.next().unwrap().as_str().to_string();
+    let coordinate = parse_coordinate(label.next().unwrap());
+    let colour_name = label.next().unwrap().as_str().to_string();
+
+    Label {
+        name,
+        colour_name,
+        coordinate,
+    }
+}
+
 fn parse_line(pair: Pair<Rule>) -> Option<Line> {
     let mut line = pair.into_inner();
 
@@ -609,9 +653,13 @@ fn parse_line(pair: Pair<Rule>) -> Option<Line> {
         warn!("broken coloured line (initial parse): {line:?}");
         return None;
     };
-    let colour = line.next().map(|pair| pair.as_str().to_string());
+    let colour_name = line.next().map(|pair| pair.as_str().to_string());
 
-    Some(Line { start, end, colour })
+    Some(Line {
+        start,
+        end,
+        colour_name,
+    })
 }
 
 fn parse_geo(pair: Pair<Rule>) -> Geo {
@@ -936,6 +984,22 @@ fn parse_independent_section(
             ),
         ),
 
+        Rule::labels_section => (
+            SectionName::Labels,
+            Section::Labels(
+                pair.into_inner()
+                    .filter_map(|pair| {
+                        if let Rule::colour_definition = pair.as_rule() {
+                            store_colour(colours, pair);
+                            None
+                        } else {
+                            Some(parse_label(pair))
+                        }
+                    })
+                    .collect(),
+            ),
+        ),
+
         Rule::geo_section => (
             SectionName::Geo,
             Section::Geo(
@@ -1033,6 +1097,10 @@ impl Sct {
             Some((_, Section::Regions(regions))) => regions,
             _ => vec![],
         };
+        let labels = match sections.remove_entry(&SectionName::Labels) {
+            Some((_, Section::Labels(labels))) => labels,
+            _ => vec![],
+        };
         let geo = match sections.remove_entry(&SectionName::Geo) {
             Some((_, Section::Geo(geo))) => geo,
             _ => vec![],
@@ -1054,6 +1122,7 @@ impl Sct {
             high_airways,
             low_airways,
             regions,
+            labels,
             geo,
         };
 
@@ -1084,6 +1153,7 @@ impl Display for Sct {
         writeln!(f, "[ARTCC LOW]\n{}", self.artccs_low.to_euroscope())?;
         writeln!(f, "{}", self.geo.to_euroscope())?;
         writeln!(f, "{}", self.regions.to_euroscope())?;
+        writeln!(f, "{}", self.labels.to_euroscope())?;
         writeln!(f, "[HIGH AIRWAY]\n{}", self.high_airways.to_euroscope())?;
         write!(f, "[LOW AIRWAY]\n{}", self.low_airways.to_euroscope())
     }
@@ -1093,7 +1163,8 @@ impl Display for Sct {
 mod test {
     use std::collections::HashMap;
 
-    use geo::Coord;
+    use geo::{coord, Coord};
+    use pest::Parser;
     use pretty_assertions_sorted::assert_eq_sorted;
 
     use crate::{
@@ -1101,9 +1172,221 @@ mod test {
             colours::Colour,
             locations::{Fix, NDB, VOR},
         },
-        sct::{Airport, Airway, Artcc, Geo, Line, Region, Runway, Sct, SctInfo, Sid, Star},
+        sct::{
+            parse_coordinate, Airport, Airway, Artcc, Geo, Label, Line, Region, Runway, Sct,
+            SctInfo, Sid, Star,
+        },
         Location,
     };
+
+    use super::{Rule, SctParser};
+
+    #[test]
+    fn test_geo_at_end() {
+        let sct_bytes = b"[GEO]
+
+EDDN Groundlayout Holding Points         N049.29.58.736 E011.03.33.028 N049.29.58.942 E011.03.34.353 colour_Stopbar
+                                         N049.29.56.786 E011.03.52.659 N049.29.57.006 E011.03.54.022 colour_Stopbar";
+        let sct = Sct::parse(sct_bytes);
+
+        assert!(sct.is_ok(), "{}", sct.unwrap_err());
+    }
+
+    #[test]
+    fn test_sid() {
+        let sct_bytes = b"
+[SID]
+EDDF                                     N050.02.44.210 E008.35.20.451 N050.04.16.111 E008.41.46.050
+                                         N050.04.16.111 E008.41.46.050 N050.04.20.699 E008.42.10.168
+LOWI                                     WI520          WI520          WI521          WI521
+                                         WI521          WI521          WI522          WI522
+                                         WI522          WI522          RTT            RTT
+EDDF SID 07C CINDYxX                     N050.02.44.210 E008.35.20.451 N050.04.16.111 E008.41.46.050
+                                         N050.04.16.111 E008.41.46.050 N050.04.20.699 E008.42.10.168
+LOWI SID 08C RTTxQ                       WI520          WI520          WI521          WI521
+                                         WI521          WI521          WI522          WI522
+                                         WI522          WI522          RTT            RTT
+";
+        let sct = Sct::parse(sct_bytes);
+
+        assert!(sct.is_ok(), "{}", sct.unwrap_err());
+    }
+
+    #[test]
+    fn test_quoted_string() {
+        let parse_str = "\"Alarm123 \"";
+        let parse_res = SctParser::parse(Rule::quoted_string, parse_str);
+        assert!(
+            parse_res.is_ok(),
+            "{}\n{:?}",
+            parse_res.clone().unwrap_err(),
+            parse_res.unwrap_err()
+        );
+        assert_eq!(parse_res.unwrap().as_str(), "Alarm123 ");
+    }
+
+    #[test]
+    fn test_non_coordinate_or_double_fix_name() {
+        let parse_str = "Alarm123 Test FOO FOO BAR BAR\n";
+        let parse_res = SctParser::parse(Rule::non_coordinate_or_double_fix_name, parse_str);
+        assert!(
+            parse_res.is_ok(),
+            "{}\n{:?}",
+            parse_res.clone().unwrap_err(),
+            parse_res.unwrap_err()
+        );
+        assert_eq!(parse_res.unwrap().as_str(), "Alarm123 Test");
+
+        let parse_str = "EDDF SID 07C CINDYxX                     N050.02.44.210 E008.35.20.451 N050.04.16.111 E008.41.46.050\n";
+        let parse_res = SctParser::parse(Rule::non_coordinate_or_double_fix_name, parse_str);
+        assert!(
+            parse_res.is_ok(),
+            "{}\n{:?}",
+            parse_res.clone().unwrap_err(),
+            parse_res.unwrap_err()
+        );
+        assert_eq!(parse_res.unwrap().as_str(), "EDDF SID 07C CINDYxX");
+
+        let parse_str = "AoR APP EDDF EDDF NTZ 07                 N049.54.10     E007.58.08     N050.01.54     E008.30.01     COLOR_AoRapproach3\n";
+        let parse_res = SctParser::parse(Rule::non_coordinate_or_double_fix_name, parse_str);
+        assert!(
+            parse_res.is_ok(),
+            "{}\n{:?}",
+            parse_res.clone().unwrap_err(),
+            parse_res.unwrap_err()
+        );
+        assert_eq!(parse_res.unwrap().as_str(), "AoR APP EDDF EDDF NTZ 07");
+
+        let parse_str = "EHWO STAR N125 N125                      ALZAP          ALZAP          OTEXE          OTEXE\n";
+        let parse_res = SctParser::parse(Rule::non_coordinate_or_double_fix_name, parse_str);
+        assert!(
+            parse_res.is_ok(),
+            "{}\n{:?}",
+            parse_res.clone().unwrap_err(),
+            parse_res.unwrap_err()
+        );
+        assert_eq!(parse_res.unwrap().as_str(), "EHWO STAR N125 N125");
+    }
+
+    #[test]
+    fn test_airway_fix() {
+        let parse_str = "FOO FOO";
+        let airway_fix_parse = SctParser::parse(Rule::airway_fix, parse_str);
+        assert!(
+            airway_fix_parse.is_ok(),
+            "{}\n{:?}",
+            airway_fix_parse.clone().unwrap_err(),
+            airway_fix_parse.unwrap_err()
+        );
+        let mut both = airway_fix_parse.unwrap();
+        assert_eq!(both.as_str(), "FOO FOO");
+        let mut fix = both.next().unwrap().into_inner();
+        assert_eq!(fix.next().unwrap().as_str(), "FOO");
+
+        let parse_str = "FOO      FOO";
+        let airway_fix_parse = SctParser::parse(Rule::airway_fix, parse_str);
+        assert!(
+            airway_fix_parse.is_ok(),
+            "{}\n{:?}",
+            airway_fix_parse.clone().unwrap_err(),
+            airway_fix_parse.unwrap_err()
+        );
+        let mut both = airway_fix_parse.unwrap();
+        assert_eq!(both.as_str(), "FOO      FOO");
+        let mut fix = both.next().unwrap().into_inner();
+        assert_eq!(fix.next().unwrap().as_str(), "FOO");
+
+        let parse_str = "FOO BAR";
+        let airway_fix_parse = SctParser::parse(Rule::airway_fix, parse_str);
+        assert!(airway_fix_parse.is_err(), "{:?}", airway_fix_parse.unwrap());
+    }
+
+    #[test]
+    fn test_sct_coord() {
+        let parse_str = "N050.02.44.210";
+        let parse = SctParser::parse(Rule::sct_coord_part, parse_str);
+        assert!(
+            parse.is_ok(),
+            "{}\n{:?}",
+            parse.clone().unwrap_err(),
+            parse.unwrap_err()
+        );
+
+        let parse_str = "N050.02.44";
+        let parse = SctParser::parse(Rule::sct_coord_part, parse_str);
+        assert!(
+            parse.is_ok(),
+            "{}\n{:?}",
+            parse.clone().unwrap_err(),
+            parse.unwrap_err()
+        );
+
+        let parse_str = "N050.04.16.111 E008.41.46.050";
+        let parse = SctParser::parse(Rule::sct_coordinate, parse_str);
+        assert!(
+            parse.is_ok(),
+            "{}\n{:?}",
+            parse.clone().unwrap_err(),
+            parse.unwrap_err()
+        );
+        assert_eq!(
+            parse_coordinate(parse.unwrap().next().unwrap()),
+            coord! {
+                x: 8.696_125,
+                y: 50.071_141_944_444_45
+            }
+        );
+    }
+
+    #[test]
+    fn test_inline_comment() {
+        let sct_bytes = b"
+#define stopbars 255 ;Ability To Change Color Of Stopbars 35723
+#define restr 12676579
+";
+        let sct = Sct::parse(sct_bytes);
+
+        assert!(sct.is_ok(), "{}", sct.unwrap_err());
+    }
+
+    #[test]
+    fn test_empty_section() {
+        let sct_bytes = b"
+;=========================================================================================================================;
+
+[INFO]
+AeroNav M\xfcnchen 2401/1-1 EDMM 20240125
+AERO_NAV
+ZZZZ
+N048.21.13.618
+E011.47.09.909
+60
+39
+-3
+1
+
+#define colour_APP       16711680
+#define colour_AirspaceA  8421376
+
+[SID]
+
+[STAR]
+EDDM TRAN RNP26R LANDU26                 N048.35.46.899 E012.16.26.140 N048.32.16.501 E011.30.05.529 colour_APP
+                                         N048.32.16.501 E011.30.05.529 N048.25.44.061 E011.31.15.931 colour_APP
+                                         N048.25.44.061 E011.31.15.931 N048.29.36.319 E012.22.42.409 colour_APP
+                                         N048.29.36.319 E012.22.42.409 N048.30.47.361 E012.37.38.952 colour_APP
+
+EDDN TRAN ILS10 DN430                    N049.33.11.289 E010.30.33.379 N049.32.37.168 E010.36.38.149 colour_APP
+                                         N049.32.37.168 E010.36.38.149 N049.32.02.731 E010.42.42.681 colour_APP
+
+EDQD STAR ALL LONLIxZ                    N050.04.29.060 E011.13.34.989 N049.53.50.819 E011.24.28.540
+[Regions]
+REGIONNAME test
+colour N048.35.46.899 E012.16.26.140";
+        let sct = Sct::parse(sct_bytes);
+
+        assert!(sct.is_ok(), "{}", sct.unwrap_err());
+    }
 
     #[test]
     fn test_sct() {
@@ -1264,6 +1547,11 @@ Surrounding Grass	grass	N51.11.37.165 E02.51.07.153
  N51.11.38.619 E02.51.08.463
  N51.11.39.660 E02.51.10.008
 
+[LABELS]
+;=========================================== ~~ EDGG/EDDF/APRON_REAL_GATES ~~ ============================================;
+\"A52-A69\" N050.02.49.607 E008.33.46.309 COLOR_Labels
+\"A14-A40 E\" N050.02.46.615 E008.33.58.027 COLOR_Labels
+
 [HIGH AIRWAY]
 B73        N054.54.46.000 E018.57.29.998 N055.36.12.999 E019.50.17.901
 B74        N055.12.05.000 E019.38.03.001 N055.36.12.999 E019.50.17.901
@@ -1281,6 +1569,7 @@ A5         RTT RTT NUB NUB
 
         ";
         let sct = Sct::parse(sct_bytes);
+        assert!(sct.is_ok(), "{}", sct.unwrap_err());
         assert_eq!(
             sct.as_ref().unwrap().info,
             SctInfo {
@@ -1534,7 +1823,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.709_430_833_333_332,
                                 y: 48.337_668_888_888_89
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1545,7 +1834,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.708_005_833_333_333,
                                 y: 48.287_568_888_888_885
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1556,7 +1845,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.816_535_833_333_335,
                                 y: 48.180_393_888_888_89
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1567,7 +1856,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.565_505_833_333_335,
                                 y: 48.231_907_777_777_78
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1578,7 +1867,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.749_780_833_333_332,
                                 y: 48.39705
                             }),
-                            colour: None
+                            colour_name: None
                         }
                     ]
                 },
@@ -1594,7 +1883,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.92835,
                                 y: 49.513_316_944_444_45
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1605,7 +1894,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.762_560_833_333_334,
                                 y: 49.462_324_722_222_23
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1616,7 +1905,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.758_507_777_777_778,
                                 y: 49.231_821_944_444_45
                             }),
-                            colour: None
+                            colour_name: None
                         }
                     ]
                 }
@@ -1637,7 +1926,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.501_535_833_333_334,
                                 y: 48.537_916_944_444_44
                             }),
-                            colour: Some("colour_APP".to_string())
+                            colour_name: Some("colour_APP".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1648,7 +1937,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.521_091_944_444_445,
                                 y: 48.428_905_833_333_33
                             }),
-                            colour: Some("colour_APP".to_string())
+                            colour_name: Some("colour_APP".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1659,7 +1948,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.378_446_944_444_445,
                                 y: 48.493_421_944_444_44
                             }),
-                            colour: Some("colour_APP".to_string())
+                            colour_name: Some("colour_APP".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1670,7 +1959,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.627_486_666_666_668,
                                 y: 48.513_155_833_333_336
                             }),
-                            colour: Some("colour_APP".to_string())
+                            colour_name: Some("colour_APP".to_string())
                         }
                     ]
                 },
@@ -1686,7 +1975,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.610_596_944_444_444,
                                 y: 49.543_657_777_777_774
                             }),
-                            colour: Some("colour_APP".to_string())
+                            colour_name: Some("colour_APP".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1697,7 +1986,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.711_855_833_333_333,
                                 y: 49.534_091_944_444_44
                             }),
-                            colour: Some("colour_APP".to_string())
+                            colour_name: Some("colour_APP".to_string())
                         }
                     ]
                 },
@@ -1712,7 +2001,7 @@ A5         RTT RTT NUB NUB
                             x: 11.407_927_777_777_779,
                             y: 49.897_449_722_222_22
                         }),
-                        colour: None
+                        colour_name: None
                     }]
                 }
             ]
@@ -1732,7 +2021,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.923_611_111_111_11,
                                 y: 48.302_499_999_999_995
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1743,7 +2032,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.55,
                                 y: 48.166_666_666_666_664
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1754,7 +2043,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.428_333_333_333_333,
                                 y: 48.236_666_666_666_665
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1765,7 +2054,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.923_611_111_111_11,
                                 y: 48.302_499_999_999_995
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1776,7 +2065,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.466_666_666_666_667,
                                 y: 47.8675
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1787,7 +2076,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.383_333_333_333_333,
                                 y: 47.841_666_666_666_67
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1798,7 +2087,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.9725,
                                 y: 47.818_055_555_555_56
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1809,7 +2098,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.905_000_000_000_001,
                                 y: 47.815_277_777_777_77
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1820,7 +2109,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.9725,
                                 y: 47.818_055_555_555_56
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1828,7 +2117,7 @@ A5         RTT RTT NUB NUB
                                 y: 47.898_055_555_555_56
                             }),
                             end: Location::Coordinate(Coord { x: 9.55, y: 47.89 }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord { x: 9.55, y: 47.89 }),
@@ -1836,7 +2125,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.55,
                                 y: 47.973_333_333_333_336
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1847,7 +2136,7 @@ A5         RTT RTT NUB NUB
                                 x: 9.55,
                                 y: 48.166_666_666_666_664
                             }),
-                            colour: None
+                            colour_name: None
                         }
                     ]
                 },
@@ -1863,7 +2152,7 @@ A5         RTT RTT NUB NUB
                                 x: 13.006_666_666_666_666,
                                 y: 49.588_333_333_333_34
                             }),
-                            colour: Some("colour_Releaseline".to_string())
+                            colour_name: Some("colour_Releaseline".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1874,7 +2163,7 @@ A5         RTT RTT NUB NUB
                                 x: 13.286_944_444_444_444,
                                 y: 49.462_500_000_000_006
                             }),
-                            colour: Some("colour_Releaseline".to_string())
+                            colour_name: Some("colour_Releaseline".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1885,7 +2174,7 @@ A5         RTT RTT NUB NUB
                                 x: 13.220_555_555_555_556,
                                 y: 49.211_666_666_666_666
                             }),
-                            colour: Some("colour_Releaseline".to_string())
+                            colour_name: Some("colour_Releaseline".to_string())
                         }
                     ]
                 }
@@ -1906,7 +2195,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.966_666_666_666_667,
                                 y: 49.166_666_666_666_664
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1917,7 +2206,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.966_666_666_666_667,
                                 y: 49.166_666_666_666_664
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1928,7 +2217,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.511_666_666_666_667,
                                 y: 48.667_777_777_777_77
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1939,7 +2228,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.320_833_333_333_333,
                                 y: 48.667_777_777_777_77
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1950,7 +2239,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.673_611_111_111_11,
                                 y: 49.119_444_444_444_45
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1961,7 +2250,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.1325,
                                 y: 49.138_055_555_555_55
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1972,7 +2261,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.587_777_777_777_779,
                                 y: 49.178_611_111_111_11
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1983,7 +2272,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.966_666_666_666_667,
                                 y: 49.441_666_666_666_66
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -1994,7 +2283,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.966_666_666_666_667,
                                 y: 49.441_666_666_666_66
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2005,7 +2294,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.765_555_555_555_556,
                                 y: 49.654_722_222_222_22
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2016,7 +2305,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.458_333_333_333_332,
                                 y: 49.283_333_333_333_33
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2027,7 +2316,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.356_111_111_111_11,
                                 y: 49.398_333_333_333_33
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2038,7 +2327,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.503_333_333_333_334,
                                 y: 49.511_111_111_111_11
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2049,7 +2338,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.765_555_555_555_556,
                                 y: 49.654_722_222_222_22
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2060,7 +2349,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.818_888_888_888_889,
                                 y: 49.434_444_444_444_44
                             }),
-                            colour: None
+                            colour_name: None
                         }
                     ]
                 },
@@ -2076,7 +2365,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.183_333_333_333_334,
                                 y: 48.669_444_444_444_444
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2087,7 +2376,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.320_833_333_333_333,
                                 y: 48.667_777_777_777_77
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2098,7 +2387,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.479_166_666_666_666,
                                 y: 49.111_111_111_111_114
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2109,7 +2398,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.587_777_777_777_779,
                                 y: 49.178_611_111_111_11
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2120,7 +2409,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.673_611_111_111_11,
                                 y: 49.119_444_444_444_45
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2131,7 +2420,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.587_777_777_777_779,
                                 y: 49.178_611_111_111_11
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2142,7 +2431,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.2575,
                                 y: 49.017_222_222_222_22
                             }),
-                            colour: None
+                            colour_name: None
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2153,7 +2442,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.966_666_666_666_667,
                                 y: 48.666_666_666_666_664
                             }),
-                            colour: None
+                            colour_name: None
                         }
                     ]
                 }
@@ -2174,7 +2463,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.660_555_555_555_556,
                                 y: 48.939_444_444_444_44
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2185,7 +2474,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.641_666_666_666_666,
                                 y: 48.840_277_777_777_78
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2196,7 +2485,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.374_444_444_444_444,
                                 y: 48.861_944_444_444_45
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2207,7 +2496,7 @@ A5         RTT RTT NUB NUB
                                 x: 12.392_777_777_777_777,
                                 y: 48.961_111_111_111_116
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         }
                     ]
                 },
@@ -2223,7 +2512,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.534_722_222_222_221,
                                 y: 48.286_666_666_666_66
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2234,7 +2523,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.535_833_333_333_333,
                                 y: 48.273_611_111_111_11
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2245,7 +2534,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.640_833_333_333_333,
                                 y: 48.281_666_666_666_666
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2256,7 +2545,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.673_611_111_111_11,
                                 y: 48.254_722_222_222_22
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2267,7 +2556,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.677_777_777_777_777,
                                 y: 48.241_111_111_111_11
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2278,7 +2567,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.6625,
                                 y: 48.203_888_888_888_89
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2289,7 +2578,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.489_444_444_444_443,
                                 y: 48.177_222_222_222_22
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2300,7 +2589,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.455_833_333_333_333,
                                 y: 48.274_166_666_666_666
                             }),
-                            colour: Some("colour_RMZ".to_string())
+                            colour_name: Some("colour_RMZ".to_string())
                         }
                     ]
                 }
@@ -2487,6 +2776,27 @@ A5         RTT RTT NUB NUB
             ]
         );
         assert_eq_sorted!(
+            sct.as_ref().unwrap().labels,
+            vec![
+                Label {
+                    name: "A52-A69".to_string(),
+                    coordinate: Coord {
+                        x: 8.562_863_611_111_112,
+                        y: 50.047_113_055_555_556,
+                    },
+                    colour_name: "COLOR_Labels".to_string(),
+                },
+                Label {
+                    name: "A14-A40 E".to_string(),
+                    coordinate: Coord {
+                        x: 8.566_118_611_111_111,
+                        y: 50.046_281_944_444_445,
+                    },
+                    colour_name: "COLOR_Labels".to_string(),
+                }
+            ]
+        );
+        assert_eq_sorted!(
             sct.as_ref().unwrap().geo,
             vec![
                 Geo {
@@ -2501,7 +2811,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.059_542_500_000_001,
                                 y: 49.499_706_111_111_11,
                             }),
-                            colour: Some("colour_Stopbar".to_string()),
+                            colour_name: Some("colour_Stopbar".to_string()),
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2512,7 +2822,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.065_006_111_111_112,
                                 y: 49.499_168_333_333_34,
                             }),
-                            colour: Some("colour_Stopbar".to_string()),
+                            colour_name: Some("colour_Stopbar".to_string()),
                         },
                     ],
                 },
@@ -2527,7 +2837,7 @@ A5         RTT RTT NUB NUB
                             x: 10.991_546_111_111_111,
                             y: 50.264_510_833_333_33,
                         }),
-                        colour: None,
+                        colour_name: None,
                     },],
                 },
                 Geo {
@@ -2542,7 +2852,7 @@ A5         RTT RTT NUB NUB
                                 x: 10.991_546_111_111_111,
                                 y: 50.264_510_833_333_33,
                             }),
-                            colour: Some("colour_Stopbar".to_string()),
+                            colour_name: Some("colour_Stopbar".to_string()),
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2553,7 +2863,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.001_427_5,
                                 y: 50.260_947_5,
                             }),
-                            colour: Some("colour_Stopbar".to_string()),
+                            colour_name: Some("colour_Stopbar".to_string()),
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2564,12 +2874,12 @@ A5         RTT RTT NUB NUB
                                 x: 11.001_427_5,
                                 y: 50.260_947_5,
                             }),
-                            colour: None,
+                            colour_name: None,
                         },
                         Line {
                             start: Location::Fix("RAVSA".to_string()),
                             end: Location::Fix("LCE13".to_string()),
-                            colour: Some("geoDefault".to_string()),
+                            colour_name: Some("geoDefault".to_string()),
                         },
                     ],
                 },
@@ -2585,7 +2895,7 @@ A5         RTT RTT NUB NUB
                                 x: 16.202_805_555_555_553,
                                 y: 48.190_861_111_111_104,
                             }),
-                            colour: Some("COLOR_Landmark2".to_string()),
+                            colour_name: Some("COLOR_Landmark2".to_string()),
                         },
                         Line {
                             start: Location::Coordinate(Coord {
@@ -2596,7 +2906,7 @@ A5         RTT RTT NUB NUB
                                 x: 11.001_427_5,
                                 y: 50.260_947_5,
                             }),
-                            colour: Some("colour_Stopbar".to_string()),
+                            colour_name: Some("colour_Stopbar".to_string()),
                         },
                     ]
                 },
@@ -2761,6 +3071,11 @@ colour_HardSurface1         N048.04.25.470 E011.16.20.093
 Surrounding Grass	grass	N51.11.37.165 E02.51.07.153
  N51.11.38.619 E02.51.08.463
  N51.11.39.660 E02.51.10.008
+
+[LABELS]
+;=========================================== ~~ EDGG/EDDF/APRON_REAL_GATES ~~ ============================================;
+\"A52-A69\" N050.02.49.607 E008.33.46.309 COLOR_Labels
+\"A14-A40 E\" N050.02.46.615 E008.33.58.027 COLOR_Labels
 
 [HIGH AIRWAY]
 B73        N054.54.46.000 E018.57.29.998 N055.36.12.999 E019.50.17.901
@@ -2934,6 +3249,10 @@ grass                      N051.11.37.165 E002.51.07.153
                            N051.11.38.619 E002.51.08.463
                            N051.11.39.660 E002.51.10.008
 
+[LABELS]
+\"A14-A40 E\" N050.02.46.615 E008.33.58.027 COLOR_Labels
+\"A52-A69\" N050.02.49.607 E008.33.46.309 COLOR_Labels
+
 [HIGH AIRWAY]
 B73        N054.54.46.000 E018.57.29.998 N055.36.12.999 E019.50.17.901
 B74        N055.12.05.000 E019.38.03.001 N055.36.12.999 E019.50.17.901
@@ -2950,55 +3269,5 @@ A4         N048.42.56.998 E017.23.09.999 N048.51.11.520 E017.10.04.238
 A5         RTT RTT NUB NUB
 ";
         assert_eq_sorted!(expected_generated, sct_generated);
-    }
-
-    #[test]
-    fn test_empty_section() {
-        let sct_bytes = b"
-;=========================================================================================================================;
-
-[INFO]
-AeroNav M\xfcnchen 2401/1-1 EDMM 20240125
-AERO_NAV
-ZZZZ
-N048.21.13.618
-E011.47.09.909
-60
-39
--3
-1
-
-#define colour_APP       16711680
-#define colour_AirspaceA  8421376
-
-[SID]
-
-[STAR]
-EDDM TRAN RNP26R LANDU26                 N048.35.46.899 E012.16.26.140 N048.32.16.501 E011.30.05.529 colour_APP
-                                         N048.32.16.501 E011.30.05.529 N048.25.44.061 E011.31.15.931 colour_APP
-                                         N048.25.44.061 E011.31.15.931 N048.29.36.319 E012.22.42.409 colour_APP
-                                         N048.29.36.319 E012.22.42.409 N048.30.47.361 E012.37.38.952 colour_APP
-
-EDDN TRAN ILS10 DN430                    N049.33.11.289 E010.30.33.379 N049.32.37.168 E010.36.38.149 colour_APP
-                                         N049.32.37.168 E010.36.38.149 N049.32.02.731 E010.42.42.681 colour_APP
-
-EDQD STAR ALL LONLIxZ                    N050.04.29.060 E011.13.34.989 N049.53.50.819 E011.24.28.540
-[Regions]
-REGIONNAME test
-colour N048.35.46.899 E012.16.26.140";
-        let sct = Sct::parse(sct_bytes);
-
-        assert!(sct.is_ok());
-    }
-
-    #[test]
-    fn test_geo_at_end() {
-        let sct_bytes = b"[GEO]
-
-EDDN Groundlayout Holding Points         N049.29.58.736 E011.03.33.028 N049.29.58.942 E011.03.34.353 colour_Stopbar
-                                         N049.29.56.786 E011.03.52.659 N049.29.57.006 E011.03.54.022 colour_Stopbar";
-        let sct = Sct::parse(sct_bytes);
-
-        assert!(sct.is_ok());
     }
 }

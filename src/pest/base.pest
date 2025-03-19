@@ -14,7 +14,10 @@ hemi           = @{ "N" | "S" | "W" | "E" | "n" | "s" | "w" | "e" }
 
 runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 
+quoted_string = _{ "\"" ~ quote_delimited_text ~ "\"" }
+
 colon_delimited_text     = @{ (!(NL | ":") ~ ANY)* }
 comma_delimited_text     = @{ (!(NL | ":" | ",") ~ ANY)* }
 backslash_delimited_text = @{ (!(NL | "\\") ~ ANY)* }
+quote_delimited_text     = @{ (!(NL | "\"") ~ ANY)* }
 tab_delimited_text       = @{ (!(NL | (" "* ~ "\t")) ~ ANY)* }
