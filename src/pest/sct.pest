@@ -35,7 +35,7 @@ info_section = {
   ~ (NL ~ colour_definition)*
 }
 vor_section = { "[VOR]" ~ (NL ~ (colour_definition | location))* }
-ndb_section = { "[NDB]" ~ (NL ~ (colour_definition | location))* }
+ndb_section = { "[NDB]" ~ (NL ~ (colour_definition | (location | broken)))* }
 fixes_section = { "[FIXES]" ~ (NL ~ (colour_definition | (fix | broken)))* }
 airport_section = { "[AIRPORT]" ~ (NL ~ (colour_definition | aerodrome))* }
 runway_section = { "[RUNWAY]" ~ (NL ~ (colour_definition | runway))* }
