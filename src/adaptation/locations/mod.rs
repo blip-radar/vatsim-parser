@@ -1,6 +1,7 @@
 pub mod airways;
 
 use std::collections::HashMap;
+use std::hash::Hash;
 
 use geo::{Coord, Destination, Geodesic, Point};
 use multimap::MultiMap;
@@ -24,6 +25,14 @@ pub struct Fix {
     pub designator: String,
     pub coordinate: Coord,
 }
+impl Hash for Fix {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.designator.hash(state);
+        format!("{:.6} {:.6}", self.coordinate.x, self.coordinate.y).hash(state);
+    }
+}
+impl Eq for Fix {}
+
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct NDB {
     pub designator: String,

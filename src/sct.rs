@@ -639,8 +639,8 @@ fn parse_label(pair: Pair<Rule>) -> Label {
 
     Label {
         name,
-        colour_name,
         coordinate,
+        colour_name,
     }
 }
 
