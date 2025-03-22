@@ -1,13 +1,13 @@
 use geo::Coord;
+use multimap::MultiMap;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use std::collections::HashMap;
 use std::io;
 use thiserror::Error;
-use tracing::warn;
 
 use crate::adaptation::locations::{
-    airways::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix, FixAirwayMap},
+    airways::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix, AirwayType, FixAirwayMap},
     Fix,
 };
 
@@ -44,18 +44,29 @@ impl AirwayFix {
             Rule::no_neighbour => None,
             Rule::neighbour => {
                 let mut airway_fix = pair.into_inner();
-                let name = airway_fix.next().unwrap().as_str().to_string();
-                let coord = parse_coord(airway_fix.next().unwrap());
+                let designator = airway_fix.next().unwrap().as_str().to_string();
+                let coordinate = parse_coord(airway_fix.next().unwrap());
                 let minimum_level = parse_level(&airway_fix.next().unwrap());
                 let valid_direction = airway_fix.next().unwrap().as_str() == "Y";
                 Some(AirwayFix {
-                    name,
-                    coord,
+                    designator,
+                    coordinate,
                     valid_direction,
                     minimum_level,
                 })
             }
             rule => unreachable!("{rule:?}"),
+        }
+    }
+}
+
+impl AirwayType {
+    fn parse(pair: &Pair<Rule>) -> Self {
+        match pair.as_str() {
+            "H" => Self::High,
+            "L" => Self::Low,
+            "B" => Self::Both,
+            parsed => unreachable!("{parsed}"),
         }
     }
 }
@@ -81,37 +92,30 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                         coordinate,
                     };
                     let airway = airway_line.next().unwrap().as_str().to_string();
+                    let airway_type = AirwayType::parse(&airway_line.next().unwrap());
 
                     let previous = AirwayFix::parse(airway_line.next().unwrap());
                     let next = AirwayFix::parse(airway_line.next().unwrap());
 
                     acc.entry(fix.clone())
                         .and_modify(|neighbours: &mut AirwayNeighboursOfFix| {
-                            neighbours
-                                .airway_neighbours
-                                .entry(airway.clone())
-                                .and_modify(|existing| {
-                                    if existing.previous.is_some() && previous.is_some()
-                                        || existing.next.is_some() && next.is_some()
-                                    {
-                                        warn!("Duplicate for airway {} and fix {:?}", airway, fix);
-                                    }
-                                    existing.previous =
-                                        existing.previous.clone().or(previous.clone());
-                                    existing.next = existing.next.clone().or(next.clone());
-                                })
-                                .or_insert(AirwayNeighbours {
+                            neighbours.airway_neighbours.insert(
+                                airway.clone(),
+                                AirwayNeighbours {
                                     airway: airway.clone(),
+                                    airway_type,
                                     previous: previous.clone(),
                                     next: next.clone(),
-                                });
+                                },
+                            );
                         })
                         .or_insert(AirwayNeighboursOfFix {
                             fix,
-                            airway_neighbours: HashMap::from([(
+                            airway_neighbours: MultiMap::from_iter([(
                                 airway.clone(),
                                 AirwayNeighbours {
                                     airway,
+                                    airway_type,
                                     previous,
                                     next,
                                 },
@@ -129,10 +133,11 @@ mod test {
     use std::collections::HashMap;
 
     use geo::Coord;
+    use multimap::MultiMap;
     use pretty_assertions_sorted::assert_eq_sorted;
 
     use crate::{
-        adaptation::locations::Fix,
+        adaptation::locations::{airways::AirwayType, Fix},
         airway::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix},
     };
 
@@ -140,8 +145,7 @@ mod test {
 
     #[test]
     fn test_airway() {
-        let airway_bytes = b"
-ASPAT	49.196175	10.725828	14	T161	B	REDNI	49.080000	10.890278	05500	N					N
+        let airway_str = "ASPAT	49.196175	10.725828	14	T161	B	REDNI	49.080000	10.890278	05500	N					N
 ASPAT	49.196175	10.725828	14	T161	L					N	DEBHI	49.360833	10.466111	NESTB	Y
 DEBHI	49.360833	10.466111	14	T161	L	ASPAT	49.196175	10.725828	05500	N	TOSTU	49.713536	9.805942	05000	Y
 ERNAS	48.844669	11.219353	14	T161	B	NIMDI	48.802222	11.633611	05000	N	GOLMO	48.962500	11.055278	05500	Y
@@ -151,7 +155,9 @@ GOLMO	48.962500	11.055278	14	T161	B	ERNAS	48.844669	11.219353	05500	N	REDNI	49.0
 REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.196175	10.725828	05500	Y
 ";
 
-        let parsed = parse_airway_txt(airway_bytes).unwrap();
+        let parsed = parse_airway_txt(airway_str.as_bytes()).unwrap();
+
+        assert_eq_sorted!(airway_str, parsed.to_string());
 
         assert_eq_sorted!(
             parsed.0,
@@ -172,30 +178,42 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 y: 49.196_175
                             },
                         },
-                        airway_neighbours: HashMap::from([(
-                            "T161".to_owned(),
-                            AirwayNeighbours {
-                                airway: "T161".to_string(),
-                                previous: Some(AirwayFix {
-                                    name: "REDNI".to_string(),
-                                    coord: Coord {
-                                        x: 10.890_278,
-                                        y: 49.08
-                                    },
-                                    valid_direction: false,
-                                    minimum_level: Some(5500)
-                                }),
-                                next: Some(AirwayFix {
-                                    name: "DEBHI".to_string(),
-                                    coord: Coord {
-                                        x: 10.466_111,
-                                        y: 49.360_833,
-                                    },
-                                    valid_direction: true,
-                                    minimum_level: None
-                                })
-                            }
-                        )])
+                        airway_neighbours: MultiMap::from_iter([
+                            (
+                                "T161".to_owned(),
+                                AirwayNeighbours {
+                                    airway: "T161".to_string(),
+                                    airway_type: AirwayType::Both,
+                                    previous: Some(AirwayFix {
+                                        designator: "REDNI".to_string(),
+                                        coordinate: Coord {
+                                            x: 10.890_278,
+                                            y: 49.08
+                                        },
+                                        valid_direction: false,
+                                        minimum_level: Some(5500)
+                                    }),
+                                    next: None,
+                                }
+                            ),
+                            (
+                                "T161".to_owned(),
+                                AirwayNeighbours {
+                                    airway: "T161".to_string(),
+                                    airway_type: AirwayType::Low,
+                                    previous: None,
+                                    next: Some(AirwayFix {
+                                        designator: "DEBHI".to_string(),
+                                        coordinate: Coord {
+                                            x: 10.466_111,
+                                            y: 49.360_833,
+                                        },
+                                        valid_direction: true,
+                                        minimum_level: None
+                                    })
+                                }
+                            )
+                        ])
                     }
                 ),
                 (
@@ -214,13 +232,14 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 y: 49.360_833,
                             },
                         },
-                        airway_neighbours: HashMap::from([(
+                        airway_neighbours: MultiMap::from_iter([(
                             "T161".to_owned(),
                             AirwayNeighbours {
                                 airway: "T161".to_string(),
+                                airway_type: AirwayType::Low,
                                 previous: Some(AirwayFix {
-                                    name: "ASPAT".to_string(),
-                                    coord: Coord {
+                                    designator: "ASPAT".to_string(),
+                                    coordinate: Coord {
                                         x: 10.725_828,
                                         y: 49.196_175
                                     },
@@ -228,8 +247,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
-                                    name: "TOSTU".to_string(),
-                                    coord: Coord {
+                                    designator: "TOSTU".to_string(),
+                                    coordinate: Coord {
                                         x: 9.805_942,
                                         y: 49.713_536
                                     },
@@ -256,14 +275,15 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 y: 48.844_669
                             },
                         },
-                        airway_neighbours: HashMap::from([
+                        airway_neighbours: MultiMap::from_iter([
                             (
                                 "T161".to_owned(),
                                 AirwayNeighbours {
                                     airway: "T161".to_string(),
+                                    airway_type: AirwayType::Both,
                                     previous: Some(AirwayFix {
-                                        name: "NIMDI".to_string(),
-                                        coord: Coord {
+                                        designator: "NIMDI".to_string(),
+                                        coordinate: Coord {
                                             x: 11.633_611,
                                             y: 48.802_222
                                         },
@@ -271,8 +291,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         minimum_level: Some(5000)
                                     }),
                                     next: Some(AirwayFix {
-                                        name: "GOLMO".to_string(),
-                                        coord: Coord {
+                                        designator: "GOLMO".to_string(),
+                                        coordinate: Coord {
                                             x: 11.055_278,
                                             y: 48.9625
                                         },
@@ -285,9 +305,10 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 "Y101".to_owned(),
                                 AirwayNeighbours {
                                     airway: "Y101".to_string(),
+                                    airway_type: AirwayType::Both,
                                     previous: Some(AirwayFix {
-                                        name: "GIVMI".to_string(),
-                                        coord: Coord {
+                                        designator: "GIVMI".to_string(),
+                                        coordinate: Coord {
                                             x: 11.364_803,
                                             y: 48.701_094
                                         },
@@ -295,8 +316,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         minimum_level: Some(4000)
                                     }),
                                     next: Some(AirwayFix {
-                                        name: "TALAL".to_string(),
-                                        coord: Coord {
+                                        designator: "TALAL".to_string(),
+                                        coordinate: Coord {
                                             x: 11.085_278,
                                             y: 49.108_333
                                         },
@@ -324,14 +345,15 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 y: 48.701_094
                             },
                         },
-                        airway_neighbours: HashMap::from([(
+                        airway_neighbours: MultiMap::from_iter([(
                             "Y101".to_owned(),
                             AirwayNeighbours {
                                 airway: "Y101".to_string(),
+                                airway_type: AirwayType::Both,
                                 previous: None,
                                 next: Some(AirwayFix {
-                                    name: "ERNAS".to_string(),
-                                    coord: Coord {
+                                    designator: "ERNAS".to_string(),
+                                    coordinate: Coord {
                                         x: 11.219_353,
                                         y: 48.844_669
                                     },
@@ -358,13 +380,14 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 y: 48.9625
                             },
                         },
-                        airway_neighbours: HashMap::from([(
+                        airway_neighbours: MultiMap::from_iter([(
                             "T161".to_owned(),
                             AirwayNeighbours {
                                 airway: "T161".to_string(),
+                                airway_type: AirwayType::Both,
                                 previous: Some(AirwayFix {
-                                    name: "ERNAS".to_string(),
-                                    coord: Coord {
+                                    designator: "ERNAS".to_string(),
+                                    coordinate: Coord {
                                         x: 11.219_353,
                                         y: 48.844_669
                                     },
@@ -372,8 +395,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
-                                    name: "REDNI".to_string(),
-                                    coord: Coord {
+                                    designator: "REDNI".to_string(),
+                                    coordinate: Coord {
                                         x: 10.890_278,
                                         y: 49.08
                                     },
@@ -401,13 +424,14 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                             },
                         },
 
-                        airway_neighbours: HashMap::from([(
+                        airway_neighbours: MultiMap::from_iter([(
                             "T161".to_owned(),
                             AirwayNeighbours {
                                 airway: "T161".to_string(),
+                                airway_type: AirwayType::Both,
                                 previous: Some(AirwayFix {
-                                    name: "GOLMO".to_string(),
-                                    coord: Coord {
+                                    designator: "GOLMO".to_string(),
+                                    coordinate: Coord {
                                         x: 11.055_278,
                                         y: 48.9625
                                     },
@@ -415,8 +439,8 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
-                                    name: "ASPAT".to_string(),
-                                    coord: Coord {
+                                    designator: "ASPAT".to_string(),
+                                    coordinate: Coord {
                                         x: 10.725_828,
                                         y: 49.196_175
                                     },

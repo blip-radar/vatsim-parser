@@ -77,16 +77,16 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
         let mut current = *start_point;
 
         while !stack.is_empty() {
-            if let Some(neighbors) = adj_list.get_mut(&current) {
-                if neighbors.is_empty() {
+            if let Some(neighbours) = adj_list.get_mut(&current) {
+                if neighbours.is_empty() {
                     polygon.push(current);
                     current = stack.pop().unwrap();
                 } else {
                     stack.push(current);
-                    let next = neighbors.pop().unwrap();
-                    if let Some(rev_neighbors) = adj_list.get_mut(&next) {
-                        if let Some(pos) = rev_neighbors.iter().position(|x| *x == current) {
-                            rev_neighbors.swap_remove(pos);
+                    let next = neighbours.pop().unwrap();
+                    if let Some(rev_neighbours) = adj_list.get_mut(&next) {
+                        if let Some(pos) = rev_neighbours.iter().position(|x| *x == current) {
+                            rev_neighbours.swap_remove(pos);
                         }
                     }
                     current = next;

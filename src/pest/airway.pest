@@ -1,10 +1,12 @@
 airways = { SOI ~ NL? ~ airway+ ~ EOI}
 
 airway = {
-  designator ~ "\t" ~ coord ~ "\t" ~ "14" ~ "\t" ~ designator ~ "\t" ~ ("B" | "H" | "L")
+  designator ~ "\t" ~ coord ~ "\t" ~ "14" ~ "\t" ~ designator ~ "\t" ~ airway_type
   ~ (no_neighbour | neighbour)
   ~ (no_neighbour | neighbour) ~ NL
 }
+
+airway_type = { "B" | "H" | "L" }
 
 neighbour = {
    "\t" ~ designator ~ "\t" ~ coord ~ "\t" ~ (level | not_established) ~ "\t" ~ bool
