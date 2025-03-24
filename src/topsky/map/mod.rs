@@ -71,7 +71,7 @@ impl Location {
     fn parse(pair: Pair<Rule>) -> Self {
         match pair.as_rule() {
             Rule::colon_delimited_text => Self::Fix(pair.as_str().to_string()),
-            Rule::coordinate => Self::Coordinate(parse_coord(pair)),
+            Rule::coordinate => Self::Coordinate(parse_coord(pair).into()),
             rule => unreachable!("{rule:?}"),
         }
     }

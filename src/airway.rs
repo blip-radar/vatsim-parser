@@ -1,10 +1,11 @@
-use geo::Coord;
+use geo::{point, Point};
 use multimap::MultiMap;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 use std::collections::HashMap;
 use std::io;
 use thiserror::Error;
+use tracing::warn;
 
 use crate::adaptation::locations::{
     airways::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix, AirwayType, FixAirwayMap},
@@ -25,11 +26,11 @@ pub enum AirwayError {
     FileRead(#[from] io::Error),
 }
 
-fn parse_coord(pair: Pair<Rule>) -> Coord {
+fn parse_coord(pair: Pair<Rule>) -> Point {
     let mut coord = pair.into_inner();
     let lat = coord.next().unwrap().as_str().parse().unwrap();
     let lng = coord.next().unwrap().as_str().parse().unwrap();
-    Coord { x: lng, y: lat }
+    point! { x: lng, y: lat }
 }
 fn parse_level(pair: &Pair<Rule>) -> Option<u32> {
     match pair.as_rule() {
@@ -49,8 +50,10 @@ impl AirwayFix {
                 let minimum_level = parse_level(&airway_fix.next().unwrap());
                 let valid_direction = airway_fix.next().unwrap().as_str() == "Y";
                 Some(AirwayFix {
-                    designator,
-                    coordinate,
+                    fix: Fix {
+                        designator,
+                        coordinate,
+                    },
                     valid_direction,
                     minimum_level,
                 })
@@ -99,6 +102,18 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
 
                     acc.entry(fix.clone())
                         .and_modify(|neighbours: &mut AirwayNeighboursOfFix| {
+                            if let Some(prev) = neighbours
+                                .airway_neighbours
+                                .get_vec(&airway)
+                                .and_then(|prevs| {
+                                    prevs.iter().find(|prev| {
+                                        prev.previous.is_some() && previous.is_some()
+                                            || prev.next.is_some() && next.is_some()
+                                    })
+                                })
+                            {
+                                warn!("Duplicate fix on airway {airway}: {prev:?}; prev={previous:?} next={next:?}");
+                            };
                             neighbours.airway_neighbours.insert(
                                 airway.clone(),
                                 AirwayNeighbours {
@@ -132,7 +147,7 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
 mod test {
     use std::collections::HashMap;
 
-    use geo::Coord;
+    use geo::point;
     use multimap::MultiMap;
     use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -165,17 +180,17 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 (
                     Fix {
                         designator: "ASPAT".to_string(),
-                        coordinate: Coord {
+                        coordinate: point! {
                             x: 10.725_828,
-                            y: 49.196_175
+                            y: 49.196_175,
                         },
                     },
                     AirwayNeighboursOfFix {
                         fix: Fix {
                             designator: "ASPAT".to_string(),
-                            coordinate: Coord {
+                            coordinate: point! {
                                 x: 10.725_828,
-                                y: 49.196_175
+                                y: 49.196_175,
                             },
                         },
                         airway_neighbours: MultiMap::from_iter([
@@ -185,10 +200,12 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     airway: "T161".to_string(),
                                     airway_type: AirwayType::Both,
                                     previous: Some(AirwayFix {
-                                        designator: "REDNI".to_string(),
-                                        coordinate: Coord {
-                                            x: 10.890_278,
-                                            y: 49.08
+                                        fix: Fix {
+                                            designator: "REDNI".to_string(),
+                                            coordinate: point! {
+                                                x: 10.890_278,
+                                                y: 49.08,
+                                            },
                                         },
                                         valid_direction: false,
                                         minimum_level: Some(5500)
@@ -203,10 +220,12 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     airway_type: AirwayType::Low,
                                     previous: None,
                                     next: Some(AirwayFix {
-                                        designator: "DEBHI".to_string(),
-                                        coordinate: Coord {
-                                            x: 10.466_111,
-                                            y: 49.360_833,
+                                        fix: Fix {
+                                            designator: "DEBHI".to_string(),
+                                            coordinate: point! {
+                                                x: 10.466_111,
+                                                y: 49.360_833,
+                                            },
                                         },
                                         valid_direction: true,
                                         minimum_level: None
@@ -219,7 +238,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 (
                     Fix {
                         designator: "DEBHI".to_string(),
-                        coordinate: Coord {
+                        coordinate: point! {
                             x: 10.466_111,
                             y: 49.360_833,
                         },
@@ -227,7 +246,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                     AirwayNeighboursOfFix {
                         fix: Fix {
                             designator: "DEBHI".to_string(),
-                            coordinate: Coord {
+                            coordinate: point! {
                                 x: 10.466_111,
                                 y: 49.360_833,
                             },
@@ -238,19 +257,23 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway: "T161".to_string(),
                                 airway_type: AirwayType::Low,
                                 previous: Some(AirwayFix {
-                                    designator: "ASPAT".to_string(),
-                                    coordinate: Coord {
-                                        x: 10.725_828,
-                                        y: 49.196_175
+                                    fix: Fix {
+                                        designator: "ASPAT".to_string(),
+                                        coordinate: point! {
+                                            x: 10.725_828,
+                                            y: 49.196_175
+                                        },
                                     },
                                     valid_direction: false,
                                     minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
-                                    designator: "TOSTU".to_string(),
-                                    coordinate: Coord {
-                                        x: 9.805_942,
-                                        y: 49.713_536
+                                    fix: Fix {
+                                        designator: "TOSTU".to_string(),
+                                        coordinate: point! {
+                                            x: 9.805_942,
+                                            y: 49.713_536
+                                        },
                                     },
                                     valid_direction: true,
                                     minimum_level: Some(5000)
@@ -262,17 +285,17 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 (
                     Fix {
                         designator: "ERNAS".to_string(),
-                        coordinate: Coord {
+                        coordinate: point! {
                             x: 11.219_353,
-                            y: 48.844_669
+                            y: 48.844_669,
                         },
                     },
                     AirwayNeighboursOfFix {
                         fix: Fix {
                             designator: "ERNAS".to_string(),
-                            coordinate: Coord {
+                            coordinate: point! {
                                 x: 11.219_353,
-                                y: 48.844_669
+                                y: 48.844_669,
                             },
                         },
                         airway_neighbours: MultiMap::from_iter([
@@ -282,19 +305,23 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     airway: "T161".to_string(),
                                     airway_type: AirwayType::Both,
                                     previous: Some(AirwayFix {
-                                        designator: "NIMDI".to_string(),
-                                        coordinate: Coord {
-                                            x: 11.633_611,
-                                            y: 48.802_222
+                                        fix: Fix {
+                                            designator: "NIMDI".to_string(),
+                                            coordinate: point! {
+                                                x: 11.633_611,
+                                                y: 48.802_222,
+                                            },
                                         },
                                         valid_direction: false,
                                         minimum_level: Some(5000)
                                     }),
                                     next: Some(AirwayFix {
-                                        designator: "GOLMO".to_string(),
-                                        coordinate: Coord {
-                                            x: 11.055_278,
-                                            y: 48.9625
+                                        fix: Fix {
+                                            designator: "GOLMO".to_string(),
+                                            coordinate: point! {
+                                                x: 11.055_278,
+                                                y: 48.9625
+                                            },
                                         },
                                         valid_direction: true,
                                         minimum_level: Some(5500)
@@ -307,19 +334,23 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                     airway: "Y101".to_string(),
                                     airway_type: AirwayType::Both,
                                     previous: Some(AirwayFix {
-                                        designator: "GIVMI".to_string(),
-                                        coordinate: Coord {
-                                            x: 11.364_803,
-                                            y: 48.701_094
+                                        fix: Fix {
+                                            designator: "GIVMI".to_string(),
+                                            coordinate: point! {
+                                                x: 11.364_803,
+                                                y: 48.701_094,
+                                            },
                                         },
                                         valid_direction: false,
                                         minimum_level: Some(4000)
                                     }),
                                     next: Some(AirwayFix {
-                                        designator: "TALAL".to_string(),
-                                        coordinate: Coord {
-                                            x: 11.085_278,
-                                            y: 49.108_333
+                                        fix: Fix {
+                                            designator: "TALAL".to_string(),
+                                            coordinate: point! {
+                                                x: 11.085_278,
+                                                y: 49.108_333,
+                                            },
                                         },
                                         valid_direction: true,
                                         minimum_level: Some(5000)
@@ -332,17 +363,17 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 (
                     Fix {
                         designator: "GIVMI".to_string(),
-                        coordinate: Coord {
+                        coordinate: point! {
                             x: 11.364_803,
-                            y: 48.701_094
+                            y: 48.701_094,
                         },
                     },
                     AirwayNeighboursOfFix {
                         fix: Fix {
                             designator: "GIVMI".to_string(),
-                            coordinate: Coord {
+                            coordinate: point! {
                                 x: 11.364_803,
-                                y: 48.701_094
+                                y: 48.701_094,
                             },
                         },
                         airway_neighbours: MultiMap::from_iter([(
@@ -352,10 +383,12 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway_type: AirwayType::Both,
                                 previous: None,
                                 next: Some(AirwayFix {
-                                    designator: "ERNAS".to_string(),
-                                    coordinate: Coord {
-                                        x: 11.219_353,
-                                        y: 48.844_669
+                                    fix: Fix {
+                                        designator: "ERNAS".to_string(),
+                                        coordinate: point! {
+                                            x: 11.219_353,
+                                            y: 48.844_669,
+                                        },
                                     },
                                     valid_direction: true,
                                     minimum_level: Some(4000)
@@ -367,17 +400,17 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 (
                     Fix {
                         designator: "GOLMO".to_string(),
-                        coordinate: Coord {
+                        coordinate: point! {
                             x: 11.055_278,
-                            y: 48.9625
+                            y: 48.9625,
                         },
                     },
                     AirwayNeighboursOfFix {
                         fix: Fix {
                             designator: "GOLMO".to_string(),
-                            coordinate: Coord {
+                            coordinate: point! {
                                 x: 11.055_278,
-                                y: 48.9625
+                                y: 48.9625,
                             },
                         },
                         airway_neighbours: MultiMap::from_iter([(
@@ -386,19 +419,23 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway: "T161".to_string(),
                                 airway_type: AirwayType::Both,
                                 previous: Some(AirwayFix {
-                                    designator: "ERNAS".to_string(),
-                                    coordinate: Coord {
-                                        x: 11.219_353,
-                                        y: 48.844_669
+                                    fix: Fix {
+                                        designator: "ERNAS".to_string(),
+                                        coordinate: point! {
+                                            x: 11.219_353,
+                                            y: 48.844_669,
+                                        },
                                     },
                                     valid_direction: false,
                                     minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
-                                    designator: "REDNI".to_string(),
-                                    coordinate: Coord {
-                                        x: 10.890_278,
-                                        y: 49.08
+                                    fix: Fix {
+                                        designator: "REDNI".to_string(),
+                                        coordinate: point! {
+                                            x: 10.890_278,
+                                            y: 49.08,
+                                        },
                                     },
                                     valid_direction: true,
                                     minimum_level: Some(5500)
@@ -410,17 +447,17 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                 (
                     Fix {
                         designator: "REDNI".to_string(),
-                        coordinate: Coord {
+                        coordinate: point! {
                             x: 10.890_278,
-                            y: 49.08
+                            y: 49.08,
                         },
                     },
                     AirwayNeighboursOfFix {
                         fix: Fix {
                             designator: "REDNI".to_string(),
-                            coordinate: Coord {
+                            coordinate: point! {
                                 x: 10.890_278,
-                                y: 49.08
+                                y: 49.08,
                             },
                         },
 
@@ -430,19 +467,23 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                 airway: "T161".to_string(),
                                 airway_type: AirwayType::Both,
                                 previous: Some(AirwayFix {
-                                    designator: "GOLMO".to_string(),
-                                    coordinate: Coord {
-                                        x: 11.055_278,
-                                        y: 48.9625
+                                    fix: Fix {
+                                        designator: "GOLMO".to_string(),
+                                        coordinate: point! {
+                                            x: 11.055_278,
+                                            y: 48.9625,
+                                        },
                                     },
                                     valid_direction: false,
                                     minimum_level: Some(5500)
                                 }),
                                 next: Some(AirwayFix {
-                                    designator: "ASPAT".to_string(),
-                                    coordinate: Coord {
-                                        x: 10.725_828,
-                                        y: 49.196_175
+                                    fix: Fix {
+                                        designator: "ASPAT".to_string(),
+                                        coordinate: point! {
+                                            x: 10.725_828,
+                                            y: 49.196_175,
+                                        },
                                     },
                                     valid_direction: true,
                                     minimum_level: Some(5500)

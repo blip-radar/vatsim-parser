@@ -3,12 +3,12 @@ pub mod airways;
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use geo::{Coord, Destination, Geodesic, Point};
+use geo::{point, Destination, Geodesic, Point};
 use multimap::MultiMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
-use tracing::warn;
+use tracing::{trace, warn};
 use uom::si::f64::Length;
 use uom::si::length::{meter, nautical_mile};
 
@@ -20,15 +20,36 @@ use crate::{
 
 use self::airways::FixAirwayMap;
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Fix {
     pub designator: String,
-    pub coordinate: Coord,
+    pub coordinate: Point,
 }
+// FIXME format! performance? maybe use fixed point decimals, 6 decimals seems to be common (ca 1.1m)
+// but our data is bad enough that we have to use .3
 impl Hash for Fix {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.designator.hash(state);
-        format!("{:.6} {:.6}", self.coordinate.x, self.coordinate.y).hash(state);
+
+        let coord_hash_str = format!("{:.3} {:.3}", self.coordinate.x(), self.coordinate.y());
+        trace!(
+            "hashing {self:?} with {} and {coord_hash_str}",
+            self.designator
+        );
+
+        coord_hash_str.hash(state);
+
+        trace!("hashed: {}", state.finish());
+    }
+}
+impl PartialEq for Fix {
+    fn eq(&self, other: &Self) -> bool {
+        let res = self.designator == other.designator
+            && format!("{:.3} {:.3}", self.coordinate.x(), self.coordinate.y())
+                == format!("{:.3} {:.3}", other.coordinate.x(), other.coordinate.y());
+        trace!("{} == {}: {}", self.designator, other.designator, res);
+
+        res
     }
 }
 impl Eq for Fix {}
@@ -37,27 +58,27 @@ impl Eq for Fix {}
 pub struct NDB {
     pub designator: String,
     pub frequency: String,
-    pub coordinate: Coord,
+    pub coordinate: Point,
 }
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct VOR {
     pub designator: String,
     pub frequency: String,
-    pub coordinate: Coord,
+    pub coordinate: Point,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Runway {
     pub designators: (String, String),
     pub headings: (u32, u32),
-    pub location: (Coord, Coord),
+    pub location: (Point, Point),
     pub aerodrome: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Airport {
     pub designator: String,
-    pub coordinate: Coord,
+    pub coordinate: Point,
     pub runways: Vec<Runway>,
 }
 impl Airport {
@@ -148,15 +169,16 @@ impl Locations {
                             .waypoints
                             .into_iter()
                             .filter_map(|wpt| {
-                                if let Some(coordinate) = locations.convert_designator(&wpt) {
-                                    Some(Fix {
-                                        coordinate,
-                                        designator: wpt,
-                                    })
-                                } else {
-                                    warn!("Waypoint {wpt} not found in SID {}", sid.name);
-                                    None
+                                let fix = locations.convert_designator(&wpt);
+                                if fix.is_none() {
+                                    warn!(
+                                        "SID {} {} {}: waypoint {wpt} not found",
+                                        sid.airport,
+                                        sid.name,
+                                        sid.runway.as_deref().unwrap_or("")
+                                    );
                                 }
+                                fix
                             })
                             .collect(),
                         name: sid.name,
@@ -171,20 +193,16 @@ impl Locations {
                             .waypoints
                             .into_iter()
                             .filter_map(|wpt| {
-                                if let Some(coordinate) = locations.convert_designator(&wpt) {
-                                    Some(Fix {
-                                        coordinate,
-                                        designator: wpt,
-                                    })
-                                } else {
+                                let fix = locations.convert_designator(&wpt);
+                                if fix.is_none() {
                                     warn!(
                                         "STAR {} {} {}: waypoint {wpt} not found",
                                         star.airport,
                                         star.name,
                                         star.runway.as_deref().unwrap_or("")
                                     );
-                                    None
                                 }
+                                fix
                             })
                             .collect(),
                         name: star.name,
@@ -197,26 +215,28 @@ impl Locations {
         locations
     }
 
-    pub fn convert_location(&self, loc: &Location) -> Option<Coord> {
+    pub fn convert_location(&self, loc: &Location) -> Option<Point> {
         match loc {
             Location::Coordinate(c) => Some(*c),
-            Location::Fix(wpt) => self.convert_designator(wpt),
+            Location::Fix(wpt) => self.convert_designator(wpt).map(|f| f.coordinate),
         }
     }
 
-    fn convert_range_bearing(&self, designator: &str) -> Option<Coord> {
+    fn convert_range_bearing(&self, designator: &str) -> Option<Fix> {
         RANGE_BEARING_RE.captures(designator).and_then(|captures| {
             let fix = &captures[1];
             // TODO magnetic
             let bearing: f64 = captures[2].parse().unwrap();
             let range = Length::new::<nautical_mile>(captures[3].parse::<f64>().unwrap());
 
-            self.convert_fix(fix)
-                .map(|c| Geodesic::destination(Point::from(c), bearing, range.get::<meter>()).0)
+            self.convert_fix(fix).map(|f| Fix {
+                designator: designator.to_string(),
+                coordinate: Geodesic::destination(f.coordinate, bearing, range.get::<meter>()),
+            })
         })
     }
 
-    fn convert_coordinate(designator: &str) -> Option<Coord> {
+    fn convert_coordinate(designator: &str) -> Option<Fix> {
         COORD_RE.captures(designator).and_then(|captures| {
             let lat_str = &captures[1];
             let lng_str = &captures[3];
@@ -260,14 +280,17 @@ impl Locations {
             };
             let n_s = &captures[2];
             let w_e = &captures[4];
-            Some(Coord {
-                y: if n_s == "N" { 1.0 } else { -1.0 } * lat,
-                x: if w_e == "E" { 1.0 } else { -1.0 } * lng,
+            Some(Fix {
+                designator: format!("{normalised_lat_str}{n_s}{normalised_lng_str}{w_e}"),
+                coordinate: point! {
+                    x: if w_e == "E" { 1.0 } else { -1.0 } * lng,
+                    y: if n_s == "N" { 1.0 } else { -1.0 } * lat,
+                }
             })
         })
     }
 
-    fn convert_rwy(&self, designator: &str) -> Option<Coord> {
+    fn convert_rwy(&self, designator: &str) -> Option<Fix> {
         matches!(designator.len(), 6..=7)
             .then(|| {
                 designator
@@ -276,9 +299,21 @@ impl Locations {
                         self.airports.get(ad_designator).and_then(|airport| {
                             airport.runways.iter().find_map(|rwy| {
                                 if rwy.designators.0 == rwy_designator {
-                                    Some(rwy.location.0)
+                                    Some(Fix {
+                                        designator: format!(
+                                            "{}{}",
+                                            airport.designator, rwy.designators.0
+                                        ),
+                                        coordinate: rwy.location.0,
+                                    })
                                 } else if rwy.designators.1 == rwy_designator {
-                                    Some(rwy.location.1)
+                                    Some(Fix {
+                                        designator: format!(
+                                            "{}{}",
+                                            airport.designator, rwy.designators.1
+                                        ),
+                                        coordinate: rwy.location.1,
+                                    })
                                 } else {
                                     None
                                 }
@@ -289,20 +324,26 @@ impl Locations {
             .flatten()
     }
 
-    fn convert_fix(&self, designator: &str) -> Option<Coord> {
+    fn convert_fix(&self, designator: &str) -> Option<Fix> {
         self.vors
             .get(designator)
-            .map(|vor| vor.coordinate)
-            .or(self.ndbs.get(designator).map(|ndb| ndb.coordinate))
-            .or(self.fixes.get(designator).map(|fix| fix.coordinate))
-            .or(self
-                .airports
-                .get(designator)
-                .map(|airport| airport.coordinate))
+            .map(|vor| Fix {
+                designator: vor.designator.clone(),
+                coordinate: vor.coordinate,
+            })
+            .or(self.ndbs.get(designator).map(|ndb| Fix {
+                designator: ndb.designator.clone(),
+                coordinate: ndb.coordinate,
+            }))
+            .or(self.fixes.get(designator).cloned())
+            .or(self.airports.get(designator).map(|airport| Fix {
+                designator: airport.designator.clone(),
+                coordinate: airport.coordinate,
+            }))
             .or(self.convert_rwy(designator))
     }
 
-    pub fn convert_designator(&self, designator: &str) -> Option<Coord> {
+    pub fn convert_designator(&self, designator: &str) -> Option<Fix> {
         self.convert_fix(designator)
             .or(Self::convert_coordinate(designator))
             .or(self.convert_range_bearing(designator))
@@ -319,7 +360,7 @@ impl Locations {
 
 #[cfg(test)]
 mod test {
-    use geo::{coord, Coord};
+    use geo::point;
 
     use crate::adaptation::locations::{Airport, Fix, Locations, Runway, NDB, VOR};
 
@@ -330,9 +371,9 @@ mod test {
                 "ARMUT".to_string(),
                 Fix {
                     designator: "ARMUT".to_string(),
-                    coordinate: Coord {
-                        y: 49.722_499_722_222_224,
+                    coordinate: point! {
                         x: 12.323_332_777_777_777,
+                        y: 49.722_499_722_222_224,
                     },
                 },
             )]
@@ -344,9 +385,9 @@ mod test {
                     NDB {
                         designator: "MIQ".to_string(),
                         frequency: "426.000".to_string(),
-                        coordinate: Coord {
-                            y: 48.570_225,
+                        coordinate: point! {
                             x: 11.597_502_777_777_779,
+                            y: 48.570_225,
                         },
                     },
                 ),
@@ -355,9 +396,9 @@ mod test {
                     NDB {
                         designator: "SI".to_string(),
                         frequency: "410.000".to_string(),
-                        coordinate: Coord {
-                            y: 47.818_607_777_777_78,
+                        coordinate: point! {
                             x: 12.987_674_722_222_222,
+                            y: 47.818_607_777_777_78,
                         },
                     },
                 ),
@@ -369,9 +410,9 @@ mod test {
                 VOR {
                     designator: "OTT".to_string(),
                     frequency: "112.300".to_string(),
-                    coordinate: Coord {
-                        y: 48.180_393_888_888_89,
+                    coordinate: point! {
                         x: 11.816_535_833_333_335,
+                        y: 48.180_393_888_888_89,
                     },
                 },
             )]
@@ -386,11 +427,11 @@ mod test {
                             designators: ("08R".to_string(), "26L".to_string()),
                             headings: (80, 260),
                             location: (
-                                coord! {
+                                point! {
                                   x: 11.751_016_944_444_444,
                                   y: 48.340_668_888_888_89
                                 },
-                                coord! {
+                                point! {
                                   x: 11.804_613_888_888_89,
                                   y: 48.344_796_944_444_45
                                 },
@@ -401,11 +442,11 @@ mod test {
                             designators: ("08L".to_string(), "26R".to_string()),
                             headings: (80, 260),
                             location: (
-                                coord! {
+                                point! {
                                   x: 11.767_549_722_222_222,
                                   y: 48.362_766_944_444_445
                                 },
-                                coord! {
+                                point! {
                                   x: 11.821_171_944_444_444,
                                   y: 48.366_885_833_333_335
                                 },
@@ -413,9 +454,9 @@ mod test {
                             aerodrome: "EDDM".to_string(),
                         },
                     ],
-                    coordinate: Coord {
-                        y: 48.353_782_777_777_78,
+                    coordinate: point! {
                         x: 11.786_085_833_333_333,
+                        y: 48.353_782_777_777_78,
                     },
                 },
             )]
@@ -426,99 +467,143 @@ mod test {
 
         assert_eq!(
             locs.convert_designator("MIQ").unwrap(),
-            Coord {
-                y: 48.570_225,
-                x: 11.597_502_777_777_779,
+            Fix {
+                designator: "MIQ".to_string(),
+                coordinate: point! {
+                    x: 11.597_502_777_777_779,
+                    y: 48.570_225,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("OTT").unwrap(),
-            Coord {
-                y: 48.180_393_888_888_89,
-                x: 11.816_535_833_333_335
+            Fix {
+                designator: "OTT".to_string(),
+                coordinate: point! {
+                    x: 11.816_535_833_333_335,
+                    y: 48.180_393_888_888_89,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("EDDM").unwrap(),
-            Coord {
-                y: 48.353_782_777_777_78,
-                x: 11.786_085_833_333_333
+            Fix {
+                designator: "EDDM".to_string(),
+                coordinate: point! {
+                    x: 11.786_085_833_333_333,
+                    y: 48.353_782_777_777_78,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("EDDM26R").unwrap(),
-            Coord {
-                y: 48.366_885_833_333_335,
-                x: 11.821_171_944_444_444,
+            Fix {
+                designator: "EDDM26R".to_string(),
+                coordinate: point! {
+                    x: 11.821_171_944_444_444,
+                    y: 48.366_885_833_333_335,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("ARMUT").unwrap(),
-            Coord {
-                y: 49.722_499_722_222_224,
-                x: 12.323_332_777_777_777
+            Fix {
+                designator: "ARMUT".to_string(),
+                coordinate: point! {
+                    x: 12.323_332_777_777_777,
+                    y: 49.722_499_722_222_224,
+                }
             }
         );
         assert_eq!(locs.convert_designator("OZE"), None);
         assert_eq!(
             locs.convert_designator("46N078W").unwrap(),
-            Coord { y: 46.0, x: -78.0 }
+            Fix {
+                designator: "46N078W".to_string(),
+                coordinate: point! { x: -78.0, y: 46.0 }
+            }
         );
         assert_eq!(
             locs.convert_designator("4620N05805W").unwrap(),
-            Coord {
-                y: 46.333_333_333_333_336,
-                x: -58.083_333_333_333_336
+            Fix {
+                designator: "4620N05805W".to_string(),
+                coordinate: point! {
+                    x: -58.083_333_333_333_336,
+                    y: 46.333_333_333_333_336,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("462013N0580503W").unwrap(),
-            Coord {
-                y: 46.336_944_444_444_45,
-                x: -58.084_166_666_666_67
+            Fix {
+                designator: "462013N0580503W".to_string(),
+                coordinate: point! {
+                    x: -58.084_166_666_666_67,
+                    y: 46.336_944_444_444_45,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("4N40W").unwrap(),
-            Coord { y: 4.0, x: -40.0 }
+            Fix {
+                designator: "04N040W".to_string(),
+                coordinate: point! { x: -40.0, y: 4.0 }
+            }
         );
         assert_eq!(
             locs.convert_designator("04N40W").unwrap(),
-            Coord { y: 4.0, x: -40.0 }
+            Fix {
+                designator: "04N040W".to_string(),
+                coordinate: point! { x: -40.0, y: 4.0 }
+            }
         );
         assert_eq!(locs.convert_designator("4N04W"), None);
         assert_eq!(locs.convert_designator("04N04W"), None);
         assert_eq!(
             locs.convert_designator("400N4000W").unwrap(),
-            Coord { y: 4.0, x: -40.0 }
+            Fix {
+                designator: "0400N04000W".to_string(),
+                coordinate: point! { x: -40.0, y: 4.0 }
+            }
         );
         assert_eq!(
             locs.convert_designator("0400N4000W").unwrap(),
-            Coord { y: 4.0, x: -40.0 }
+            Fix {
+                designator: "0400N04000W".to_string(),
+                coordinate: point! { x: -40.0, y: 4.0 }
+            }
         );
         assert_eq!(locs.convert_designator("400N0400W"), None);
         assert_eq!(locs.convert_designator("0400N0400W"), None);
         assert_eq!(
             locs.convert_designator("ARMUT070005").unwrap(),
-            Coord {
-                y: 49.750_911_853_173,
-                x: 12.444_077_899_400_547,
+            Fix {
+                designator: "ARMUT070005".to_string(),
+                coordinate: point! {
+                    x: 12.444_077_899_400_547,
+                    y: 49.750_911_853_173,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("MIQ270060").unwrap(),
-            Coord {
-                y: 48.560_381_643_538_1,
-                x: 10.091_991_772_311_63
+            Fix {
+                designator: "MIQ270060".to_string(),
+                coordinate: point! {
+                    x: 10.091_991_772_311_63,
+                    y: 48.560_381_643_538_1,
+                }
             }
         );
         assert_eq!(
             locs.convert_designator("SI123456").unwrap(),
-            Coord {
-                y: 43.327_844_333_714_84,
-                x: 21.728_708_973_319_613,
+            Fix {
+                designator: "SI123456".to_string(),
+                coordinate: point! {
+                    x: 21.728_708_973_319_613,
+                    y: 43.327_844_333_714_84,
+                }
             }
         );
-        // TODO test runways
     }
 }

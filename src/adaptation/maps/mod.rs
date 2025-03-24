@@ -2,7 +2,7 @@ pub mod active;
 
 use std::collections::HashMap;
 
-use geo::{Coord, MultiLineString, Polygon};
+use geo::{MultiLineString, Point, Polygon};
 use serde::Serialize;
 use tracing::warn;
 
@@ -170,7 +170,7 @@ impl MapGroup {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Label {
-    pub coordinate: Coord,
+    pub coordinate: Point,
     pub alignment: Alignment,
     pub text: String,
 }
@@ -178,7 +178,7 @@ pub struct Label {
 #[derive(Clone, Debug, Serialize)]
 pub struct Symbol {
     pub name: String,
-    pub coordinate: Coord,
+    pub coordinate: Point,
     pub label: Option<String>,
     pub label_alignment: Alignment,
     pub label_offset: (f64, f64),

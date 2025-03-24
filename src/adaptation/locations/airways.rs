@@ -1,10 +1,10 @@
 use std::{cmp::Ordering, collections::HashMap, fmt::Display};
 
 use bevy_derive::{Deref, DerefMut};
-use geo::Coord;
 use itertools::Itertools;
 use multimap::MultiMap;
 use serde::{Serialize, Serializer};
+use tracing::trace;
 
 use super::Fix;
 
@@ -35,10 +35,82 @@ pub struct AirwayNeighbours {
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct AirwayFix {
-    pub designator: String,
-    pub coordinate: Coord,
+    pub fix: Fix,
     pub valid_direction: bool,
     pub minimum_level: Option<u32>,
+}
+
+impl FixAirwayMap {
+    pub fn iter_forwards<'a>(&'a self, start: Fix, airway: &'a str) -> AirwayForwardIterator<'a> {
+        AirwayForwardIterator {
+            airways: self,
+            airway,
+            current_fix: start,
+        }
+    }
+
+    pub fn iter_backwards<'a>(&'a self, start: Fix, airway: &'a str) -> AirwayBackwardIterator<'a> {
+        AirwayBackwardIterator {
+            airways: self,
+            airway,
+            current_fix: start,
+        }
+    }
+}
+
+pub struct AirwayForwardIterator<'airways> {
+    airways: &'airways FixAirwayMap,
+    airway: &'airways str,
+    current_fix: Fix,
+}
+
+impl<'airways> Iterator for AirwayForwardIterator<'airways> {
+    type Item = &'airways AirwayFix;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let maybe_next = self
+            .airways
+            .get(&self.current_fix)
+            .and_then(|wpt_airways| wpt_airways.airway_neighbours.get_vec(self.airway))
+            .and_then(|neighbours| neighbours.iter().find_map(|n| n.next.as_ref()));
+
+        trace!(
+            "Iterating forward on {}: {} -> {}",
+            self.airway,
+            self.current_fix.designator,
+            maybe_next.map_or("None", |next| &*next.fix.designator)
+        );
+
+        if let Some(next) = maybe_next {
+            self.current_fix.clone_from(&next.fix);
+        }
+
+        maybe_next
+    }
+}
+
+pub struct AirwayBackwardIterator<'airways> {
+    airways: &'airways FixAirwayMap,
+    airway: &'airways str,
+    current_fix: Fix,
+}
+
+impl<'airways> Iterator for AirwayBackwardIterator<'airways> {
+    type Item = &'airways AirwayFix;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let maybe_previous = self
+            .airways
+            .get(&self.current_fix)
+            .and_then(|wpt_airways| wpt_airways.airway_neighbours.get_vec(self.airway))
+            .and_then(|neighbours| neighbours.iter().find_map(|n| n.previous.as_ref()));
+
+        if let Some(previous) = maybe_previous {
+            self.current_fix.clone_from(&previous.fix);
+        }
+
+        maybe_previous
+    }
 }
 
 impl Serialize for FixAirwayMap {
@@ -49,7 +121,9 @@ impl Serialize for FixAirwayMap {
         let key = |fix: &Fix| {
             format!(
                 "{}:{:.6}:{:.6}",
-                fix.designator, fix.coordinate.y, fix.coordinate.x
+                fix.designator,
+                fix.coordinate.y(),
+                fix.coordinate.x()
             )
         };
         serializer.collect_map(self.0.iter().map(|(fix, v)| (key(fix), v)))
@@ -61,8 +135,8 @@ impl Display for FixAirwayMap {
         for (_, airways) in self.0.iter().sorted_by(|(fix, _), (fix2, _)| {
             fix.designator.cmp(&fix2.designator).then(
                 fix.coordinate
-                    .x
-                    .partial_cmp(&fix.coordinate.x)
+                    .x()
+                    .partial_cmp(&fix.coordinate.x())
                     .map_or(Ordering::Equal, Ordering::reverse),
             )
         }) {
@@ -85,8 +159,8 @@ impl Display for AirwayNeighboursOfFix {
                     f,
                     "{fix_designator}\t{fix_lat:.6}\t{fix_lng:.6}\t14\t{airway}\t{airway_type}\t{neighbours}",
                     fix_designator = self.fix.designator,
-                    fix_lat = self.fix.coordinate.y,
-                    fix_lng = self.fix.coordinate.x,
+                    fix_lat = self.fix.coordinate.y(),
+                    fix_lng = self.fix.coordinate.x(),
                     airway_type = neighbours.airway_type,
                 )?;
             }
@@ -126,9 +200,9 @@ impl Display for AirwayFix {
         write!(
             f,
             "{}\t{:.6}\t{:.6}\t{}\t{}",
-            self.designator,
-            self.coordinate.y,
-            self.coordinate.x,
+            self.fix.designator,
+            self.fix.coordinate.y(),
+            self.fix.coordinate.x(),
             self.minimum_level
                 .map_or("NESTB".to_string(), |lvl| format!("{lvl:05}")),
             if self.valid_direction { "Y" } else { "N" }

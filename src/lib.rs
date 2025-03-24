@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display, hash::Hash, io};
 
 use bevy_derive::{Deref, DerefMut};
 use bevy_reflect::Reflect;
-use geo::Coord;
+use geo::{Coord, Point};
 use multimap::MultiMap;
 use serde::{Serialize, Serializer};
 use tracing::warn;
@@ -53,15 +53,15 @@ fn decimal_to_dms(decimal: f64, is_latitude: bool) -> (u8, u8, f64, char) {
     (degrees.unsigned_abs(), minutes, seconds, direction)
 }
 
-trait DegMinSecExt {
+pub trait DegMinSecExt {
     fn from_deg_min_sec(lat: DegMinSec, lng: DegMinSec) -> Self;
     fn lat_deg_min_sec_fmt(&self) -> String;
-    fn lon_deg_min_sec_fmt(&self) -> String;
+    fn lng_deg_min_sec_fmt(&self) -> String;
     fn deg_min_sec_fmt(&self) -> String {
         format!(
             "{} {}",
             self.lat_deg_min_sec_fmt(),
-            self.lon_deg_min_sec_fmt()
+            self.lng_deg_min_sec_fmt()
         )
     }
 }
@@ -87,7 +87,7 @@ impl DegMinSecExt for Coord {
         format!("{}{deg:03}.{min:02}.{sec:06.3}", lat.3)
     }
 
-    fn lon_deg_min_sec_fmt(&self) -> String {
+    fn lng_deg_min_sec_fmt(&self) -> String {
         let lon = decimal_to_dms(self.x, false);
         let deg = lon.0;
         let carry_rounded_sec = (lon.2 - 60.).abs() < 0.000_001;
@@ -96,12 +96,25 @@ impl DegMinSecExt for Coord {
         format!("{}{deg:03}.{min:02}.{sec:06.3}", lon.3)
     }
 }
+impl DegMinSecExt for Point {
+    fn from_deg_min_sec(lat: DegMinSec, lng: DegMinSec) -> Self {
+        Coord::from_deg_min_sec(lat, lng).into()
+    }
+
+    fn lat_deg_min_sec_fmt(&self) -> String {
+        self.0.lat_deg_min_sec_fmt()
+    }
+
+    fn lng_deg_min_sec_fmt(&self) -> String {
+        self.0.lng_deg_min_sec_fmt()
+    }
+}
 
 #[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
 #[reflect(Debug)]
 pub enum Location {
     Fix(String),
-    Coordinate(#[reflect(ignore)] Coord),
+    Coordinate(#[reflect(ignore)] Point),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deref, DerefMut)]
