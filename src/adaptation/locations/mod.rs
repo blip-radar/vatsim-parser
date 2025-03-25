@@ -2,10 +2,10 @@ pub mod airways;
 
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::sync::OnceLock;
 
 use geo::{point, Destination, Geodesic, Point};
 use multimap::MultiMap;
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
 use tracing::{trace, warn};
@@ -133,9 +133,16 @@ pub struct Locations {
     pub stars: TwoKeyMultiMap<String, String, STAR>,
 }
 
-static COORD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap());
-static RANGE_BEARING_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^([0-9A-Z]{2,5})(\d{3})(\d{3})$").unwrap());
+fn coord_regex() -> &'static Regex {
+    static COORD_RE: OnceLock<Regex> = OnceLock::new();
+    COORD_RE.get_or_init(|| Regex::new(r"^(\d{1,6})(N|S)(\d{2,7})(E|W)$").unwrap())
+}
+
+fn range_bearing_regex() -> &'static Regex {
+    static RANGE_BEARING_RE: OnceLock<Regex> = OnceLock::new();
+    RANGE_BEARING_RE.get_or_init(|| Regex::new(r"^([0-9A-Z]{2,5})(\d{3})(\d{3})$").unwrap())
+}
+
 impl Locations {
     pub(super) fn from_euroscope(sct: Sct, ese: Ese, airways: FixAirwayMap) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
@@ -223,21 +230,23 @@ impl Locations {
     }
 
     fn convert_range_bearing(&self, designator: &str) -> Option<Fix> {
-        RANGE_BEARING_RE.captures(designator).and_then(|captures| {
-            let fix = &captures[1];
-            // TODO magnetic
-            let bearing: f64 = captures[2].parse().unwrap();
-            let range = Length::new::<nautical_mile>(captures[3].parse::<f64>().unwrap());
+        range_bearing_regex()
+            .captures(designator)
+            .and_then(|captures| {
+                let fix = &captures[1];
+                // TODO magnetic
+                let bearing: f64 = captures[2].parse().unwrap();
+                let range = Length::new::<nautical_mile>(captures[3].parse::<f64>().unwrap());
 
-            self.convert_fix(fix).map(|f| Fix {
-                designator: designator.to_string(),
-                coordinate: Geodesic::destination(f.coordinate, bearing, range.get::<meter>()),
+                self.convert_fix(fix).map(|f| Fix {
+                    designator: designator.to_string(),
+                    coordinate: Geodesic::destination(f.coordinate, bearing, range.get::<meter>()),
+                })
             })
-        })
     }
 
     fn convert_coordinate(designator: &str) -> Option<Fix> {
-        COORD_RE.captures(designator).and_then(|captures| {
+        coord_regex().captures(designator).and_then(|captures| {
             let lat_str = &captures[1];
             let lng_str = &captures[3];
             let normalised_lat_str = if matches!(lat_str.len(), 1 | 3 | 5) {

@@ -1,7 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::OnceLock};
 
 use bevy_reflect::Reflect;
-use once_cell::sync::Lazy;
 use serde::Serialize;
 
 use crate::{
@@ -37,92 +36,120 @@ pub struct Symbols {
 }
 
 // FIXME check all these, probably have some ES-specific workaround offsets
-static DEFAULT_HISTORY_DOT: Lazy<Symbol> = Lazy::new(|| {
-    vec![SymbolRule::Polygon(vec![
-        (-1.0, -1.0),
-        (1.0, -1.0),
-        (1.0, 1.0),
-        (-1.0, 1.0),
-    ])]
-});
-static DEFAULT_FIX: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Move((-5.0, 5.0)),
-        SymbolRule::Line((0.0, -5.0)),
-        SymbolRule::Line((5.0, 5.0)),
-        SymbolRule::Line((-5.0, 5.0)),
-    ]
-});
-static DEFAULT_NDB: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Pixel((0.0, 0.0)),
-        SymbolRule::Arc((0.0, -0.0), 1.0, 0, 360),
-        SymbolRule::Arc((0.0, -0.0), 3.0, 0, 360),
-        SymbolRule::Arc((0.0, -0.0), 5.0, 0, 360),
-    ]
-});
-static DEFAULT_VOR: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Move((-6.0, 0.0)),
-        SymbolRule::Line((-2.0, -5.0)),
-        SymbolRule::Line((2.0, -5.0)),
-        SymbolRule::Line((6.0, 0.0)),
-        SymbolRule::Line((2.0, 5.0)),
-        SymbolRule::Line((-2.0, 5.0)),
-        SymbolRule::Line((-6.0, 0.0)),
-        SymbolRule::Move((-6.0, -5.0)),
-        SymbolRule::Line((-6.0, 5.0)),
-        SymbolRule::Line((6.0, 5.0)),
-        SymbolRule::Line((6.0, -5.0)),
-        SymbolRule::Line((-6.0, -5.0)),
-    ]
-});
-static DEFAULT_AIRPORT: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Move((-3.0, -3.0)),
-        SymbolRule::Line((3.0, -3.0)),
-        SymbolRule::Line((3.0, 3.0)),
-        SymbolRule::Line((-3.0, 3.0)),
-        SymbolRule::Line((-3.0, -3.0)),
-        SymbolRule::Move((5.0, 0.0)),
-        SymbolRule::Line((-6.0, 0.0)),
-        SymbolRule::Move((0.0, 5.0)),
-        SymbolRule::Line((0.0, -6.0)),
-    ]
-});
-static DEFAULT_PRIMARY: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Move((-3.0, -3.0)),
-        SymbolRule::Line((4.0, 4.0)),
-        SymbolRule::Move((-3.0, 3.0)),
-        SymbolRule::Line((4.0, -4.0)),
-    ]
-});
-static DEFAULT_CONTROLLED: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Move((-5.0, 0.0)),
-        SymbolRule::Line((0.0, -5.0)),
-        SymbolRule::Line((5.0, 0.0)),
-        SymbolRule::Line((0.0, 5.0)),
-        SymbolRule::Line((-5.0, 0.0)),
-    ]
-});
-static DEFAULT_UNCONTROLLED: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Move((-4.0, 3.0)),
-        SymbolRule::Line((0.0, -4.0)),
-        SymbolRule::Line((3.0, 3.0)),
-        SymbolRule::Line((-4.0, 3.0)),
-    ]
-});
-static DEFAULT_COASTED: Lazy<Symbol> = Lazy::new(|| {
-    vec![
-        SymbolRule::Move((-4.0, -4.0)),
-        SymbolRule::Line((-4.0, 4.0)),
-        SymbolRule::Line((4.0, 4.0)),
-        SymbolRule::Line((4.0, -4.0)),
-    ]
-});
+
+fn default_history_dot() -> &'static Symbol {
+    static DEFAULT_HISTORY_DOT: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_HISTORY_DOT.get_or_init(|| {
+        vec![SymbolRule::Polygon(vec![
+            (-1.0, -1.0),
+            (1.0, -1.0),
+            (1.0, 1.0),
+            (-1.0, 1.0),
+        ])]
+    })
+}
+fn default_fix() -> &'static Symbol {
+    static DEFAULT_FIX: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_FIX.get_or_init(|| {
+        vec![
+            SymbolRule::Move((-5.0, 5.0)),
+            SymbolRule::Line((0.0, -5.0)),
+            SymbolRule::Line((5.0, 5.0)),
+            SymbolRule::Line((-5.0, 5.0)),
+        ]
+    })
+}
+fn default_ndb() -> &'static Symbol {
+    static DEFAULT_NDB: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_NDB.get_or_init(|| {
+        vec![
+            SymbolRule::Pixel((0.0, 0.0)),
+            SymbolRule::Arc((0.0, -0.0), 1.0, 0, 360),
+            SymbolRule::Arc((0.0, -0.0), 3.0, 0, 360),
+            SymbolRule::Arc((0.0, -0.0), 5.0, 0, 360),
+        ]
+    })
+}
+fn default_vor() -> &'static Symbol {
+    static DEFAULT_VOR: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_VOR.get_or_init(|| {
+        vec![
+            SymbolRule::Move((-6.0, 0.0)),
+            SymbolRule::Line((-2.0, -5.0)),
+            SymbolRule::Line((2.0, -5.0)),
+            SymbolRule::Line((6.0, 0.0)),
+            SymbolRule::Line((2.0, 5.0)),
+            SymbolRule::Line((-2.0, 5.0)),
+            SymbolRule::Line((-6.0, 0.0)),
+            SymbolRule::Move((-6.0, -5.0)),
+            SymbolRule::Line((-6.0, 5.0)),
+            SymbolRule::Line((6.0, 5.0)),
+            SymbolRule::Line((6.0, -5.0)),
+            SymbolRule::Line((-6.0, -5.0)),
+        ]
+    })
+}
+fn default_airport() -> &'static Symbol {
+    static DEFAULT_AIRPORT: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_AIRPORT.get_or_init(|| {
+        vec![
+            SymbolRule::Move((-3.0, -3.0)),
+            SymbolRule::Line((3.0, -3.0)),
+            SymbolRule::Line((3.0, 3.0)),
+            SymbolRule::Line((-3.0, 3.0)),
+            SymbolRule::Line((-3.0, -3.0)),
+            SymbolRule::Move((5.0, 0.0)),
+            SymbolRule::Line((-6.0, 0.0)),
+            SymbolRule::Move((0.0, 5.0)),
+            SymbolRule::Line((0.0, -6.0)),
+        ]
+    })
+}
+fn default_primary() -> &'static Symbol {
+    static DEFAULT_PRIMARY: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_PRIMARY.get_or_init(|| {
+        vec![
+            SymbolRule::Move((-3.0, -3.0)),
+            SymbolRule::Line((4.0, 4.0)),
+            SymbolRule::Move((-3.0, 3.0)),
+            SymbolRule::Line((4.0, -4.0)),
+        ]
+    })
+}
+fn default_controlled() -> &'static Symbol {
+    static DEFAULT_CONTROLLED: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_CONTROLLED.get_or_init(|| {
+        vec![
+            SymbolRule::Move((-5.0, 0.0)),
+            SymbolRule::Line((0.0, -5.0)),
+            SymbolRule::Line((5.0, 0.0)),
+            SymbolRule::Line((0.0, 5.0)),
+            SymbolRule::Line((-5.0, 0.0)),
+        ]
+    })
+}
+fn default_uncontrolled() -> &'static Symbol {
+    static DEFAULT_UNCONTROLLED: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_UNCONTROLLED.get_or_init(|| {
+        vec![
+            SymbolRule::Move((-4.0, 3.0)),
+            SymbolRule::Line((0.0, -4.0)),
+            SymbolRule::Line((3.0, 3.0)),
+            SymbolRule::Line((-4.0, 3.0)),
+        ]
+    })
+}
+fn default_coasted() -> &'static Symbol {
+    static DEFAULT_COASTED: OnceLock<Symbol> = OnceLock::new();
+    DEFAULT_COASTED.get_or_init(|| {
+        vec![
+            SymbolRule::Move((-4.0, -4.0)),
+            SymbolRule::Line((-4.0, 4.0)),
+            SymbolRule::Line((4.0, 4.0)),
+            SymbolRule::Line((4.0, -4.0)),
+        ]
+    })
+}
 
 impl Symbols {
     pub fn get(&self, name: &str) -> Option<&[SymbolRule]> {
@@ -145,31 +172,31 @@ impl Symbols {
                 .and_then(|t| t.symbols.get("HISTORY"))
                 .map(|s| s.rules.clone())
                 .or_else(|| symbology.symbols.get(&SymbolType::HistoryDot).cloned())
-                .unwrap_or(DEFAULT_HISTORY_DOT.to_vec()),
+                .unwrap_or(default_history_dot().clone()),
             fix: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("FIX"))
                 .map(|s| s.rules.clone())
                 .or_else(|| symbology.symbols.get(&SymbolType::Fix).cloned())
-                .unwrap_or(DEFAULT_FIX.to_vec()),
+                .unwrap_or(default_fix().clone()),
             ndb: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("NDB"))
                 .map(|s| s.rules.clone())
                 .or_else(|| symbology.symbols.get(&SymbolType::NDB).cloned())
-                .unwrap_or(DEFAULT_NDB.to_vec()),
+                .unwrap_or(default_ndb().clone()),
             vor: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("VOR"))
                 .map(|s| s.rules.clone())
                 .or_else(|| symbology.symbols.get(&SymbolType::VOR).cloned())
-                .unwrap_or(DEFAULT_VOR.to_vec()),
+                .unwrap_or(default_ndb().clone()),
             airport: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("AIRPORT"))
                 .map(|s| s.rules.clone())
                 .or_else(|| symbology.symbols.get(&SymbolType::Airport).cloned())
-                .unwrap_or(DEFAULT_AIRPORT.to_vec()),
+                .unwrap_or(default_airport().clone()),
             primary: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("PRIMARY"))
@@ -180,7 +207,7 @@ impl Symbols {
                         .get(&SymbolType::AircraftPrimaryOnly)
                         .cloned()
                 })
-                .unwrap_or(DEFAULT_PRIMARY.to_vec()),
+                .unwrap_or(default_primary().clone()),
             coasted: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("COASTED"))
@@ -191,7 +218,7 @@ impl Symbols {
                         .get(&SymbolType::AircraftCoasting)
                         .cloned()
                 })
-                .unwrap_or(DEFAULT_COASTED.to_vec()),
+                .unwrap_or(default_coasted().clone()),
             uncontrolled: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("UNCONTROLLED"))
@@ -202,7 +229,7 @@ impl Symbols {
                         .get(&SymbolType::AircraftUncorrModeAlphaCharlie)
                         .cloned()
                 })
-                .unwrap_or(DEFAULT_UNCONTROLLED.to_vec()),
+                .unwrap_or(default_uncontrolled().clone()),
             controlled: topsky
                 .as_ref()
                 .and_then(|t| t.symbols.get("DAPS"))
@@ -213,7 +240,7 @@ impl Symbols {
                         .get(&SymbolType::AircraftCorrModeSierra)
                         .cloned()
                 })
-                .unwrap_or(DEFAULT_CONTROLLED.to_vec()),
+                .unwrap_or(default_controlled().clone()),
             other: topsky_symbols,
         }
     }
@@ -222,15 +249,15 @@ impl Symbols {
 impl Default for Symbols {
     fn default() -> Self {
         Self {
-            history_dot: DEFAULT_HISTORY_DOT.to_vec(),
-            fix: DEFAULT_FIX.to_vec(),
-            ndb: DEFAULT_NDB.to_vec(),
-            vor: DEFAULT_VOR.to_vec(),
-            airport: DEFAULT_AIRPORT.to_vec(),
-            primary: DEFAULT_PRIMARY.to_vec(),
-            coasted: DEFAULT_COASTED.to_vec(),
-            uncontrolled: DEFAULT_UNCONTROLLED.to_vec(),
-            controlled: DEFAULT_CONTROLLED.to_vec(),
+            history_dot: default_history_dot().clone(),
+            fix: default_fix().clone(),
+            ndb: default_ndb().clone(),
+            vor: default_vor().clone(),
+            airport: default_airport().clone(),
+            primary: default_primary().clone(),
+            coasted: default_coasted().clone(),
+            uncontrolled: default_uncontrolled().clone(),
+            controlled: default_controlled().clone(),
             other: HashMap::new(),
         }
     }

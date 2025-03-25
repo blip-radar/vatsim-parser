@@ -1268,7 +1268,6 @@ dependencies = [
  "multimap",
  "num-derive",
  "num-traits",
- "once_cell",
  "pest",
  "pest-ast",
  "pest_derive",

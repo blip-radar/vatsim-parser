@@ -1,7 +1,6 @@
-use std::{collections::HashMap, num::TryFromIntError};
+use std::{collections::HashMap, num::TryFromIntError, sync::OnceLock};
 
 use bevy_reflect::Reflect;
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{de::Visitor, Deserialize, Serialize};
 
@@ -56,8 +55,11 @@ impl Colour {
 
 struct ColourVisitor;
 
-static HASH_RGB_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$").unwrap());
+fn hash_rgb_regex() -> &'static Regex {
+    static HASH_RGB_RE: OnceLock<Regex> = OnceLock::new();
+    HASH_RGB_RE
+        .get_or_init(|| Regex::new(r"^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$").unwrap())
+}
 
 impl Visitor<'_> for ColourVisitor {
     type Value = Colour;
@@ -71,7 +73,7 @@ impl Visitor<'_> for ColourVisitor {
     where
         E: serde::de::Error,
     {
-        if let Some(((r, g), b)) = HASH_RGB_RE.captures(v).and_then(|captures| {
+        if let Some(((r, g), b)) = hash_rgb_regex().captures(v).and_then(|captures| {
             let r = u8::from_str_radix(&captures[1], 16);
             let g = u8::from_str_radix(&captures[2], 16);
             let b = u8::from_str_radix(&captures[3], 16);
