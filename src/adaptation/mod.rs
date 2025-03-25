@@ -161,7 +161,6 @@ impl Adaptation {
         let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let name = sct.info.name.clone();
         let (volumes, sectors) = Sector::from_ese(&ese);
-        let sct_items = SctItems::from_sct(&sct);
         let positions = Position::from_ese_positions(ese.positions.clone());
         let symbology = Symbology::parse(&fs_err::read(prf.symbology_path())?)?;
         let squawks = prf
@@ -179,7 +178,8 @@ impl Adaptation {
         });
         let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref());
         let colours = Colours::from_euroscope(&symbology, &sct, &topsky, &settings);
-        let locations = Locations::from_euroscope(sct, ese, airways);
+        let locations = Locations::from_euroscope(sct.clone(), ese, airways);
+        let sct_items = SctItems::from_sct(sct, &locations, &colours, &settings);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
         let airports = parse_airports(&fs_err::read(prf.airports_path())?)?;

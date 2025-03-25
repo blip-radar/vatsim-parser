@@ -4,12 +4,14 @@ use std::{collections::HashMap, fmt::Display};
 
 use geo::{Coord, Point};
 use itertools::Itertools as _;
+use pest::iterators::Pairs;
 use pest::{iterators::Pair, Parser as _};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
 use tracing::warn;
 
+use crate::topsky::map::MapLine;
 use crate::{
     adaptation::{
         colours::Colour,
@@ -33,7 +35,7 @@ pub enum SctError {
     FileRead(#[from] io::Error),
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Airport {
     pub designator: String,
     pub coordinate: Point,
@@ -62,38 +64,36 @@ pub struct Label {
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
-pub struct Line {
-    pub start: Location,
-    pub end: Location,
+pub struct ColouredLines {
+    pub lines: Vec<MapLine>,
     pub colour_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Geo {
     pub name: String,
-    pub lines: Vec<Line>,
+    pub line_groups: Vec<ColouredLines>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Sid {
     pub name: String,
-    pub lines: Vec<Line>,
+    pub line_groups: Vec<ColouredLines>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Star {
     pub name: String,
-    pub lines: Vec<Line>,
+    pub line_groups: Vec<ColouredLines>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Artcc {
     pub name: String,
-    pub lines: Vec<Line>,
+    pub line_groups: Vec<ColouredLines>,
 }
 
-// TODO ARTCC, SID, STAR, AIRWAY
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Sct {
     pub info: SctInfo,
     pub colours: HashMap<String, Colour>,
@@ -114,7 +114,7 @@ pub struct Sct {
     pub geo: Vec<Geo>,
 }
 
-#[derive(Debug, Default, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, PartialEq)]
 pub struct SctInfo {
     pub name: String,
     pub default_callsign: String,
@@ -260,16 +260,25 @@ impl ToEuroscope for Location {
         }
     }
 }
-impl ToEuroscope for Line {
+impl ToEuroscope for ColouredLines {
     fn to_euroscope(&self) -> String {
-        format!(
-            "{} {}{}",
-            self.start.to_euroscope(),
-            self.end.to_euroscope(),
-            self.colour_name
-                .as_ref()
-                .map_or(String::new(), |c| format!(" {c}"))
-        )
+        let mut lines = self.lines.iter().flat_map(|line| {
+            line.points.iter().tuple_windows().map(|(start, end)| {
+                format!(
+                    "{} {}{}",
+                    start.to_euroscope(),
+                    end.to_euroscope(),
+                    self.colour_name
+                        .as_ref()
+                        .map_or(String::new(), |c| format!(" {c}"))
+                )
+            })
+        });
+        lines
+            .next()
+            .into_iter()
+            .chain(lines.map(|line| format!("{:<40} {}", "", line)))
+            .join("\n")
     }
 }
 impl ToEuroscope for Vec<Geo> {
@@ -288,12 +297,12 @@ impl ToEuroscope for Geo {
         format!(
             "{:<40} {}{}",
             self.name,
-            self.lines
+            self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.lines.len() > 1)
+            (self.line_groups.len() > 1)
                 .then_some(
-                    self.lines
+                    self.line_groups
                         .iter()
                         .skip(1)
                         .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
@@ -393,12 +402,12 @@ impl ToEuroscope for Sid {
         format!(
             "{:<40} {}{}",
             self.name,
-            self.lines
+            self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.lines.len() > 1)
+            (self.line_groups.len() > 1)
                 .then_some(
-                    self.lines
+                    self.line_groups
                         .iter()
                         .skip(1)
                         .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
@@ -424,12 +433,12 @@ impl ToEuroscope for Star {
         format!(
             "{:<40} {}{}",
             self.name,
-            self.lines
+            self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.lines.len() > 1)
+            (self.line_groups.len() > 1)
                 .then_some(
-                    self.lines
+                    self.line_groups
                         .iter()
                         .skip(1)
                         .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
@@ -455,12 +464,12 @@ impl ToEuroscope for Artcc {
         format!(
             "{:<40} {}{}",
             self.name,
-            self.lines
+            self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.lines.len() > 1)
+            (self.line_groups.len() > 1)
                 .then_some(
-                    self.lines
+                    self.line_groups
                         .iter()
                         .skip(1)
                         .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
@@ -645,54 +654,82 @@ fn parse_label(pair: Pair<Rule>) -> Label {
     }
 }
 
-fn parse_line(pair: Pair<Rule>) -> Option<Line> {
-    let mut line = pair.into_inner();
+fn parse_line_groups(lines: Pairs<Rule>) -> Vec<ColouredLines> {
+    lines.fold(vec![], |mut acc, pair| {
+        let mut line = pair.into_inner();
+        let start = parse_location(line.next().unwrap());
+        let end = parse_location(line.next().unwrap());
+        let colour_name = line.next().map(|pair| pair.as_str().to_string());
+        if let Some(last_line_group) = acc.last_mut() {
+            if last_line_group.colour_name == colour_name {
+                if let Some(last_line) = last_line_group.lines.last_mut() {
+                    if let Some(last_loc) = last_line.points.last() {
+                        if *last_loc == start {
+                            if *last_loc != end {
+                                last_line.points.push(end);
+                            }
 
-    let (start, end) = if let (Some(start), Some(end)) = (line.next(), line.next()) {
-        (parse_location(start), parse_location(end))
-    } else {
-        warn!("broken coloured line (initial parse): {line:?}");
-        return None;
-    };
-    let colour_name = line.next().map(|pair| pair.as_str().to_string());
+                            return acc;
+                        }
+                    }
+                }
+                last_line_group.lines.push(MapLine {
+                    points: if start == end {
+                        vec![start]
+                    } else {
+                        vec![start, end]
+                    },
+                });
 
-    Some(Line {
-        start,
-        end,
-        colour_name,
+                return acc;
+            }
+        }
+
+        acc.push(ColouredLines {
+            colour_name,
+            lines: vec![MapLine {
+                points: if start == end {
+                    vec![start]
+                } else {
+                    vec![start, end]
+                },
+            }],
+        });
+
+        acc
     })
 }
 
 fn parse_geo(pair: Pair<Rule>) -> Geo {
     let mut geo = pair.into_inner();
     let name = geo.next().unwrap().as_str().to_string();
-    let lines = geo.filter_map(parse_line).collect();
+    let line_groups = parse_line_groups(geo);
 
-    Geo { name, lines }
+    Geo { name, line_groups }
 }
 
 fn parse_sid(pair: Pair<Rule>) -> Sid {
     let mut sid = pair.into_inner();
     let name = sid.next().unwrap().as_str().to_string();
-    let lines = sid.filter_map(parse_line).collect();
+    let line_groups = parse_line_groups(sid);
 
-    Sid { name, lines }
+    Sid { name, line_groups }
 }
 
 fn parse_star(pair: Pair<Rule>) -> Star {
     let mut star = pair.into_inner();
     let name = star.next().unwrap().as_str().to_string();
-    let lines = star.filter_map(parse_line).collect();
+    let line_groups = parse_line_groups(star);
 
-    Star { name, lines }
+    Star { name, line_groups }
 }
 
 fn parse_artcc(pair: Pair<Rule>) -> Artcc {
     let mut artcc = pair.into_inner();
     let name = artcc.next().unwrap().as_str().to_string();
-    let lines = artcc.filter_map(parse_line).collect();
+    let line_groups = parse_line_groups(artcc);
 
-    Artcc { name, lines }
+    Artcc { name, line_groups }
 }
 
 fn parse_vor(pair: Pair<Rule>) -> VOR {
@@ -1174,13 +1211,14 @@ mod test {
             locations::{Fix, NDB, VOR},
         },
         sct::{
-            parse_coordinate, Airport, Airway, Artcc, Geo, Label, Line, Region, Runway, Sct,
-            SctInfo, Sid, Star,
+            parse_coordinate, Airport, Airway, Artcc, Geo, Label, Region, Runway, Sct, SctInfo,
+            Sid, Star,
         },
+        topsky::map::MapLine,
         Location,
     };
 
-    use super::{Rule, SctParser};
+    use super::{ColouredLines, Rule, SctParser};
 
     #[test]
     fn test_geo_at_end() {
@@ -1814,101 +1852,63 @@ A5         RTT RTT NUB NUB
             vec![
                 Sid {
                     name: "EDDM SID 26L BIBAGxS".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.747_073_611_111_11,
-                                y: 48.340_365_277_777_78
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.709_430_833_333_332,
-                                y: 48.337_668_888_888_89
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.709_430_833_333_332,
-                                y: 48.337_668_888_888_89
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.708_005_833_333_333,
-                                y: 48.287_568_888_888_885
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.708_005_833_333_333,
-                                y: 48.287_568_888_888_885
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.816_535_833_333_335,
-                                y: 48.180_393_888_888_89
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.816_535_833_333_335,
-                                y: 48.180_393_888_888_89
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.565_505_833_333_335,
-                                y: 48.231_907_777_777_78
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.565_505_833_333_335,
-                                y: 48.231_907_777_777_78
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.749_780_833_333_332,
-                                y: 48.39705
-                            }),
-                            colour_name: None
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: None,
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 11.747_073_611_111_11,
+                                    y: 48.340_365_277_777_78
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.709_430_833_333_332,
+                                    y: 48.337_668_888_888_89
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.708_005_833_333_333,
+                                    y: 48.287_568_888_888_885
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.816_535_833_333_335,
+                                    y: 48.180_393_888_888_89
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.565_505_833_333_335,
+                                    y: 48.231_907_777_777_78
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.749_780_833_333_332,
+                                    y: 48.39705
+                                }),
+                            ]
+                        }]
+                    }]
                 },
                 Sid {
                     name: "EDDN SID 28 BOLSIxG".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.056_529_722_222_223,
-                                y: 49.500_809_444_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.92835,
-                                y: 49.513_316_944_444_45
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.92835,
-                                y: 49.513_316_944_444_45
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.762_560_833_333_334,
-                                y: 49.462_324_722_222_23
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.762_560_833_333_334,
-                                y: 49.462_324_722_222_23
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.758_507_777_777_778,
-                                y: 49.231_821_944_444_45
-                            }),
-                            colour_name: None
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: None,
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 11.056_529_722_222_223,
+                                    y: 49.500_809_444_444_44
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 10.92835,
+                                    y: 49.513_316_944_444_45
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 10.762_560_833_333_334,
+                                    y: 49.462_324_722_222_23
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 10.758_507_777_777_778,
+                                    y: 49.231_821_944_444_45
+                                }),
+                            ]
+                        }]
+                    }]
                 }
             ]
         );
@@ -1917,92 +1917,72 @@ A5         RTT RTT NUB NUB
             vec![
                 Star {
                     name: "EDDM TRAN RNP26R LANDU26".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.273_927_777_777_779,
-                                y: 48.596_360_833_333_335
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.501_535_833_333_334,
-                                y: 48.537_916_944_444_44
-                            }),
-                            colour_name: Some("colour_APP".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.501_535_833_333_334,
-                                y: 48.537_916_944_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.521_091_944_444_445,
-                                y: 48.428_905_833_333_33
-                            }),
-                            colour_name: Some("colour_APP".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.521_091_944_444_445,
-                                y: 48.428_905_833_333_33
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.378_446_944_444_445,
-                                y: 48.493_421_944_444_44
-                            }),
-                            colour_name: Some("colour_APP".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.378_446_944_444_445,
-                                y: 48.493_421_944_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.627_486_666_666_668,
-                                y: 48.513_155_833_333_336
-                            }),
-                            colour_name: Some("colour_APP".to_string())
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: Some("colour_APP".to_string()),
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 12.273_927_777_777_779,
+                                    y: 48.596_360_833_333_335
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.501_535_833_333_334,
+                                    y: 48.537_916_944_444_44
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.521_091_944_444_445,
+                                    y: 48.428_905_833_333_33
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.378_446_944_444_445,
+                                    y: 48.493_421_944_444_44
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.627_486_666_666_668,
+                                    y: 48.513_155_833_333_336
+                                })
+                            ]
+                        }]
+                    }]
                 },
                 Star {
                     name: "EDDN TRAN ILS10 DN430".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.509_271_944_444_444,
-                                y: 49.553_135_833_333_33
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.610_596_944_444_444,
-                                y: 49.543_657_777_777_774
-                            }),
-                            colour_name: Some("colour_APP".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.610_596_944_444_444,
-                                y: 49.543_657_777_777_774
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.711_855_833_333_333,
-                                y: 49.534_091_944_444_44
-                            }),
-                            colour_name: Some("colour_APP".to_string())
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: Some("colour_APP".to_string()),
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 10.509_271_944_444_444,
+                                    y: 49.553_135_833_333_33
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 10.610_596_944_444_444,
+                                    y: 49.543_657_777_777_774
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 10.711_855_833_333_333,
+                                    y: 49.534_091_944_444_44
+                                }),
+                            ]
+                        }]
+                    }]
                 },
                 Star {
                     name: "EDQD STAR ALL LONLIxZ".to_string(),
-                    lines: vec![Line {
-                        start: Location::Coordinate(point! {
-                            x: 11.226_385_833_333_334,
-                            y: 50.074_738_888_888_895
-                        }),
-                        end: Location::Coordinate(point! {
-                            x: 11.407_927_777_777_779,
-                            y: 49.897_449_722_222_22
-                        }),
-                        colour_name: None
+                    line_groups: vec![ColouredLines {
+                        colour_name: None,
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 11.226_385_833_333_334,
+                                    y: 50.074_738_888_888_895
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.407_927_777_777_779,
+                                    y: 49.897_449_722_222_22
+                                }),
+                            ]
+                        }]
                     }]
                 }
             ]
@@ -2012,172 +1992,130 @@ A5         RTT RTT NUB NUB
             vec![
                 Artcc {
                     name: "EDJA_ILR_APP".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 9.570_833_333_333_333,
-                                y: 48.174_444_444_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 9.923_611_111_111_11,
-                                y: 48.302_499_999_999_995
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 9.570_833_333_333_333,
-                                y: 48.174_444_444_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 9.55,
-                                y: 48.166_666_666_666_664
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.843_888_888_888_89,
-                                y: 47.983_055_555_555_56
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.428_333_333_333_333,
-                                y: 48.236_666_666_666_665
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.428_333_333_333_333,
-                                y: 48.236_666_666_666_665
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 9.923_611_111_111_11,
-                                y: 48.302_499_999_999_995
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.843_888_888_888_89,
-                                y: 47.983_055_555_555_56
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.466_666_666_666_667,
-                                y: 47.8675
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.466_666_666_666_667,
-                                y: 47.8675
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.383_333_333_333_333,
-                                y: 47.841_666_666_666_67
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.383_333_333_333_333,
-                                y: 47.841_666_666_666_67
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 9.9725,
-                                y: 47.818_055_555_555_56
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 9.835_555_555_555_556,
-                                y: 47.898_055_555_555_56
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 9.905_000_000_000_001,
-                                y: 47.815_277_777_777_77
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 9.905_000_000_000_001,
-                                y: 47.815_277_777_777_77
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 9.9725,
-                                y: 47.818_055_555_555_56
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 9.835_555_555_555_556,
-                                y: 47.898_055_555_555_56
-                            }),
-                            end: Location::Coordinate(point! { x: 9.55, y: 47.89 }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! { x: 9.55, y: 47.89 }),
-                            end: Location::Coordinate(point! {
-                                x: 9.55,
-                                y: 47.973_333_333_333_336
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 9.55,
-                                y: 47.973_333_333_333_336
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 9.55,
-                                y: 48.166_666_666_666_664
-                            }),
-                            colour_name: None
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: None,
+                        lines: vec![
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 9.570_833_333_333_333,
+                                        y: 48.174_444_444_444_44
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 9.923_611_111_111_11,
+                                        y: 48.302_499_999_999_995
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 9.570_833_333_333_333,
+                                        y: 48.174_444_444_444_44
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 9.55,
+                                        y: 48.166_666_666_666_664
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.843_888_888_888_89,
+                                        y: 47.983_055_555_555_56
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.428_333_333_333_333,
+                                        y: 48.236_666_666_666_665
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 9.923_611_111_111_11,
+                                        y: 48.302_499_999_999_995
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.843_888_888_888_89,
+                                        y: 47.983_055_555_555_56
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.466_666_666_666_667,
+                                        y: 47.8675
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.383_333_333_333_333,
+                                        y: 47.841_666_666_666_67
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 9.9725,
+                                        y: 47.818_055_555_555_56
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 9.835_555_555_555_556,
+                                        y: 47.898_055_555_555_56
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 9.905_000_000_000_001,
+                                        y: 47.815_277_777_777_77
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 9.9725,
+                                        y: 47.818_055_555_555_56
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 9.835_555_555_555_556,
+                                        y: 47.898_055_555_555_56
+                                    }),
+                                    Location::Coordinate(point! { x: 9.55, y: 47.89 }),
+                                    Location::Coordinate(point! {
+                                        x: 9.55,
+                                        y: 47.973_333_333_333_336
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 9.55,
+                                        y: 48.166_666_666_666_664
+                                    }),
+                                ]
+                            }
+                        ]
+                    }]
                 },
                 Artcc {
                     name: "Release line EDMM ARBAX Window".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.872_777_777_777_777,
-                                y: 49.442_499_999_999_995
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 13.006_666_666_666_666,
-                                y: 49.588_333_333_333_34
-                            }),
-                            colour_name: Some("colour_Releaseline".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 13.006_666_666_666_666,
-                                y: 49.588_333_333_333_34
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 13.286_944_444_444_444,
-                                y: 49.462_500_000_000_006
-                            }),
-                            colour_name: Some("colour_Releaseline".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 13.286_944_444_444_444,
-                                y: 49.462_500_000_000_006
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 13.220_555_555_555_556,
-                                y: 49.211_666_666_666_666
-                            }),
-                            colour_name: Some("colour_Releaseline".to_string())
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: Some("colour_Releaseline".to_string()),
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 12.872_777_777_777_777,
+                                    y: 49.442_499_999_999_995
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 13.006_666_666_666_666,
+                                    y: 49.588_333_333_333_34
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 13.286_944_444_444_444,
+                                    y: 49.462_500_000_000_006
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 13.220_555_555_555_556,
+                                    y: 49.211_666_666_666_666
+                                }),
+                            ]
+                        }]
+                    }]
                 }
             ]
         );
@@ -2186,413 +2124,296 @@ A5         RTT RTT NUB NUB
             vec![
                 Artcc {
                     name: "EDMM_ALB_CTR".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.1325,
-                                y: 49.138_055_555_555_55
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.966_666_666_666_667,
-                                y: 49.166_666_666_666_664
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.794_166_666_666_667,
-                                y: 48.6675
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.966_666_666_666_667,
-                                y: 49.166_666_666_666_664
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.794_166_666_666_667,
-                                y: 48.6675
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.511_666_666_666_667,
-                                y: 48.667_777_777_777_77
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.511_666_666_666_667,
-                                y: 48.667_777_777_777_77
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.320_833_333_333_333,
-                                y: 48.667_777_777_777_77
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.320_833_333_333_333,
-                                y: 48.667_777_777_777_77
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.673_611_111_111_11,
-                                y: 49.119_444_444_444_45
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.673_611_111_111_11,
-                                y: 49.119_444_444_444_45
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.1325,
-                                y: 49.138_055_555_555_55
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.673_611_111_111_11,
-                                y: 49.119_444_444_444_45
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.587_777_777_777_779,
-                                y: 49.178_611_111_111_11
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.818_888_888_888_889,
-                                y: 49.434_444_444_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.966_666_666_666_667,
-                                y: 49.441_666_666_666_66
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.587_777_777_777_779,
-                                y: 49.178_611_111_111_11
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.966_666_666_666_667,
-                                y: 49.441_666_666_666_66
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.966_666_666_666_667,
-                                y: 49.441_666_666_666_66
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.765_555_555_555_556,
-                                y: 49.654_722_222_222_22
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.587_777_777_777_779,
-                                y: 49.178_611_111_111_11
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.458_333_333_333_332,
-                                y: 49.283_333_333_333_33
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.458_333_333_333_332,
-                                y: 49.283_333_333_333_33
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.356_111_111_111_11,
-                                y: 49.398_333_333_333_33
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.356_111_111_111_11,
-                                y: 49.398_333_333_333_33
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.503_333_333_333_334,
-                                y: 49.511_111_111_111_11
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.503_333_333_333_334,
-                                y: 49.511_111_111_111_11
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.765_555_555_555_556,
-                                y: 49.654_722_222_222_22
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.966_666_666_666_667,
-                                y: 49.166_666_666_666_664
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.818_888_888_888_889,
-                                y: 49.434_444_444_444_44
-                            }),
-                            colour_name: None
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: None,
+                        lines: vec![
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.1325,
+                                        y: 49.138_055_555_555_55
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.966_666_666_666_667,
+                                        y: 49.166_666_666_666_664
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.794_166_666_666_667,
+                                        y: 48.6675
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.966_666_666_666_667,
+                                        y: 49.166_666_666_666_664
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.794_166_666_666_667,
+                                        y: 48.6675
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.511_666_666_666_667,
+                                        y: 48.667_777_777_777_77
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.320_833_333_333_333,
+                                        y: 48.667_777_777_777_77
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.673_611_111_111_11,
+                                        y: 49.119_444_444_444_45
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.1325,
+                                        y: 49.138_055_555_555_55
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.673_611_111_111_11,
+                                        y: 49.119_444_444_444_45
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.587_777_777_777_779,
+                                        y: 49.178_611_111_111_11
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.818_888_888_888_889,
+                                        y: 49.434_444_444_444_44
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.966_666_666_666_667,
+                                        y: 49.441_666_666_666_66
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.587_777_777_777_779,
+                                        y: 49.178_611_111_111_11
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.966_666_666_666_667,
+                                        y: 49.441_666_666_666_66
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.765_555_555_555_556,
+                                        y: 49.654_722_222_222_22
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.587_777_777_777_779,
+                                        y: 49.178_611_111_111_11
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.458_333_333_333_332,
+                                        y: 49.283_333_333_333_33
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.356_111_111_111_11,
+                                        y: 49.398_333_333_333_33
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.503_333_333_333_334,
+                                        y: 49.511_111_111_111_11
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.765_555_555_555_556,
+                                        y: 49.654_722_222_222_22
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.966_666_666_666_667,
+                                        y: 49.166_666_666_666_664
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.818_888_888_888_889,
+                                        y: 49.434_444_444_444_44
+                                    }),
+                                ]
+                            }
+                        ]
+                    }]
                 },
                 Artcc {
                     name: "EDMM_WLD_CTR".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.966_666_666_666_667,
-                                y: 48.666_666_666_666_664
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.183_333_333_333_334,
-                                y: 48.669_444_444_444_444
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.183_333_333_333_334,
-                                y: 48.669_444_444_444_444
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.320_833_333_333_333,
-                                y: 48.667_777_777_777_77
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.2575,
-                                y: 49.017_222_222_222_22
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.479_166_666_666_666,
-                                y: 49.111_111_111_111_114
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.479_166_666_666_666,
-                                y: 49.111_111_111_111_114
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.587_777_777_777_779,
-                                y: 49.178_611_111_111_11
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.320_833_333_333_333,
-                                y: 48.667_777_777_777_77
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.673_611_111_111_11,
-                                y: 49.119_444_444_444_45
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.673_611_111_111_11,
-                                y: 49.119_444_444_444_45
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.587_777_777_777_779,
-                                y: 49.178_611_111_111_11
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.904_444_444_444_445,
-                                y: 48.624_444_444_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.2575,
-                                y: 49.017_222_222_222_22
-                            }),
-                            colour_name: None
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.904_444_444_444_445,
-                                y: 48.624_444_444_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.966_666_666_666_667,
-                                y: 48.666_666_666_666_664
-                            }),
-                            colour_name: None
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: None,
+                        lines: vec![
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.966_666_666_666_667,
+                                        y: 48.666_666_666_666_664
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.183_333_333_333_334,
+                                        y: 48.669_444_444_444_444
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.320_833_333_333_333,
+                                        y: 48.667_777_777_777_77
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.2575,
+                                        y: 49.017_222_222_222_22
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.479_166_666_666_666,
+                                        y: 49.111_111_111_111_114
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.587_777_777_777_779,
+                                        y: 49.178_611_111_111_11
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.320_833_333_333_333,
+                                        y: 48.667_777_777_777_77
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.673_611_111_111_11,
+                                        y: 49.119_444_444_444_45
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.587_777_777_777_779,
+                                        y: 49.178_611_111_111_11
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.904_444_444_444_445,
+                                        y: 48.624_444_444_444_44
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.2575,
+                                        y: 49.017_222_222_222_22
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 10.904_444_444_444_445,
+                                        y: 48.624_444_444_444_44
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 10.966_666_666_666_667,
+                                        y: 48.666_666_666_666_664
+                                    }),
+                                ]
+                            }
+                        ]
+                    }]
                 }
             ]
         );
-        assert_eq!(
+        assert_eq_sorted!(
             sct.as_ref().unwrap().artccs_low,
             vec![
                 Artcc {
                     name: "RMZ EDMS".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.392_777_777_777_777,
-                                y: 48.961_111_111_111_116
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.660_555_555_555_556,
-                                y: 48.939_444_444_444_44
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.660_555_555_555_556,
-                                y: 48.939_444_444_444_44
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.641_666_666_666_666,
-                                y: 48.840_277_777_777_78
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.641_666_666_666_666,
-                                y: 48.840_277_777_777_78
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.374_444_444_444_444,
-                                y: 48.861_944_444_444_45
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 12.374_444_444_444_444,
-                                y: 48.861_944_444_444_45
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 12.392_777_777_777_777,
-                                y: 48.961_111_111_111_116
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: Some("colour_RMZ".to_string()),
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 12.392_777_777_777_777,
+                                    y: 48.961_111_111_111_116
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.660_555_555_555_556,
+                                    y: 48.939_444_444_444_44
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.641_666_666_666_666,
+                                    y: 48.840_277_777_777_78
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.374_444_444_444_444,
+                                    y: 48.861_944_444_444_45
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 12.392_777_777_777_777,
+                                    y: 48.961_111_111_111_116
+                                }),
+                            ]
+                        }]
+                    }]
                 },
                 Artcc {
                     name: "RMZ EDNX".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.455_833_333_333_333,
-                                y: 48.274_166_666_666_666
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.534_722_222_222_221,
-                                y: 48.286_666_666_666_66
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.534_722_222_222_221,
-                                y: 48.286_666_666_666_66
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.535_833_333_333_333,
-                                y: 48.273_611_111_111_11
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.535_833_333_333_333,
-                                y: 48.273_611_111_111_11
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.640_833_333_333_333,
-                                y: 48.281_666_666_666_666
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.640_833_333_333_333,
-                                y: 48.281_666_666_666_666
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.673_611_111_111_11,
-                                y: 48.254_722_222_222_22
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.673_611_111_111_11,
-                                y: 48.254_722_222_222_22
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.677_777_777_777_777,
-                                y: 48.241_111_111_111_11
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.677_777_777_777_777,
-                                y: 48.241_111_111_111_11
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.6625,
-                                y: 48.203_888_888_888_89
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.6625,
-                                y: 48.203_888_888_888_89
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.489_444_444_444_443,
-                                y: 48.177_222_222_222_22
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.489_444_444_444_443,
-                                y: 48.177_222_222_222_22
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.455_833_333_333_333,
-                                y: 48.274_166_666_666_666
-                            }),
-                            colour_name: Some("colour_RMZ".to_string())
-                        }
-                    ]
+                    line_groups: vec![ColouredLines {
+                        colour_name: Some("colour_RMZ".to_string()),
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 11.455_833_333_333_333,
+                                    y: 48.274_166_666_666_666
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.534_722_222_222_221,
+                                    y: 48.286_666_666_666_66
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.535_833_333_333_333,
+                                    y: 48.273_611_111_111_11
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.640_833_333_333_333,
+                                    y: 48.281_666_666_666_666
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.673_611_111_111_11,
+                                    y: 48.254_722_222_222_22
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.677_777_777_777_777,
+                                    y: 48.241_111_111_111_11
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.6625,
+                                    y: 48.203_888_888_888_89
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.489_444_444_444_443,
+                                    y: 48.177_222_222_222_22
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 11.455_833_333_333_333,
+                                    y: 48.274_166_666_666_666
+                                }),
+                            ]
+                        }]
+                    }]
                 }
             ]
         );
@@ -2802,113 +2623,145 @@ A5         RTT RTT NUB NUB
             vec![
                 Geo {
                     name: "EDDN Groundlayout Holding Points".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.059_174_444_444_444,
-                                y: 49.499_648_888_888_89,
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.059_542_500_000_001,
-                                y: 49.499_706_111_111_11,
-                            }),
-                            colour_name: Some("colour_Stopbar".to_string()),
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.064_627_5,
-                                y: 49.499_107_222_222_22,
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.065_006_111_111_112,
-                                y: 49.499_168_333_333_34,
-                            }),
-                            colour_name: Some("colour_Stopbar".to_string()),
-                        },
-                    ],
-                },
-                Geo {
-                    name: "EDQC Groundlayout".to_string(),
-                    lines: vec![Line {
-                        start: Location::Coordinate(point! {
-                            x: 10.991_542_5,
-                            y: 50.264_447_5,
-                        }),
-                        end: Location::Coordinate(point! {
-                            x: 10.991_546_111_111_111,
-                            y: 50.264_510_833_333_33,
-                        }),
-                        colour_name: None,
+                    line_groups: vec![ColouredLines {
+                        colour_name: Some("colour_Stopbar".to_string()),
+                        lines: vec![
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.059_174_444_444_444,
+                                        y: 49.499_648_888_888_89,
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.059_542_500_000_001,
+                                        y: 49.499_706_111_111_11,
+                                    }),
+                                ]
+                            },
+                            MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.064_627_5,
+                                        y: 49.499_107_222_222_22,
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.065_006_111_111_112,
+                                        y: 49.499_168_333_333_34,
+                                    }),
+                                ]
+                            }
+                        ]
                     },],
                 },
                 Geo {
                     name: "EDQC Groundlayout".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 10.991_542_5,
-                                y: 50.264_447_5,
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 10.991_546_111_111_111,
-                                y: 50.264_510_833_333_33,
-                            }),
+                    line_groups: vec![ColouredLines {
+                        colour_name: None,
+                        lines: vec![MapLine {
+                            points: vec![
+                                Location::Coordinate(point! {
+                                    x: 10.991_542_5,
+                                    y: 50.264_447_5,
+                                }),
+                                Location::Coordinate(point! {
+                                    x: 10.991_546_111_111_111,
+                                    y: 50.264_510_833_333_33,
+                                }),
+                            ]
+                        }]
+                    }],
+                },
+                Geo {
+                    name: "EDQC Groundlayout".to_string(),
+                    line_groups: vec![
+                        ColouredLines {
                             colour_name: Some("colour_Stopbar".to_string()),
+                            lines: vec![
+                                MapLine {
+                                    points: vec![
+                                        Location::Coordinate(point! {
+                                            x: 10.991_542_5,
+                                            y: 50.264_447_5,
+                                        }),
+                                        Location::Coordinate(point! {
+                                            x: 10.991_546_111_111_111,
+                                            y: 50.264_510_833_333_33,
+                                        }),
+                                    ]
+                                },
+                                MapLine {
+                                    points: vec![
+                                        Location::Coordinate(point! {
+                                            x: 11.001_35,
+                                            y: 50.260_929_166_666_66,
+                                        }),
+                                        Location::Coordinate(point! {
+                                            x: 11.001_427_5,
+                                            y: 50.260_947_5,
+                                        }),
+                                    ]
+                                }
+                            ],
                         },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.001_35,
-                                y: 50.260_929_166_666_66,
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.001_427_5,
-                                y: 50.260_947_5,
-                            }),
-                            colour_name: Some("colour_Stopbar".to_string()),
-                        },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.001_35,
-                                y: 50.260_929_166_666_66,
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.001_427_5,
-                                y: 50.260_947_5,
-                            }),
+                        ColouredLines {
                             colour_name: None,
+                            lines: vec![MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.001_35,
+                                        y: 50.260_929_166_666_66,
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.001_427_5,
+                                        y: 50.260_947_5,
+                                    }),
+                                ]
+                            }],
                         },
-                        Line {
-                            start: Location::Fix("RAVSA".to_string()),
-                            end: Location::Fix("LCE13".to_string()),
+                        ColouredLines {
                             colour_name: Some("geoDefault".to_string()),
-                        },
+                            lines: vec![MapLine {
+                                points: vec![
+                                    Location::Fix("RAVSA".to_string()),
+                                    Location::Fix("LCE13".to_string()),
+                                ]
+                            }]
+                        }
                     ],
                 },
                 Geo {
                     name: "HIGHWAYS LOVV".to_string(),
-                    lines: vec![
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 16.221_305_555_555_553,
-                                y: 48.202_527_777_777_78,
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 16.202_805_555_555_553,
-                                y: 48.190_861_111_111_104,
-                            }),
+                    line_groups: vec![
+                        ColouredLines {
                             colour_name: Some("COLOR_Landmark2".to_string()),
+                            lines: vec![MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 16.221_305_555_555_553,
+                                        y: 48.202_527_777_777_78,
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 16.202_805_555_555_553,
+                                        y: 48.190_861_111_111_104,
+                                    }),
+                                ]
+                            }],
                         },
-                        Line {
-                            start: Location::Coordinate(point! {
-                                x: 11.001_35,
-                                y: 50.260_929_166_666_66,
-                            }),
-                            end: Location::Coordinate(point! {
-                                x: 11.001_427_5,
-                                y: 50.260_947_5,
-                            }),
+                        ColouredLines {
                             colour_name: Some("colour_Stopbar".to_string()),
-                        },
+                            lines: vec![MapLine {
+                                points: vec![
+                                    Location::Coordinate(point! {
+                                        x: 11.001_35,
+                                        y: 50.260_929_166_666_66,
+                                    }),
+                                    Location::Coordinate(point! {
+                                        x: 11.001_427_5,
+                                        y: 50.260_947_5,
+                                    }),
+                                ]
+                            }]
+                        }
                     ]
                 },
             ]

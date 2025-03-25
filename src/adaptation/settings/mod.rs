@@ -17,20 +17,156 @@ const EUROSCOPE_FONT_SIZE_FACTOR: f32 = 3.5;
 pub struct LineSettings {
     /// line style of .sct runway centre lines
     pub runway_centreline: LineStyle,
+    /// line style of .sct Geo lines
+    pub geo: LineStyle,
+    /// line style of .sct SID lines
+    pub sid: LineStyle,
+    /// line style of .sct STAR lines
+    pub star: LineStyle,
+    /// line style of .sct High Airway lines
+    pub high_airways: LineStyle,
+    /// line style of .sct Low Airway lines
+    pub low_airways: LineStyle,
+    /// line style of .sct ARTCC low boundary lines
+    pub artcc_low: LineStyle,
+    /// line style of .sct ARTCC boundary lines
+    pub artcc: LineStyle,
+    /// line style of .sct ARTCC high boundary lines
+    pub artcc_high: LineStyle,
 }
 impl LineSettings {
     const DEFAULT_RUNWAY_CENTRELINE_WIDTH: i32 = 1;
     const DEFAULT_RUNWAY_CENTRELINE_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_GEO_WIDTH: i32 = 1;
+    const DEFAULT_GEO_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_SID_WIDTH: i32 = 1;
+    const DEFAULT_SID_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_STAR_WIDTH: i32 = 1;
+    const DEFAULT_STAR_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_ARTCC_LOW_WIDTH: i32 = 1;
+    const DEFAULT_ARTCC_LOW_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_ARTCC_WIDTH: i32 = 1;
+    const DEFAULT_ARTCC_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_ARTCC_HIGH_WIDTH: i32 = 1;
+    const DEFAULT_ARTCC_HIGH_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_HIGH_AIRWAY_WIDTH: i32 = 1;
+    const DEFAULT_HIGH_AIRWAY_STYLE: &'static str = LineStyle::SOLID;
+    const DEFAULT_LOW_AIRWAY_WIDTH: i32 = 1;
+    const DEFAULT_LOW_AIRWAY_STYLE: &'static str = LineStyle::SOLID;
 
     pub fn from_euroscope(symbology: &Symbology) -> Self {
         let runway_centreline = symbology
             .items
             .get(&("Runways".to_string(), "centerline".to_string()));
+        let geo = symbology
+            .items
+            .get(&("Geo".to_string(), "line".to_string()));
+        let sid = symbology
+            .items
+            .get(&("Sids".to_string(), "line".to_string()));
+        let star = symbology
+            .items
+            .get(&("Stars".to_string(), "line".to_string()));
+        let high_airways = symbology
+            .items
+            .get(&("High airways".to_string(), "line".to_string()));
+        let low_airways = symbology
+            .items
+            .get(&("Low airways".to_string(), "line".to_string()));
+        let artcc_high = symbology
+            .items
+            .get(&("ARTCC high boundary".to_string(), "line".to_string()));
+        let artcc = symbology
+            .items
+            .get(&("ARTCC boundary".to_string(), "line".to_string()));
+        let artcc_low = symbology
+            .items
+            .get(&("ARTCC low boundary".to_string(), "line".to_string()));
         Self {
             runway_centreline: runway_centreline.map_or(
                 LineStyle {
                     width: Self::DEFAULT_RUNWAY_CENTRELINE_WIDTH,
                     style: Self::DEFAULT_RUNWAY_CENTRELINE_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            geo: geo.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_GEO_WIDTH,
+                    style: Self::DEFAULT_GEO_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            sid: sid.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_SID_WIDTH,
+                    style: Self::DEFAULT_SID_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            star: star.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_STAR_WIDTH,
+                    style: Self::DEFAULT_STAR_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            high_airways: high_airways.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_HIGH_AIRWAY_WIDTH,
+                    style: Self::DEFAULT_HIGH_AIRWAY_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            low_airways: low_airways.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_LOW_AIRWAY_WIDTH,
+                    style: Self::DEFAULT_LOW_AIRWAY_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            artcc_low: artcc_low.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_ARTCC_LOW_WIDTH,
+                    style: Self::DEFAULT_ARTCC_LOW_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            artcc: artcc.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_ARTCC_WIDTH,
+                    style: Self::DEFAULT_ARTCC_STYLE.to_string(),
+                },
+                |item| LineStyle {
+                    width: item.line_weight,
+                    style: item.line_style.clone(),
+                },
+            ),
+            artcc_high: artcc_high.map_or(
+                LineStyle {
+                    width: Self::DEFAULT_ARTCC_HIGH_WIDTH,
+                    style: Self::DEFAULT_ARTCC_HIGH_STYLE.to_string(),
                 },
                 |item| LineStyle {
                     width: item.line_weight,
@@ -47,6 +183,38 @@ impl Default for LineSettings {
             runway_centreline: LineStyle {
                 width: Self::DEFAULT_RUNWAY_CENTRELINE_WIDTH,
                 style: Self::DEFAULT_RUNWAY_CENTRELINE_STYLE.to_string(),
+            },
+            geo: LineStyle {
+                width: Self::DEFAULT_GEO_WIDTH,
+                style: Self::DEFAULT_GEO_STYLE.to_string(),
+            },
+            sid: LineStyle {
+                width: Self::DEFAULT_SID_WIDTH,
+                style: Self::DEFAULT_SID_STYLE.to_string(),
+            },
+            star: LineStyle {
+                width: Self::DEFAULT_STAR_WIDTH,
+                style: Self::DEFAULT_STAR_STYLE.to_string(),
+            },
+            high_airways: LineStyle {
+                width: Self::DEFAULT_HIGH_AIRWAY_WIDTH,
+                style: Self::DEFAULT_HIGH_AIRWAY_STYLE.to_string(),
+            },
+            low_airways: LineStyle {
+                width: Self::DEFAULT_LOW_AIRWAY_WIDTH,
+                style: Self::DEFAULT_LOW_AIRWAY_STYLE.to_string(),
+            },
+            artcc_low: LineStyle {
+                width: Self::DEFAULT_ARTCC_LOW_WIDTH,
+                style: Self::DEFAULT_ARTCC_LOW_STYLE.to_string(),
+            },
+            artcc: LineStyle {
+                width: Self::DEFAULT_ARTCC_WIDTH,
+                style: Self::DEFAULT_ARTCC_STYLE.to_string(),
+            },
+            artcc_high: LineStyle {
+                width: Self::DEFAULT_ARTCC_HIGH_WIDTH,
+                style: Self::DEFAULT_ARTCC_HIGH_STYLE.to_string(),
             },
         }
     }

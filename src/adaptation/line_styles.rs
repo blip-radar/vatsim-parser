@@ -30,7 +30,7 @@ impl Default for LineStyle {
     fn default() -> Self {
         Self {
             width: 1,
-            style: "SOLID".to_string(),
+            style: Self::SOLID.to_string(),
         }
     }
 }
