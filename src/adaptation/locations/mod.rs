@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::OnceLock;
 
-use geo::{point, Destination, Geodesic, Point};
+use geo::{point, Destination as _, Geodesic, Point};
 use multimap::MultiMap;
 use regex::Regex;
 use serde::Serialize;
@@ -240,7 +240,7 @@ impl Locations {
 
                 self.convert_fix(fix).map(|f| Fix {
                     designator: designator.to_string(),
-                    coordinate: Geodesic::destination(f.coordinate, bearing, range.get::<meter>()),
+                    coordinate: Geodesic.destination(f.coordinate, bearing, range.get::<meter>()),
                 })
             })
     }
