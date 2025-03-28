@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use geo::{Coord, Line, Polygon};
+use geo::{Coord, Line, LineString, Polygon, Winding};
 use multimap::MultiMap;
 use serde::Serialize;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{
     ese::{self, Ese},
@@ -71,15 +71,15 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
         return None;
     }
 
-    let polygon = if let Some(start_point) = points.iter().next() {
+    let mut line_ring = if let Some(start_point) = points.iter().next() {
         let mut stack = vec![*start_point];
-        let mut polygon = vec![];
+        let mut line_ring = vec![];
         let mut current = *start_point;
 
         while !stack.is_empty() {
             if let Some(neighbours) = adj_list.get_mut(&current) {
                 if neighbours.is_empty() {
-                    polygon.push(current);
+                    line_ring.push(current);
                     current = stack.pop().unwrap();
                 } else {
                     stack.push(current);
@@ -94,19 +94,17 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
             }
         }
 
-        polygon
+        line_ring
     } else {
         return None;
-    };
+    }
+    .iter()
+    .map(|c| Coord::from((c.x as f64, c.y as f64)) / 1_000_000.0)
+    .collect::<LineString>();
+    line_ring.make_ccw_winding();
 
-    if polygon.len() == lines.len() + 1 {
-        Some(Polygon::new(
-            polygon
-                .iter()
-                .map(|c| Coord::from((c.x as f64, c.y as f64)) / 1_000_000.0)
-                .collect(),
-            vec![],
-        ))
+    if line_ring.0.len() == lines.len() + 1 {
+        Some(Polygon::new(line_ring, vec![]))
     } else {
         None
     }
@@ -118,6 +116,7 @@ impl Sector {
             (TwoKeyMultiMap(MultiMap::new()), HashMap::new()),
             |(mut sectors, mut volumes), (id, sector)| {
                 if let Some(polygon) = polygon_from_ese(sector) {
+                    info!("{:?}", polygon.exterior());
                     sectors.0.insert(
                         (sector.owner_priority.clone(), sector.runway_filter.clone()),
                         id.clone(),
