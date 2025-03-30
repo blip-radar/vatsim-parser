@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use geo::{Coord, Line, LineString, Polygon, Winding};
 use multimap::MultiMap;
 use serde::Serialize;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{
     ese::{self, Ese},
@@ -116,7 +116,6 @@ impl Sector {
             (TwoKeyMultiMap(MultiMap::new()), HashMap::new()),
             |(mut sectors, mut volumes), (id, sector)| {
                 if let Some(polygon) = polygon_from_ese(sector) {
-                    info!("{:?}", polygon.exterior());
                     sectors.0.insert(
                         (sector.owner_priority.clone(), sector.runway_filter.clone()),
                         id.clone(),
