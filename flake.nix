@@ -52,6 +52,7 @@
               buildInputs = with pkgs; [
                 rust-bin.stable.latest.default
                 cargo-machete
+                cargo-mutants
                 cargo-tarpaulin
                 cargo-watch
                 config.treefmt.build.wrapper
