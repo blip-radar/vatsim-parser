@@ -1,0 +1,16 @@
+wpts = { SOI ~ NL? ~ wpt+ ~ EOI}
+
+wpt = {
+  designator ~ coord ~ "15" ~ NL
+}
+
+designator = ${ (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
+
+coord = { coord_part ~ coord_part }
+coord_part = ${ DECIMAL }
+
+DECIMAL = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+
+NL = _{ NEWLINE+ }
+COMMENT = _{ (";" | "//") ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " "| "\t" }
