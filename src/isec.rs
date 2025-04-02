@@ -4,6 +4,7 @@ use itertools::Itertools;
 use multimap::MultiMap;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
+use serde::Serialize;
 use std::{fmt::Display, io};
 use thiserror::Error;
 
@@ -15,7 +16,7 @@ use super::read_to_string;
 #[grammar = "pest/isec.pest"]
 pub struct IsecParser;
 
-#[derive(Clone, Debug, Deref, DerefMut)]
+#[derive(Clone, Debug, Serialize, Deref, DerefMut)]
 pub struct IsecMap(MultiMap<String, Fix>);
 
 impl Display for IsecMap {
