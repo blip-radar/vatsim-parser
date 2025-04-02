@@ -48,10 +48,8 @@ impl Prf {
     }
 
     pub fn ese_path(&self) -> PathBuf {
-        self.join_settings_path(
-            &self.settings.0[&("Settings".to_string(), "sector".to_string())]
-                .replace(".sct", ".ese"),
-        )
+        self.join_settings_path(&self.settings.0[&("Settings".to_string(), "sector".to_string())])
+            .with_extension("ese")
     }
 
     pub fn airways_path(&self) -> PathBuf {
