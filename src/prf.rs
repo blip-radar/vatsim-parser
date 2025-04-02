@@ -56,6 +56,11 @@ impl Prf {
         self.join_settings_path(&self.settings.0[&("Settings".to_string(), "airways".to_string())])
     }
 
+    pub fn isec_path(&self) -> PathBuf {
+        self.join_settings_path(&self.settings.0[&("Settings".to_string(), "airways".to_string())])
+            .with_file_name("isec.txt")
+    }
+
     pub fn airlines_path(&self) -> PathBuf {
         self.join_settings_path(&self.settings.0[&("Settings".to_string(), "airlines".to_string())])
     }
