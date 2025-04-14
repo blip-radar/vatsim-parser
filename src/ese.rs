@@ -118,10 +118,10 @@ pub struct Sector {
     pub owner_priority: Vec<String>,
     pub departure_airports: Vec<String>,
     pub arrival_airports: Vec<String>,
-    pub copns: Vec<Cop>,
-    pub copxs: Vec<Cop>,
-    pub fir_copns: Vec<Cop>,
-    pub fir_copxs: Vec<Cop>,
+    pub copns: Vec<Agreement>,
+    pub copxs: Vec<Agreement>,
+    pub fir_copns: Vec<Agreement>,
+    pub fir_copxs: Vec<Agreement>,
     // TODO?
     // pub alt_owner_priority: Vec<String>,
     // pub guest: Vec<String>,
@@ -268,7 +268,7 @@ fn parse_wildcard_u32(pair: &Pair<Rule>) -> Option<u32> {
 }
 
 #[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
-pub struct Cop {
+pub struct Agreement {
     pub previous_fix: Option<String>,
     pub departure_runway: Option<String>,
     pub subsequent_fix: Option<String>,
@@ -280,7 +280,7 @@ pub struct Cop {
     pub descent_level: Option<u32>,
     pub description: String,
 }
-impl Cop {
+impl Agreement {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut cop = pair.into_inner();
         let previous_fix = parse_wildcard_string(&cop.next().unwrap());
@@ -381,8 +381,8 @@ fn parse_coordinate(pair: Pair<Rule>) -> Coord {
 enum SectorRule {
     Sector((Vec<String>, Sector)),
     SectorLine((String, SectorLine)),
-    FirCop(Cop),
-    Cop(Cop),
+    FirCop(Agreement),
+    Cop(Agreement),
     CircleSectorLine((String, CircleSectorLine)),
     DisplaySectorline,
     Msaw((String, MSAW)),
@@ -392,8 +392,8 @@ fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
     match pair.as_rule() {
         Rule::sectorline => SectorRule::SectorLine(SectorLine::parse(pair)),
         Rule::sector => SectorRule::Sector(Sector::parse(pair)),
-        Rule::cop => SectorRule::Cop(Cop::parse(pair)),
-        Rule::fir_cop => SectorRule::FirCop(Cop::parse(pair)),
+        Rule::cop => SectorRule::Cop(Agreement::parse(pair)),
+        Rule::fir_cop => SectorRule::FirCop(Agreement::parse(pair)),
         Rule::display_sectorline => SectorRule::DisplaySectorline,
         Rule::circle_sectorline => SectorRule::CircleSectorLine(CircleSectorLine::parse(pair)),
         Rule::msaw => SectorRule::Msaw(MSAW::parse(pair)),
@@ -626,7 +626,7 @@ mod test {
     use geo::line_string;
 
     use crate::{
-        ese::{Cop, Ese, Position, SectorLine, SidStar, SID, STAR},
+        ese::{Agreement, Ese, Position, SectorLine, SidStar, SID, STAR},
         Coord,
     };
 
@@ -1002,7 +1002,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
         assert_eq!(
             alb_0_105.copns,
             vec![
-                Cop {
+                Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("RUDNO".to_string()),
@@ -1014,7 +1014,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     descent_level: Some(9000),
                     description: "RUDNO".to_string(),
                 },
-                Cop {
+                Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("STAUB".to_string()),
@@ -1031,7 +1031,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
         assert_eq!(
             alb_0_105.copxs,
             vec![
-                Cop {
+                Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: None,
@@ -1043,7 +1043,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     descent_level: Some(9300),
                     description: "INDIV".to_string(),
                 },
-                Cop {
+                Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("MIQ".to_string()),

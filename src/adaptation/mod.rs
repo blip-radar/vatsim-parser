@@ -1,3 +1,4 @@
+pub mod agreements;
 pub mod colours;
 pub mod icao;
 pub mod line_styles;
@@ -10,6 +11,7 @@ pub mod symbols;
 
 use std::{collections::HashMap, io};
 
+use agreements::extract_agreements;
 use bevy_reflect::Reflect;
 use geo::Point;
 use icao::AircraftMap;
@@ -23,6 +25,7 @@ use symbols::Symbols;
 use thiserror::Error;
 use tracing::warn;
 
+use crate::ese::Agreement;
 use crate::{
     airway::{parse_airway_txt, AirwayError},
     ese::{self, Ese, EseError},
@@ -124,6 +127,8 @@ pub struct Adaptation {
     pub positions: HashMap<String, Position>,
     pub volumes: HashMap<String, Volume>,
     pub sectors: HashMap<String, Sector>,
+    pub departure_agreements: Vec<Agreement>,
+    pub destination_agreements: Vec<Agreement>,
     pub maps: MapFolders,
     // TODO
     // pub areas,
@@ -161,6 +166,7 @@ impl Adaptation {
         let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let name = sct.info.name.clone();
         let (volumes, sectors) = Sector::from_ese(&ese);
+        let (departure_agreements, destination_agreements) = extract_agreements(&ese);
         let positions = Position::from_ese_positions(ese.positions.clone());
         let symbology = Symbology::parse(&fs_err::read(prf.symbology_path())?)?;
         let squawks = prf
@@ -188,6 +194,8 @@ impl Adaptation {
             positions,
             volumes,
             sectors,
+            departure_agreements,
+            destination_agreements,
             maps: topsky
                 .as_ref()
                 .map(|topsky| maps::from_topsky(topsky, &settings, &colours, &locations))
