@@ -118,10 +118,6 @@ pub struct Sector {
     pub owner_priority: Vec<String>,
     pub departure_airports: Vec<String>,
     pub arrival_airports: Vec<String>,
-    pub copns: Vec<Agreement>,
-    pub copxs: Vec<Agreement>,
-    pub fir_copns: Vec<Agreement>,
-    pub fir_copxs: Vec<Agreement>,
     // TODO?
     // pub alt_owner_priority: Vec<String>,
     // pub guest: Vec<String>,
@@ -201,10 +197,6 @@ impl Sector {
                 runway_filter,
                 // replaced later on
                 border: vec![],
-                copns: vec![],
-                copxs: vec![],
-                fir_copns: vec![],
-                fir_copxs: vec![],
             },
         )
     }
@@ -329,6 +321,7 @@ pub struct STAR {
 pub struct Ese {
     pub positions: HashMap<String, Position>,
     pub sectors: HashMap<String, Sector>,
+    pub agreements: Vec<Agreement>,
     pub sids_stars: Vec<SidStar>,
 }
 
@@ -337,7 +330,7 @@ pub type EseResult = Result<Ese, EseError>;
 #[derive(Debug)]
 enum Section {
     Positions(HashMap<String, Position>),
-    Sectors(HashMap<String, Sector>),
+    Sectors((HashMap<String, Sector>, Vec<Agreement>)),
     SidsStars(Vec<SidStar>),
     Unsupported,
 }
@@ -448,28 +441,17 @@ type SectorsLinesBorders = (
     HashMap<String, CircleSectorLine>,
     HashMap<String, SectorLine>,
     HashMap<String, Vec<String>>,
+    Vec<Agreement>,
 );
 fn collect_sectors(
-    (mut sectors, mut circle_sector_lines, mut sector_lines, mut borders): SectorsLinesBorders,
+    (mut sectors, mut circle_sector_lines, mut sector_lines, mut borders, mut agreements): SectorsLinesBorders,
     rule: SectorRule,
 ) -> SectorsLinesBorders {
     match rule {
         SectorRule::Cop(cop) => {
-            if let Some(sct) = sectors.get_mut(&cop.entry_sector) {
-                sct.copns.push(cop.clone());
-            }
-            if let Some(sct) = sectors.get_mut(&cop.exit_sector) {
-                sct.copxs.push(cop);
-            }
+            agreements.push(cop);
         }
-        SectorRule::FirCop(cop) => {
-            if let Some(sct) = sectors.get_mut(&cop.entry_sector) {
-                sct.fir_copns.push(cop.clone());
-            }
-            if let Some(sct) = sectors.get_mut(&cop.exit_sector) {
-                sct.fir_copxs.push(cop);
-            }
-        }
+        SectorRule::FirCop(cop) => agreements.push(cop),
         SectorRule::SectorLine((id, sector_line)) => {
             if let Some(_overwritten) = sector_lines.insert(id.clone(), sector_line) {
                 warn!("duplicate sector_line: {id}");
@@ -490,29 +472,38 @@ fn collect_sectors(
         SectorRule::Msaw((_sector, _level)) => (),
         SectorRule::DisplaySectorline => (),
     }
-    (sectors, circle_sector_lines, sector_lines, borders)
+    (
+        sectors,
+        circle_sector_lines,
+        sector_lines,
+        borders,
+        agreements,
+    )
 }
 
 fn combine_sectors_with_borders(
-    (sectors, _circle_sector_lines, lines, borders): SectorsLinesBorders,
-) -> HashMap<String, Sector> {
+    (sectors, _circle_sector_lines, lines, borders, agreements): SectorsLinesBorders,
+) -> (HashMap<String, Sector>, Vec<Agreement>) {
     // TODO circle_sector_lines
-    sectors
-        .into_iter()
-        .map(|(id, mut sector)| {
-            sector.border = borders
-                .get(&id)
-                .map(|border| {
-                    border
-                        .iter()
-                        .filter_map(|line_id| lines.get(line_id).cloned())
-                        .collect()
-                })
-                .unwrap_or(vec![]);
+    (
+        sectors
+            .into_iter()
+            .map(|(id, mut sector)| {
+                sector.border = borders
+                    .get(&id)
+                    .map(|border| {
+                        border
+                            .iter()
+                            .filter_map(|line_id| lines.get(line_id).cloned())
+                            .collect()
+                    })
+                    .unwrap_or(vec![]);
 
-            (id, sector)
-        })
-        .collect()
+                (id, sector)
+            })
+            .collect(),
+        agreements,
+    )
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -573,6 +564,7 @@ fn parse_section(pair: Pair<Rule>) -> (SectionName, Section) {
                                 HashMap::new(),
                                 HashMap::new(),
                                 HashMap::new(),
+                                vec![],
                             ),
                             collect_sectors,
                         ),
@@ -602,9 +594,9 @@ impl Ese {
             Some((_, Section::Positions(positions))) => positions,
             _ => HashMap::new(),
         };
-        let sectors = match sections.remove_entry(&SectionName::Airspace) {
+        let (sectors, agreements) = match sections.remove_entry(&SectionName::Airspace) {
             Some((_, Section::Sectors(sectors))) => sectors,
-            _ => HashMap::new(),
+            _ => (HashMap::new(), vec![]),
         };
         let sids_stars = match sections.remove_entry(&SectionName::SidsStars) {
             Some((_, Section::SidsStars(sids_stars))) => sids_stars,
@@ -615,6 +607,7 @@ impl Ese {
             positions,
             sectors,
             sids_stars,
+            agreements,
         })
     }
 }
@@ -1000,9 +993,13 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
         assert_eq!(alb_0_105.top, 10500);
         assert_eq!(alb_0_105.bottom, 0);
         assert_eq!(
-            alb_0_105.copns,
+            ese.agreements
+                .iter()
+                .filter(|agreement| agreement.entry_sector
+                    == "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string())
+                .collect::<Vec<_>>(),
             vec![
-                Agreement {
+                &Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("RUDNO".to_string()),
@@ -1014,7 +1011,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     descent_level: Some(9000),
                     description: "RUDNO".to_string(),
                 },
-                Agreement {
+                &Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("STAUB".to_string()),
@@ -1029,9 +1026,13 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
             ]
         );
         assert_eq!(
-            alb_0_105.copxs,
+            ese.agreements
+                .iter()
+                .filter(|agreement| agreement.exit_sector
+                    == "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string())
+                .collect::<Vec<_>>(),
             vec![
-                Agreement {
+                &Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: None,
@@ -1043,7 +1044,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     descent_level: Some(9300),
                     description: "INDIV".to_string(),
                 },
-                Agreement {
+                &Agreement {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("MIQ".to_string()),
@@ -1057,8 +1058,6 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                 },
             ]
         );
-        assert_eq!(alb_0_105.fir_copns, vec![]);
-        assert_eq!(alb_0_105.fir_copxs, vec![]);
         assert_eq!(
             alb_0_105.border,
             vec![

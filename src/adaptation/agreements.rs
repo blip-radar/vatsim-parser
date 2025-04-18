@@ -3,18 +3,9 @@ use tracing::debug;
 use crate::ese::{Agreement, Ese};
 
 pub(super) fn extract_agreements(ese: &Ese) -> (Vec<Agreement>, Vec<Agreement>) {
-    ese.sectors
+    ese.agreements
         .iter()
-        .flat_map(|(_id, sector)| {
-            sector
-                .copns
-                .iter()
-                .chain(sector.fir_copns.iter())
-                .chain(sector.copxs.iter())
-                .chain(sector.fir_copxs.iter())
-                .cloned()
-        })
-        .filter(|agreement| {
+        .filter(|&agreement| {
             let to_drop = agreement.climb_level.is_none() && agreement.descent_level.is_none();
             if to_drop {
                 debug!("Dropping agreement, no level specified: {agreement:?}");
@@ -22,5 +13,6 @@ pub(super) fn extract_agreements(ese: &Ese) -> (Vec<Agreement>, Vec<Agreement>) 
 
             !to_drop
         })
+        .cloned()
         .partition(|agreement| agreement.climb_level.is_some())
 }
