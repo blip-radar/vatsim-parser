@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use geo::{Coord, HasDimensions, Line, LineString, MultiLineString};
+use itertools::Itertools as _;
 use multimap::MultiMap;
 use serde::Serialize;
 use tracing::warn;
@@ -52,6 +53,7 @@ impl ColouredLines {
                         }
                         point
                     })
+                    .dedup()
                     .collect();
 
                 (!line.is_empty()).then_some(line)
