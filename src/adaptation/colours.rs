@@ -355,6 +355,7 @@ pub struct TrackColours {
     pub predicted_alert: Colour,
     pub current_alert: Colour,
     pub reaction: Colour,
+    pub cleared: Colour,
     // FIXME
     pub vfr: Colour,
 }
@@ -368,6 +369,7 @@ impl TrackColours {
     const DEFAULT_PREDICTED_ALERT: Colour = Colour::from_rgb(255, 255, 0);
     const DEFAULT_CURRENT_ALERT: Colour = Colour::from_rgb(255, 0, 0);
     const DEFAULT_REACTION: Colour = Colour::from_rgb(230, 185, 184);
+    const DEFAULT_CLEARED: Colour = Colour::from_rgb(34, 139, 34);
 
     pub fn from_euroscope(topsky_colours: &HashMap<String, Colour>, settings: &Settings) -> Self {
         Self {
@@ -416,6 +418,11 @@ impl TrackColours {
                 .copied()
                 .or(Colour::from_topsky_default(settings, "Proposition_In"))
                 .unwrap_or(Self::DEFAULT_REACTION),
+            cleared: topsky_colours
+                .get("Rwy_Locked")
+                .copied()
+                .or(Colour::from_topsky_default(settings, "Rwy_Locked"))
+                .unwrap_or(Self::DEFAULT_CLEARED),
         }
     }
 }
@@ -432,6 +439,7 @@ impl Default for TrackColours {
             predicted_alert: Self::DEFAULT_PREDICTED_ALERT,
             current_alert: Self::DEFAULT_CURRENT_ALERT,
             reaction: Self::DEFAULT_REACTION,
+            cleared: Self::DEFAULT_CLEARED,
         }
     }
 }
