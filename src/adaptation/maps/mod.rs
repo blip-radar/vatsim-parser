@@ -297,7 +297,7 @@ pub fn from_topsky(
                             MapRule::Coord(loc) => coord_buffer.push(loc.clone()),
                             // intentionally ignored
                             MapRule::Global | MapRule::ScreenSpecific => (),
-                        };
+                        }
 
                         (map, coord_buffer)
                     },

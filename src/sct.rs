@@ -300,15 +300,15 @@ impl ToEuroscope for Geo {
             self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.line_groups.len() > 1)
-                .then_some(
-                    self.line_groups
-                        .iter()
-                        .skip(1)
-                        .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
-                        .join("")
-                )
-                .unwrap_or_else(String::new)
+            if self.line_groups.len() > 1 {
+                self.line_groups
+                    .iter()
+                    .skip(1)
+                    .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
+                    .join("")
+            } else {
+                String::new()
+            }
         )
     }
 }
@@ -332,15 +332,15 @@ impl ToEuroscope for Region {
             self.polygon
                 .first()
                 .map_or(String::new(), DegMinSecExt::deg_min_sec_fmt),
-            (self.polygon.len() > 1)
-                .then_some(
-                    self.polygon
-                        .iter()
-                        .skip(1)
-                        .map(|c| format!("\n{:<26} {}", "", c.deg_min_sec_fmt()))
-                        .join("")
-                )
-                .unwrap_or_else(String::new)
+            if self.polygon.len() > 1 {
+                self.polygon
+                    .iter()
+                    .skip(1)
+                    .map(|c| format!("\n{:<26} {}", "", c.deg_min_sec_fmt()))
+                    .join("")
+            } else {
+                String::new()
+            }
         )
     }
 }
@@ -405,15 +405,15 @@ impl ToEuroscope for Sid {
             self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.line_groups.len() > 1)
-                .then_some(
-                    self.line_groups
-                        .iter()
-                        .skip(1)
-                        .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
-                        .join("")
-                )
-                .unwrap_or_else(String::new)
+            if self.line_groups.len() > 1 {
+                self.line_groups
+                    .iter()
+                    .skip(1)
+                    .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
+                    .join("")
+            } else {
+                String::new()
+            }
         )
     }
 }
@@ -436,15 +436,15 @@ impl ToEuroscope for Star {
             self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.line_groups.len() > 1)
-                .then_some(
-                    self.line_groups
-                        .iter()
-                        .skip(1)
-                        .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
-                        .join("")
-                )
-                .unwrap_or_else(String::new)
+            if self.line_groups.len() > 1 {
+                self.line_groups
+                    .iter()
+                    .skip(1)
+                    .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
+                    .join("")
+            } else {
+                String::new()
+            }
         )
     }
 }
@@ -467,15 +467,15 @@ impl ToEuroscope for Artcc {
             self.line_groups
                 .first()
                 .map_or(String::new(), ToEuroscope::to_euroscope),
-            (self.line_groups.len() > 1)
-                .then_some(
-                    self.line_groups
-                        .iter()
-                        .skip(1)
-                        .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
-                        .join("")
-                )
-                .unwrap_or_else(String::new)
+            if self.line_groups.len() > 1 {
+                self.line_groups
+                    .iter()
+                    .skip(1)
+                    .map(|l| format!("\n{:<40} {}", "", l.to_euroscope()))
+                    .join("")
+            } else {
+                String::new()
+            }
         )
     }
 }

@@ -606,8 +606,8 @@ impl Ese {
         Ok(Ese {
             positions,
             sectors,
-            sids_stars,
             agreements,
+            sids_stars,
         })
     }
 }
@@ -996,7 +996,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
             ese.agreements
                 .iter()
                 .filter(|agreement| agreement.entry_sector
-                    == "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string())
+                    == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105")
                 .collect::<Vec<_>>(),
             vec![
                 &Agreement {
@@ -1028,8 +1028,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
         assert_eq!(
             ese.agreements
                 .iter()
-                .filter(|agreement| agreement.exit_sector
-                    == "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string())
+                .filter(|agreement| agreement.exit_sector == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105")
                 .collect::<Vec<_>>(),
             vec![
                 &Agreement {

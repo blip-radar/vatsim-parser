@@ -113,7 +113,7 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                                 })
                             {
                                 warn!("Duplicate fix on airway {airway}: {prev:?}; prev={previous:?} next={next:?}");
-                            };
+                            }
                             neighbours.airway_neighbours.insert(
                                 airway.clone(),
                                 AirwayNeighbours {

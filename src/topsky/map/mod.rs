@@ -459,7 +459,7 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
                             MapDefinition::Override(override_sct) => {
                                 overrides.push(override_sct);
                             }
-                        };
+                        }
                         (maps, symbols, colours, line_styles, overrides)
                     },
                 )

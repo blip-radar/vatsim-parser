@@ -150,7 +150,7 @@ impl From<Vec<AsrData>> for AsrMap {
                 AsrData::ArtccLowBoundary(alb) => acc.artcc_low_boundary.push(alb),
                 AsrData::ArtccHighBoundary(ahb) => acc.artcc_high_boundary.push(ahb),
                 _ => (),
-            };
+            }
             acc
         })
     }
