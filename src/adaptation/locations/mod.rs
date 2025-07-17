@@ -114,12 +114,23 @@ pub struct SID {
     pub waypoints: Vec<Fix>,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct STAR {
     pub name: String,
     pub airport: String,
     pub runway: Option<String>,
     pub waypoints: Vec<Fix>,
+}
+
+impl PartialEq<STAR> for String {
+    fn eq(&self, other: &STAR) -> bool {
+        other.name == *self
+    }
+}
+impl PartialEq<String> for STAR {
+    fn eq(&self, other: &String) -> bool {
+        self.name == *other
+    }
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
