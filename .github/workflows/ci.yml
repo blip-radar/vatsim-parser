@@ -33,7 +33,7 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
       - name: Install Lix
         uses: samueldr/lix-gha-installer-action@8dc19fbd6451fa106a68ecb2dafeeeb90dff3a29 #
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Run cargo test
         run: nix develop --command cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
       - uses: k1LoW/octocov-action@v1
@@ -59,7 +59,7 @@ jobs:
           key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.toml') }}
       - name: Install Lix
         uses: samueldr/lix-gha-installer-action@8dc19fbd6451fa106a68ecb2dafeeeb90dff3a29 #
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Run clippy
         run: nix develop --command cargo clippy -- -D warnings
         # FIXME: remove when clippy warnings are fixed
@@ -75,6 +75,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Install Lix
         uses: samueldr/lix-gha-installer-action@8dc19fbd6451fa106a68ecb2dafeeeb90dff3a29 #
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Run cargo fmt
         run: nix develop --command cargo fmt --all -- --check
