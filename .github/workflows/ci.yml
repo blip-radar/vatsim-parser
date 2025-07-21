@@ -62,8 +62,6 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v13
       - name: Run clippy
         run: nix develop --command cargo clippy -- -D warnings
-        # FIXME: remove when clippy warnings are fixed
-        continue-on-error: true
 
   # Run cargo fmt --all -- --check
   format:
