@@ -785,9 +785,9 @@ dependencies = [
 
 [[package]]
 name = "pest-ast"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca1f0a53a45cfbdcd93e8982d9ead828a022762b1d890f1571f2a72e64277381"
+checksum = "ee0348ed5e4fdd30965042a0fcafe9702f7ef5e71f3f1e12404e8ed3b0ebfb3b"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
