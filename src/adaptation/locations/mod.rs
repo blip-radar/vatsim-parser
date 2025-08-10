@@ -26,12 +26,12 @@ pub struct Fix {
     pub coordinate: Point,
 }
 // FIXME format! performance? maybe use fixed point decimals, 6 decimals seems to be common (ca 1.1m)
-// but our data is bad enough that we have to use .3
+// but our data is bad enough that we have to use .2
 impl Hash for Fix {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.designator.hash(state);
 
-        let coord_hash_str = format!("{:.3} {:.3}", self.coordinate.x(), self.coordinate.y());
+        let coord_hash_str = format!("{:.2} {:.2}", self.coordinate.x(), self.coordinate.y());
         trace!(
             "hashing {self:?} with {} and {coord_hash_str}",
             self.designator
@@ -45,8 +45,8 @@ impl Hash for Fix {
 impl PartialEq for Fix {
     fn eq(&self, other: &Self) -> bool {
         let res = self.designator == other.designator
-            && format!("{:.3} {:.3}", self.coordinate.x(), self.coordinate.y())
-                == format!("{:.3} {:.3}", other.coordinate.x(), other.coordinate.y());
+            && format!("{:.2} {:.2}", self.coordinate.x(), self.coordinate.y())
+                == format!("{:.2} {:.2}", other.coordinate.x(), other.coordinate.y());
         trace!("{} == {}: {}", self.designator, other.designator, res);
 
         res
