@@ -15,7 +15,7 @@ use uom::si::length::{meter, nautical_mile};
 use crate::{
     ese::{Ese, SidStar},
     sct::{self, Sct},
-    Location, TwoKeyMultiMap,
+    Location,
 };
 
 use self::airways::FixAirwayMap;
@@ -140,8 +140,8 @@ pub struct Locations {
     pub ndbs: MultiMap<String, NDB>,
     pub airports: HashMap<String, Airport>,
     pub airways: FixAirwayMap,
-    pub sids: TwoKeyMultiMap<String, String, SID>,
-    pub stars: TwoKeyMultiMap<String, String, STAR>,
+    pub sids: HashMap<String, MultiMap<String, SID>>,
+    pub stars: HashMap<String, MultiMap<String, STAR>>,
 }
 
 fn coord_regex() -> &'static Regex {
@@ -174,15 +174,14 @@ impl Locations {
             ndbs,
             airports: Airport::from_sct_airports(sct.airports, &sct.runways),
             airways,
-            sids: TwoKeyMultiMap(MultiMap::new()),
-            stars: TwoKeyMultiMap(MultiMap::new()),
+            sids: HashMap::new(),
+            stars: HashMap::new(),
         };
         ese.sids_stars
             .into_iter()
             .for_each(|sid_star| match sid_star {
-                SidStar::Sid(sid) => locations.sids.0.insert(
-                    (sid.airport.clone(), sid.name.clone()),
-                    SID {
+                SidStar::Sid(sid) => {
+                    let adap_sid = SID {
                         waypoints: sid
                             .waypoints
                             .into_iter()
@@ -199,14 +198,20 @@ impl Locations {
                                 fix
                             })
                             .collect(),
-                        name: sid.name,
-                        airport: sid.airport,
+                        name: sid.name.clone(),
+                        airport: sid.airport.clone(),
                         runway: sid.runway,
-                    },
-                ),
-                SidStar::Star(star) => locations.stars.0.insert(
-                    (star.airport.clone(), star.name.clone()),
-                    STAR {
+                    };
+                    locations
+                        .sids
+                        .entry(sid.airport)
+                        .and_modify(|airport_map| {
+                            airport_map.insert(sid.name.clone(), adap_sid.clone());
+                        })
+                        .or_insert_with(|| MultiMap::from_iter([(sid.name, adap_sid)]));
+                }
+                SidStar::Star(star) => {
+                    let adap_star = STAR {
                         waypoints: star
                             .waypoints
                             .into_iter()
@@ -223,11 +228,18 @@ impl Locations {
                                 fix
                             })
                             .collect(),
-                        name: star.name,
-                        airport: star.airport,
+                        name: star.name.clone(),
+                        airport: star.airport.clone(),
                         runway: star.runway,
-                    },
-                ),
+                    };
+                    locations
+                        .stars
+                        .entry(star.airport.clone())
+                        .and_modify(|airport_map| {
+                            airport_map.insert(star.name.clone(), adap_star.clone());
+                        })
+                        .or_insert_with(|| MultiMap::from_iter([(star.name.clone(), adap_star)]));
+                }
             });
 
         locations
