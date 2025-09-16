@@ -16,7 +16,7 @@ bevy_derive = "0.16"
 bevy_reflect = "0.16"
 encoding_rs = "0.8.35"
 from-pest = "0.3.4"
-fs-err = "3.1.1"
+fs-err = "3.1.2"
 geo = { version = "0.31", features = ["use-serde"] }
 itertools = "0.14.0"
 multimap = "0.10.0"
