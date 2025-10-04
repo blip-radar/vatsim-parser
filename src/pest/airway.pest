@@ -6,7 +6,7 @@ airway = {
   ~ (no_neighbour | neighbour) ~ NL
 }
 
-airway_type = { "B" | "H" | "L" }
+airway_type = { "B" | "H" | "L" | "" }
 
 neighbour = {
    "\t" ~ designator ~ "\t" ~ coord ~ "\t" ~ (level | not_established) ~ "\t" ~ bool
@@ -17,7 +17,7 @@ no_neighbour = {
 
 bool = _{ TRUE | FALSE }
 level = { ASCII_DIGIT+ }
-not_established = { "NESTB" }
+not_established = { "NESTB" | "" }
 
 designator = { (ASCII_ALPHA_UPPER | ASCII_DIGIT)+ }
 

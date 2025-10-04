@@ -23,6 +23,7 @@ pub enum AirwayType {
     High,
     Low,
     Both,
+    Unknown,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -176,6 +177,7 @@ impl Display for AirwayType {
             AirwayType::High => "H",
             AirwayType::Low => "L",
             AirwayType::Both => "B",
+            AirwayType::Unknown => "",
         })
     }
 }
@@ -204,7 +206,7 @@ impl Display for AirwayFix {
             self.fix.coordinate.y(),
             self.fix.coordinate.x(),
             self.minimum_level
-                .map_or("NESTB".to_string(), |lvl| format!("{lvl:05}")),
+                .map_or_else(String::new, |lvl| format!("{lvl:05}")),
             if self.valid_direction { "Y" } else { "N" }
         )
     }

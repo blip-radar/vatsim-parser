@@ -5,7 +5,6 @@ use pest_derive::Parser;
 use std::collections::HashMap;
 use std::io;
 use thiserror::Error;
-use tracing::warn;
 
 use crate::adaptation::locations::{
     airways::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix, AirwayType, FixAirwayMap},
@@ -69,6 +68,7 @@ impl AirwayType {
             "H" => Self::High,
             "L" => Self::Low,
             "B" => Self::Both,
+            "" => Self::Unknown,
             parsed => unreachable!("{parsed}"),
         }
     }
@@ -102,18 +102,6 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
 
                     acc.entry(fix.clone())
                         .and_modify(|neighbours: &mut AirwayNeighboursOfFix| {
-                            if let Some(prev) = neighbours
-                                .airway_neighbours
-                                .get_vec(&airway)
-                                .and_then(|prevs| {
-                                    prevs.iter().find(|prev| {
-                                        prev.previous.is_some() && previous.is_some()
-                                            || prev.next.is_some() && next.is_some()
-                                    })
-                                })
-                            {
-                                warn!("Duplicate fix on airway {airway}: {prev:?}; prev={previous:?} next={next:?}");
-                            }
                             neighbours.airway_neighbours.insert(
                                 airway.clone(),
                                 AirwayNeighbours {
@@ -162,17 +150,17 @@ mod test {
     fn test_airway() {
         let airway_str = "ASPAT	49.196175	10.725828	14	T161	B	REDNI	49.080000	10.890278	05500	N					N
 ASPAT	49.196175	10.725828	14	T161	L					N	DEBHI	49.360833	10.466111	NESTB	Y
-DEBHI	49.360833	10.466111	14	T161	L	ASPAT	49.196175	10.725828	05500	N	TOSTU	49.713536	9.805942	05000	Y
+DEBHI	49.360833	10.466111	14	T161	L	ASPAT	49.196175	10.725828		N	TOSTU	49.713536	9.805942	05000	Y
 ERNAS	48.844669	11.219353	14	T161	B	NIMDI	48.802222	11.633611	05000	N	GOLMO	48.962500	11.055278	05500	Y
 ERNAS	48.844669	11.219353	14	Y101	B	GIVMI	48.701094	11.364803	04000	N	TALAL	49.108333	11.085278	05000	Y
 GIVMI	48.701094	11.364803	14	Y101	B					N	ERNAS	48.844669	11.219353	04000	Y
 GOLMO	48.962500	11.055278	14	T161	B	ERNAS	48.844669	11.219353	05500	N	REDNI	49.080000	10.890278	05500	Y
-REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.196175	10.725828	05500	Y
+REDNI	49.080000	10.890278	14	T161		GOLMO	48.962500	11.055278	05500	N	ASPAT	49.196175	10.725828	05500	Y
 ";
 
         let parsed = parse_airway_txt(airway_str.as_bytes()).unwrap();
 
-        assert_eq_sorted!(airway_str, parsed.to_string());
+        assert_eq_sorted!(airway_str.replace("NESTB", ""), parsed.to_string());
 
         assert_eq_sorted!(
             parsed.0,
@@ -265,7 +253,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                                         },
                                     },
                                     valid_direction: false,
-                                    minimum_level: Some(5500)
+                                    minimum_level: None
                                 }),
                                 next: Some(AirwayFix {
                                     fix: Fix {
@@ -465,7 +453,7 @@ REDNI	49.080000	10.890278	14	T161	B	GOLMO	48.962500	11.055278	05500	N	ASPAT	49.1
                             "T161".to_owned(),
                             AirwayNeighbours {
                                 airway: "T161".to_string(),
-                                airway_type: AirwayType::Both,
+                                airway_type: AirwayType::Unknown,
                                 previous: Some(AirwayFix {
                                     fix: Fix {
                                         designator: "GOLMO".to_string(),
