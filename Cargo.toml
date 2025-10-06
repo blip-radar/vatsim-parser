@@ -12,8 +12,8 @@ repository = "https://github.com/blip-radar/vatsim-parser"
 license = "LGPL-3.0-or-later"
 
 [dependencies]
-bevy_derive = "0.16"
-bevy_reflect = "0.16"
+bevy_derive = "0.17"
+bevy_reflect = "0.17"
 encoding_rs = "0.8.35"
 from-pest = "0.3.4"
 fs-err = "3.1.2"
