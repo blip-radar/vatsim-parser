@@ -24,7 +24,7 @@ num-derive = "0.4.2"
 num-traits = "0.2.19"
 pest = "2.8.2"
 pest-ast = "0.3.6"
-pest_derive = "2.8.2"
+pest_derive = "2.8.4"
 phf = { version = "0.13", features = ["macros"] }
 regex = "1.12.1"
 serde = { version = "1.0.225", features = ["derive"] }
