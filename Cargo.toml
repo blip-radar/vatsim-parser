@@ -28,7 +28,7 @@ pest_derive = "2.8.2"
 phf = { version = "0.13", features = ["macros"] }
 regex = "1.12.1"
 serde = { version = "1.0.225", features = ["derive"] }
-serde_json = "1.0.145"
+serde_json = "1.0.146"
 thiserror = "2.0.16"
 tracing = "0.1.43"
 uom = { version = "0.37", features = ["serde"] }
