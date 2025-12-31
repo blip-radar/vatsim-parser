@@ -31,28 +31,35 @@ impl Hash for Fix {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.designator.hash(state);
 
-        let coord_hash_str = format!("{:.2} {:.2}", self.coordinate.x(), self.coordinate.y());
+        quantize(self.coordinate.x()).hash(state);
+        quantize(self.coordinate.y()).hash(state);
+
         trace!(
-            "hashing {self:?} with {} and {coord_hash_str}",
-            self.designator
+            "hashed: {self:?} with {}: {}",
+            self.designator,
+            state.finish()
         );
-
-        coord_hash_str.hash(state);
-
-        trace!("hashed: {}", state.finish());
     }
 }
 impl PartialEq for Fix {
     fn eq(&self, other: &Self) -> bool {
         let res = self.designator == other.designator
-            && format!("{:.2} {:.2}", self.coordinate.x(), self.coordinate.y())
-                == format!("{:.2} {:.2}", other.coordinate.x(), other.coordinate.y());
+            && quantize(self.coordinate.x()) == quantize(other.coordinate.x())
+            && quantize(self.coordinate.y()) == quantize(other.coordinate.y());
+
         trace!("{} == {}: {}", self.designator, other.designator, res);
 
         res
     }
 }
 impl Eq for Fix {}
+
+const DECIMALS: u32 = 2;
+
+fn quantize(v: f64) -> i64 {
+    let factor = 10_i64.pow(DECIMALS) as f64;
+    (v * factor).round() as i64
+}
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct NDB {
