@@ -1,20 +1,12 @@
-symbols = { SOI ~ NL? ~ symbol+ ~ EOI}
-maps = { SOI ~ NL? ~ (map | symboldef | colourdef | linestyledef | override_sct | sctfilepath)+ ~ EOI }
+symbols = { SOI ~ NL? ~ symbol+ ~ EOI }
+maps    = { SOI ~ NL? ~ (map | symboldef | colourdef | linestyledef | override_sct | sctfilepath)+ ~ EOI }
 
-symbol = {
-  "SYMBOL:" ~ colon_delimited_text ~ NL ~ symbolrule+
-}
-symboldef = {
-  "SYMBOLDEF:" ~ colon_delimited_text ~ NL ~ symbolrule+
-}
+symbol    = { "SYMBOL:" ~ colon_delimited_text ~ NL ~ symbolrule+ }
+symboldef = { "SYMBOLDEF:" ~ colon_delimited_text ~ NL ~ symbolrule+ }
 
-colourdef = {
-  "COLORDEF:" ~ colon_delimited_text ~ ":" ~ integer ~ ":" ~ integer ~ ":" ~ integer ~ NL?
-}
+colourdef = { "COLORDEF:" ~ colon_delimited_text ~ ":" ~ integer ~ ":" ~ integer ~ ":" ~ integer ~ NL? }
 
-linestyledef = {
-  "LINESTYLEDEF:" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ (":" ~ (integer ~ ("," ~ integer)*))? ~ NL?
-}
+linestyledef = { "LINESTYLEDEF:" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ ":" ~ colon_delimited_text ~ (":" ~ (integer ~ ("," ~ integer)*))? ~ NL? }
 
 override_sct = { "OVERRIDE_SCT_MAP:" ~ backslash_delimited_text ~ ("\\" ~ colon_delimited_text)? ~ NL? }
 
@@ -26,13 +18,7 @@ map = { "MAP:" ~ colon_delimited_text ~ NL ~ map_setting+ }
 
 // MAP
 map_setting = _{
-  (" " | "\t")* ~ (
-    folder | colour | asrdata | active | andactive | layer | mapsymbol | fontstyle
-    | fontsize | zoom | style | mapline | text | global | screen_specific
-    | circle | coordline | coordpoly | coord | textalign | override_sct
-    | hidden | sctfiledata | sctdata
-  )
-  ~ NL?
+    (" " | "\t")* ~ (folder | colour | asrdata | active | andactive | layer | mapsymbol | fontstyle | fontsize | zoom | style | mapline | text | global | screen_specific | circle | coordline | coordpoly | coord | textalign | override_sct | hidden | sctfiledata | sctdata | coord_af) ~ NL?
 }
 
 folder = { "FOLDER:" ~ colon_delimited_text }
@@ -41,102 +27,107 @@ colour = { "COLOR:" ~ colon_delimited_text ~ (":" ~ colon_delimited_text)? ~ (":
 
 asrdata = { "ASRDATA:" ~ (wildcard | names) }
 
-active = { "ACTIVE:" ~ active_options }
-andactive = { "AND_ACTIVE:" ~ active_options }
-active_options = _{
-  active_sched | active_id | active_notam | active_aup | active_area_with_excludes
-  | active_area | active_callsign | active_rwy_with_excludes | active_rwy | active_always
+active                    =  { "ACTIVE:" ~ active_options }
+andactive                 =  { "AND_ACTIVE:" ~ active_options }
+active_options            = _{
+    active_sched
+  | active_id
+  | active_notam
+  | active_aup
+  | active_area_with_excludes
+  | active_area
+  | active_callsign
+  | active_rwy_with_excludes
+  | active_rwy
+  | active_always
   | active_map
 }
-active_always = { "1" }
-active_id = {
-  "ID:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":"
-  ~ (wildcard | names) ~ ":" ~ (wildcard | names)
+active_always             =  { "1" }
+active_id                 =  {
+    "ID:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":" ~ (wildcard | names)
 }
-active_callsign = {
-  "CALLSIGN:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":"
-  ~ (wildcard | names) ~ ":" ~ (wildcard | names)
+active_callsign           =  {
+    "CALLSIGN:" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":" ~ (wildcard | names) ~ ":" ~ (wildcard | names)
 }
-active_area = {
-  "AREA:" ~ names
+active_area               =  {
+    "AREA:" ~ names
 }
-active_area_with_excludes = {
-  "AREA:" ~ names ~ ":" ~ names
+active_area_with_excludes =  {
+    "AREA:" ~ names ~ ":" ~ names
 }
-active_aup = {
-  "AUP:" ~ names
+active_aup                =  {
+    "AUP:" ~ names
 }
-active_map = {
-  "MAP:" ~ active_map_operator ~ ":" ~ backslash_delimited_text ~ "\\" ~ colon_delimited_text
+active_map                =  {
+    "MAP:" ~ active_map_operator ~ ":" ~ backslash_delimited_text ~ "\\" ~ colon_delimited_text
 }
-active_notam = {
-  "NOTAM:" ~ icao ~ ":" ~ names
+active_notam              =  {
+    "NOTAM:" ~ icao ~ ":" ~ names
 }
-active_rwy = {
-  "RWY:ARR:" ~ (wildcard | runways) ~ ":DEP:" ~ (wildcard | runways)
+active_rwy                =  {
+    "RWY:ARR:" ~ (wildcard | runways) ~ ":DEP:" ~ (wildcard | runways)
 }
-active_rwy_with_excludes = {
-  "RWY:ARR:" ~ (wildcard | runways) ~ ":" ~ (wildcard | runways)
-  ~ ":DEP:" ~ (wildcard | runways) ~ ":" ~ (wildcard | runways)
+active_rwy_with_excludes  =  {
+    "RWY:ARR:" ~ (wildcard | runways) ~ ":" ~ (wildcard | runways) ~ ":DEP:" ~ (wildcard | runways) ~ ":" ~ (wildcard | runways)
 }
-runways = { runway ~ ("," ~ runway)* }
-active_sched = { (ymd | md) ~ ":" ~ (ymd | md) ~ ":" ~ ASCII_DIGIT+ ~ ":" ~ hm ~ ":" ~ hm }
-active_map_operator = { "!" | "=" }
+runways                   =  { runway ~ ("," ~ runway)* }
+active_sched              =  { (ymd | md) ~ ":" ~ (ymd | md) ~ ":" ~ ASCII_DIGIT+ ~ ":" ~ hm ~ ":" ~ hm }
+active_map_operator       =  { "!" | "=" }
 
 layer = { "LAYER:" ~ integer }
 
-mapsymbol = { "SYMBOL" ~ ("/" ~ textalign_config)? ~ ":" ~ colon_delimited_text ~ ":" ~ (coordinate | colon_delimited_text) ~ (":" ~ mapsymbollabel)? }
+mapsymbol      = { "SYMBOL" ~ ("/" ~ textalign_config)? ~ ":" ~ colon_delimited_text ~ ":" ~ (coordinate | colon_delimited_text) ~ (":" ~ mapsymbollabel)? }
 mapsymbollabel = { colon_delimited_text ~ ":" ~ point }
 
-fontstyle = { "FONTSTYLE:" ~ (fontstyle_set | fontstyle_default) }
+fontstyle         = { "FONTSTYLE:" ~ (fontstyle_set | fontstyle_default) }
 fontstyle_default = { "0" }
-fontstyle_set = { integer ~ ":" ~ boolean ~ ":" ~ boolean ~ ":" ~ boolean }
-fontsize = { "FONTSIZE:" ~ ((font_symbol ~ ":" ~ decimal) | fontsize_default)}
-fontsize_default = { "0" }
-font_symbol = { "=" | "+" | "-" | "*" }
+fontstyle_set     = { integer ~ ":" ~ boolean ~ ":" ~ boolean ~ ":" ~ boolean }
+fontsize          = { "FONTSIZE:" ~ ((font_symbol ~ ":" ~ decimal) | fontsize_default) }
+fontsize_default  = { "0" }
+font_symbol       = { "=" | "+" | "-" | "*" }
 
 zoom = { "ZOOM:" ~ decimal }
 
 style = { "STYLE:" ~ colon_delimited_text ~ (":" ~ integer)? }
 
-mapline = { ("LINE:" ~ (maplinecoordinates | maplinewpts) ~ NL?)+ }
+mapline            = { ("LINE:" ~ (maplinecoordinates | maplinewpts) ~ NL?)+ }
 maplinecoordinates = { coordinate ~ ":" ~ coordinate }
-maplinewpts = { colon_delimited_text ~ ":" ~ colon_delimited_text }
+maplinewpts        = { colon_delimited_text ~ ":" ~ colon_delimited_text }
 
-text = { "TEXT" ~ ("/" ~ textalign_config)? ~ ":" ~ (coordinate | colon_delimited_text) ~ ":" ~ text_content }
+text         = { "TEXT" ~ ("/" ~ textalign_config)? ~ ":" ~ (coordinate | colon_delimited_text) ~ ":" ~ text_content }
 text_content = { (!NL ~ ANY)+ }
 
-textalign = { "TEXTALIGN:" ~ textalign_config }
+textalign        = { "TEXTALIGN:" ~ textalign_config }
 textalign_config = { horizontalalign? ~ verticalalign? }
-horizontalalign = { "L" | "C" | "R" }
-verticalalign = { "T" | "C" | "B" }
+horizontalalign  = { "L" | "C" | "R" }
+verticalalign    = { "T" | "C" | "B" }
 
 screen_specific = { "SCREEN-SPECIFIC" }
-global = { "GLOBAL" }
+global          = { "GLOBAL" }
 
 hidden = { "HIDDEN" }
 
 circle = { ("COORD_CIRCLE:" | "CIRCLE:") ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
 
-coord = { "COORD:" ~ (coordinate | colon_delimited_text) }
+coord    = { "COORD:" ~ (coordinate | colon_delimited_text) }
+coord_af = { "COORD_AF:" ~ (coordinate | colon_delimited_text) ~ ":" ~ (decimal ~ ":"){3} ~ direction ~ ":" ~ decimal }
 
 coordline = { "COORDLINE" }
 coordpoly = { "COORDPOLY:" ~ integer }
 
-sctfiledata = { "SCTFILEDATA" ~ sctfiledata_ignore_style? ~ ":" ~ backslash_delimited_text ~ "\\" ~ backslash_delimited_text }
+sctfiledata              = { "SCTFILEDATA" ~ sctfiledata_ignore_style? ~ ":" ~ backslash_delimited_text ~ "\\" ~ backslash_delimited_text }
 sctfiledata_ignore_style = { "/MONO" }
-sctdata = { "SCTDATA" ~ ":" ~ backslash_delimited_text ~ "\\" ~ backslash_delimited_text }
+sctdata                  = { "SCTDATA" ~ ":" ~ backslash_delimited_text ~ "\\" ~ backslash_delimited_text }
 
-
-names = { comma_delimited_text ~ ("," ~ comma_delimited_text)* }
+names    = { comma_delimited_text ~ ("," ~ comma_delimited_text)* }
 wildcard = { "*" }
 
-md = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
+md  = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 ymd = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
-hm = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
+hm  = { ASCII_DIGIT{2} ~ ASCII_DIGIT{2} }
 
-runway = { icao ~ runway_designator }
-icao = { ASCII_ALPHA_UPPER{4} }
+runway  = { icao ~ runway_designator }
+icao    = { ASCII_ALPHA_UPPER{4} }
 boolean = { "0" | "1" }
 
 // per documentation only "//" but ";" is used quite often and apparently ignored

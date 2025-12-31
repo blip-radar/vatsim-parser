@@ -302,6 +302,7 @@ impl MapRule {
                     Rule::override_sct => None,
                     Rule::sctfiledata => None,
                     Rule::sctdata => None,
+                    Rule::coord_af => None,
                     rule => unreachable!("{rule:?}"),
                 }
             })

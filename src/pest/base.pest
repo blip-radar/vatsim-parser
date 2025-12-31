@@ -11,6 +11,7 @@ deg            = @{ ASCII_DIGIT+ }
 min            = @{ ASCII_DIGIT+ }
 sec            = @{ decimal }
 hemi           = @{ "N" | "S" | "W" | "E" | "n" | "s" | "w" | "e" }
+direction      = @{ "<" | ">" }
 
 runway_designator = @{ ASCII_DIGIT{2} ~ ("L" | "C" | "R" | "G")? }
 
