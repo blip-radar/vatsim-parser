@@ -25,9 +25,10 @@ use symbols::Symbols;
 use thiserror::Error;
 use tracing::warn;
 
+use crate::airway::parse_airway_txt;
 use crate::ese::Agreement;
 use crate::{
-    airway::{parse_airway_txt, AirwayError},
+    airway::AirwayError,
     ese::{self, Ese, EseError},
     icao_aircraft::{parse_aircraft, AircraftError},
     icao_airlines::{parse_airlines, AirlinesError},
@@ -163,7 +164,8 @@ impl Adaptation {
         // TODO parallelise/asyncify where able
         let sct = Sct::parse(&fs_err::read(prf.sct_path())?)?;
         let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
-        let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
+        // let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
+        let airways2 = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let name = sct.info.name.clone();
         let (volumes, sectors) = Sector::from_ese(&ese);
         let (departure_agreements, destination_agreements) = extract_agreements(&ese);
@@ -184,7 +186,7 @@ impl Adaptation {
         });
         let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref());
         let colours = Colours::from_euroscope(&symbology, &sct, &topsky, &settings);
-        let locations = Locations::from_euroscope(sct.clone(), ese, airways);
+        let locations = Locations::from_euroscope(sct.clone(), ese, airways2);
         let sct_items = SctItems::from_sct(sct, &locations, &colours, &settings);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;

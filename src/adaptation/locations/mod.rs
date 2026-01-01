@@ -12,13 +12,12 @@ use tracing::{trace, warn};
 use uom::si::f64::Length;
 use uom::si::length::{meter, nautical_mile};
 
+use crate::adaptation::locations::airways::AirwayGraph;
 use crate::{
     ese::{Ese, SidStar},
     sct::{self, Sct},
     Location,
 };
-
-use self::airways::FixAirwayMap;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Fix {
@@ -31,8 +30,9 @@ impl Hash for Fix {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.designator.hash(state);
 
-        quantize(self.coordinate.x()).hash(state);
-        quantize(self.coordinate.y()).hash(state);
+        let (x, y) = self.coordinate.quantize();
+        x.hash(state);
+        y.hash(state);
 
         trace!(
             "hashed: {self:?} with {}: {}",
@@ -44,22 +44,26 @@ impl Hash for Fix {
 impl PartialEq for Fix {
     fn eq(&self, other: &Self) -> bool {
         let res = self.designator == other.designator
-            && quantize(self.coordinate.x()) == quantize(other.coordinate.x())
-            && quantize(self.coordinate.y()) == quantize(other.coordinate.y());
+            && self.coordinate.quantize() == other.coordinate.quantize();
 
         trace!("{} == {}: {}", self.designator, other.designator, res);
 
         res
     }
 }
+
 impl Eq for Fix {}
 
-const DECIMALS: u32 = 2;
+#[derive(Copy, Clone, Debug, Serialize)]
+pub struct GraphPosition(pub Point);
 
-fn quantize(v: f64) -> i64 {
-    let factor = 10_i64.pow(DECIMALS) as f64;
-    (v * factor).round() as i64
+impl PartialEq for GraphPosition {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.quantize() == other.0.quantize()
+    }
 }
+
+impl Eq for GraphPosition {}
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct NDB {
@@ -146,7 +150,7 @@ pub struct Locations {
     pub vors: MultiMap<String, VOR>,
     pub ndbs: MultiMap<String, NDB>,
     pub airports: HashMap<String, Airport>,
-    pub airways: FixAirwayMap,
+    pub airways: AirwayGraph,
     pub sids: HashMap<String, MultiMap<String, SID>>,
     pub stars: HashMap<String, MultiMap<String, STAR>>,
 }
@@ -162,7 +166,12 @@ fn range_bearing_regex() -> &'static Regex {
 }
 
 impl Locations {
-    pub(super) fn from_euroscope(sct: Sct, ese: Ese, airways: FixAirwayMap) -> Self {
+    pub(super) fn from_euroscope(
+        sct: Sct,
+        ese: Ese,
+        // airways: FixAirwayMap,
+        airways2: AirwayGraph,
+    ) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
             acc.insert(fix.designator.clone(), fix);
             acc
@@ -180,7 +189,8 @@ impl Locations {
             vors,
             ndbs,
             airports: Airport::from_sct_airports(sct.airports, &sct.runways),
-            airways,
+            // airways,
+            airways: airways2,
             sids: HashMap::new(),
             stars: HashMap::new(),
         };
@@ -394,6 +404,39 @@ impl Locations {
             || self.fixes.contains_key(designator)
             || self.airports.contains_key(designator)
             || self.convert_rwy(designator).is_some()
+    }
+
+    pub fn contains_nav_element(&self, designator: &str, position: GraphPosition) -> bool {
+        let other = position.0.quantize();
+        self.vors
+            .get(designator)
+            .iter()
+            .any(|vor| vor.coordinate.quantize() == other)
+            || self
+                .ndbs
+                .get(designator)
+                .iter()
+                .any(|ndb| ndb.coordinate.quantize() == other)
+            || self
+                .fixes
+                .get(designator)
+                .iter()
+                .any(|fix| fix.coordinate.quantize() == other)
+    }
+}
+
+trait Quantize {
+    const DECIMALS: u32 = 6;
+    const FACTOR: f64 = (10_i64.pow(Self::DECIMALS)) as f64;
+
+    fn quantize(&self) -> (i64, i64);
+}
+
+impl Quantize for Point {
+    fn quantize(&self) -> (i64, i64) {
+        let lat = (self.y() * Self::FACTOR).round();
+        let lon = (self.x() * Self::FACTOR).round();
+        (lat as i64, lon as i64)
     }
 }
 
