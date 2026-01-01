@@ -12,6 +12,7 @@ use tracing::{trace, warn};
 use uom::si::f64::Length;
 use uom::si::length::{meter, nautical_mile};
 
+use crate::adaptation::locations::airways::AirwayGraph;
 use crate::{
     ese::{Ese, SidStar},
     sct::{self, Sct},
@@ -61,7 +62,7 @@ pub struct Fix2 {
 
 impl PartialEq for Fix2 {
     fn eq(&self, other: &Self) -> bool {
-        quantize(self.coordinate.x()) == quantize(other.coordinate.y())
+        quantize(self.coordinate.x()) == quantize(other.coordinate.x())
             && quantize(self.coordinate.y()) == quantize(other.coordinate.y())
     }
 }
@@ -161,6 +162,7 @@ pub struct Locations {
     pub ndbs: MultiMap<String, NDB>,
     pub airports: HashMap<String, Airport>,
     pub airways: FixAirwayMap,
+    pub airways2: AirwayGraph,
     pub sids: HashMap<String, MultiMap<String, SID>>,
     pub stars: HashMap<String, MultiMap<String, STAR>>,
 }
@@ -176,7 +178,12 @@ fn range_bearing_regex() -> &'static Regex {
 }
 
 impl Locations {
-    pub(super) fn from_euroscope(sct: Sct, ese: Ese, airways: FixAirwayMap) -> Self {
+    pub(super) fn from_euroscope(
+        sct: Sct,
+        ese: Ese,
+        airways: FixAirwayMap,
+        airways2: AirwayGraph,
+    ) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
             acc.insert(fix.designator.clone(), fix);
             acc
@@ -195,6 +202,7 @@ impl Locations {
             ndbs,
             airports: Airport::from_sct_airports(sct.airports, &sct.runways),
             airways,
+            airways2,
             sids: HashMap::new(),
             stars: HashMap::new(),
         };

@@ -7,8 +7,10 @@ use std::io;
 use thiserror::Error;
 
 use crate::adaptation::locations::{
-    airways::{AirwayFix, AirwayNeighbours, AirwayNeighboursOfFix, AirwayType, FixAirwayMap},
-    Fix,
+    airways::{
+        AirwayFix, AirwayGraph, AirwayNeighbours, AirwayNeighboursOfFix, AirwayType, FixAirwayMap,
+    },
+    Fix, Fix2,
 };
 
 use super::read_to_string;
@@ -134,6 +136,71 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                 acc
             })
     })?)
+}
+
+// TODO: Return Result && clean up
+pub fn parse_airway_txt2(content: &[u8]) -> AirwayGraph {
+    let unparsed_file = read_to_string(content).unwrap();
+    let airways_parse = AirwayParser::parse(Rule::airways, &unparsed_file);
+
+    let res = airways_parse.map(|mut pairs| {
+        pairs
+            .next()
+            .unwrap()
+            .into_inner()
+            .fold(AirwayGraph::default(), |mut acc, pair| {
+                if matches!(pair.as_rule(), Rule::airway) {
+                    let mut airway_line = pair.into_inner();
+                    let fix_name = airway_line.next().unwrap().as_str().to_string();
+                    let coordinate = parse_coord(airway_line.next().unwrap());
+
+                    let fix = Fix2 { coordinate };
+                    let airway = airway_line.next().unwrap().as_str();
+                    // TODO: parse airway type
+                    // let airway_type = AirwayType::parse(&airway_line.next().unwrap());
+
+                    if let Some(previous) = AirwayFix::parse(airway_line.next().unwrap()) {
+                        acc.insert_or_update_segment(
+                            airway,
+                            &fix_name,
+                            fix.clone(),
+                            &previous.fix.designator,
+                            Fix2 {
+                                coordinate: previous.fix.coordinate,
+                            },
+                            previous.valid_direction,
+                            None,
+                            previous.minimum_level,
+                            None,
+                        );
+                    }
+                    if let Some(next) = AirwayFix::parse(airway_line.next().unwrap()) {
+                        acc.insert_or_update_segment(
+                            airway,
+                            &fix_name,
+                            fix,
+                            &next.fix.designator,
+                            Fix2 {
+                                coordinate: next.fix.coordinate,
+                            },
+                            next.valid_direction,
+                            None,
+                            next.minimum_level,
+                            None,
+                        );
+                    }
+                }
+
+                acc
+            })
+    });
+
+    if let Ok(res) = res {
+        return res;
+    } else {
+        tracing::debug!("PARSING ERROR AirwayNameIdMaps");
+    }
+    todo!()
 }
 
 #[cfg(test)]

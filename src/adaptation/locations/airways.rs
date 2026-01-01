@@ -81,8 +81,8 @@ impl Display for FixId {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct AirwayNameIdMaps {
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct AirwayGraph {
     fixes: Vec<AirwayFix2>,
     fix_id_by_name: HashMap<String, Vec<FixId>>,
     fix_name_by_id: Vec<String>,
@@ -90,7 +90,7 @@ pub struct AirwayNameIdMaps {
     airway_name_by_id: Vec<String>,
 }
 
-impl AirwayNameIdMaps {
+impl AirwayGraph {
     pub fn get_or_insert_fix_id(&mut self, fix: Fix2, name: &str) -> FixId {
         if let Some(ids) = self.fix_id_by_name.get(name) {
             for &id in ids {
@@ -111,6 +111,11 @@ impl AirwayNameIdMaps {
         self.airway_name_by_id.push(name.to_owned());
         self.airway_id_by_name.insert(name.to_owned(), id);
         id
+    }
+
+    #[expect(dead_code)]
+    fn get_fix_by_id(&self, fix: FixId) -> &AirwayFix2 {
+        &self.fixes[fix.0]
     }
 
     pub fn get_airway_id(&self, name: &str) -> Option<AirwayId> {
