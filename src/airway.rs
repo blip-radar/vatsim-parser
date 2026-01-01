@@ -94,18 +94,23 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                         designator: fix_name,
                         coordinate,
                     };
-                    let airway = airway_line.next().unwrap().as_str().to_string();
+                    let airway = airway_line.next().unwrap().as_str();
+                    // let airway: AirwayId = AirwayId::from(airway_string);
                     let airway_type = AirwayType::parse(&airway_line.next().unwrap());
 
                     let previous = AirwayFix::parse(airway_line.next().unwrap());
                     let next = AirwayFix::parse(airway_line.next().unwrap());
 
+                    if let Some(fix) = acc.get_mut(&fix) {
+                        fix.airway_neighbours.contains_key(airway);
+                    }
+
                     acc.entry(fix.clone())
                         .and_modify(|neighbours: &mut AirwayNeighboursOfFix| {
                             neighbours.airway_neighbours.insert(
-                                airway.clone(),
+                                airway.to_string(),
                                 AirwayNeighbours {
-                                    airway: airway.clone(),
+                                    airway: airway.into(),
                                     airway_type,
                                     previous: previous.clone(),
                                     next: next.clone(),
@@ -115,9 +120,9 @@ pub fn parse_airway_txt(content: &[u8]) -> FixAirwayResult {
                         .or_insert(AirwayNeighboursOfFix {
                             fix,
                             airway_neighbours: MultiMap::from_iter([(
-                                airway.clone(),
+                                airway.to_string(),
                                 AirwayNeighbours {
-                                    airway,
+                                    airway: airway.into(),
                                     airway_type,
                                     previous,
                                     next,

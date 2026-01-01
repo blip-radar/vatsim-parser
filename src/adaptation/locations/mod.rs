@@ -54,6 +54,20 @@ impl PartialEq for Fix {
 }
 impl Eq for Fix {}
 
+#[derive(Clone, Debug, Serialize)]
+pub struct Fix2 {
+    pub coordinate: Point,
+}
+
+impl PartialEq for Fix2 {
+    fn eq(&self, other: &Self) -> bool {
+        quantize(self.coordinate.x()) == quantize(other.coordinate.y())
+            && quantize(self.coordinate.y()) == quantize(other.coordinate.y())
+    }
+}
+
+impl Eq for Fix2 {}
+
 const DECIMALS: u32 = 2;
 
 fn quantize(v: f64) -> i64 {
