@@ -19,8 +19,6 @@ use crate::{
     Location,
 };
 
-use self::airways::FixAirwayMap;
-
 #[derive(Clone, Debug, Serialize)]
 pub struct Fix {
     pub designator: String,
@@ -56,18 +54,23 @@ impl PartialEq for Fix {
 impl Eq for Fix {}
 
 #[derive(Clone, Debug, Serialize)]
-pub struct Fix2 {
-    pub coordinate: Point,
-}
+pub struct GraphPosition(pub Point);
 
-impl PartialEq for Fix2 {
-    fn eq(&self, other: &Self) -> bool {
-        quantize(self.coordinate.x()) == quantize(other.coordinate.x())
-            && quantize(self.coordinate.y()) == quantize(other.coordinate.y())
+impl GraphPosition {
+    fn quantize(&self) -> (i64, i64) {
+        let lat = (self.0.y() * 1_000_000.0).round() as i64;
+        let lon = (self.0.y() * 1_000_000.0).round() as i64;
+        (lat, lon)
     }
 }
 
-impl Eq for Fix2 {}
+impl PartialEq for GraphPosition {
+    fn eq(&self, other: &Self) -> bool {
+        self.quantize() == other.quantize()
+    }
+}
+
+impl Eq for GraphPosition {}
 
 const DECIMALS: u32 = 2;
 
@@ -161,7 +164,7 @@ pub struct Locations {
     pub vors: MultiMap<String, VOR>,
     pub ndbs: MultiMap<String, NDB>,
     pub airports: HashMap<String, Airport>,
-    pub airways: FixAirwayMap,
+    // pub airways: FixAirwayMap,
     pub airways2: AirwayGraph,
     pub sids: HashMap<String, MultiMap<String, SID>>,
     pub stars: HashMap<String, MultiMap<String, STAR>>,
@@ -181,7 +184,7 @@ impl Locations {
     pub(super) fn from_euroscope(
         sct: Sct,
         ese: Ese,
-        airways: FixAirwayMap,
+        // airways: FixAirwayMap,
         airways2: AirwayGraph,
     ) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
@@ -201,7 +204,7 @@ impl Locations {
             vors,
             ndbs,
             airports: Airport::from_sct_airports(sct.airports, &sct.runways),
-            airways,
+            // airways,
             airways2,
             sids: HashMap::new(),
             stars: HashMap::new(),
