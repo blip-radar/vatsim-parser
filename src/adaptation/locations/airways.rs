@@ -74,8 +74,11 @@ impl AirwayGraph {
             return None;
         };
 
-        let Some(start) = self.find_fix_id(start) else {
-            tracing::debug!("Start Point {:?} not found in data", start,);
+        let Some(start) = self.find_fix_id(start).or_else(|| {
+            tracing::debug!("Alternative fix lookup for {}", &start.designator);
+            self.find_fix_on_airway(&start.designator, airway)
+        }) else {
+            tracing::debug!("Start Point {:?} not found in AirwayGraph", start);
             return None;
         };
 
