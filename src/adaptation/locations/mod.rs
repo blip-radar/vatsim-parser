@@ -164,8 +164,7 @@ pub struct Locations {
     pub vors: MultiMap<String, VOR>,
     pub ndbs: MultiMap<String, NDB>,
     pub airports: HashMap<String, Airport>,
-    // pub airways: FixAirwayMap,
-    pub airways2: AirwayGraph,
+    pub airways: AirwayGraph,
     pub sids: HashMap<String, MultiMap<String, SID>>,
     pub stars: HashMap<String, MultiMap<String, STAR>>,
 }
@@ -205,7 +204,7 @@ impl Locations {
             ndbs,
             airports: Airport::from_sct_airports(sct.airports, &sct.runways),
             // airways,
-            airways2,
+            airways: airways2,
             sids: HashMap::new(),
             stars: HashMap::new(),
         };

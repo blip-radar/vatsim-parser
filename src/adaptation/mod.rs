@@ -25,7 +25,7 @@ use symbols::Symbols;
 use thiserror::Error;
 use tracing::warn;
 
-use crate::airway::parse_airway_txt2;
+use crate::airway::parse_airway_txt;
 use crate::ese::Agreement;
 use crate::{
     airway::AirwayError,
@@ -165,7 +165,7 @@ impl Adaptation {
         let sct = Sct::parse(&fs_err::read(prf.sct_path())?)?;
         let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
         // let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
-        let airways2 = parse_airway_txt2(&fs_err::read(prf.airways_path())?)?;
+        let airways2 = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let name = sct.info.name.clone();
         let (volumes, sectors) = Sector::from_ese(&ese);
         let (departure_agreements, destination_agreements) = extract_agreements(&ese);
