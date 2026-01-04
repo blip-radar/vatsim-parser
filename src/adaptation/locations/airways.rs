@@ -100,7 +100,7 @@ impl AirwayGraph {
             return None;
         };
 
-        let edges = self.fixes.get(start.0)?.edges.get(&airway)?;
+        let edges = self.fixes[start.0].edges.get(&airway)?;
 
         if edges.len() > 2 {
             tracing::debug!(
