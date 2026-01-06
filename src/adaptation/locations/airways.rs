@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fmt::Display, hash::Hash};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Display},
+    hash::Hash,
+};
 
 use serde::Serialize;
 
@@ -21,12 +25,12 @@ pub struct AirwayFix {
     pub minimum_level: Option<u32>,
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct AirwayEdge {
-    pub to: FixId,
-    pub valid_direction: bool,
-    pub minimum_level: Option<u32>,
-    pub maximum_level: Option<u32>,
+#[derive(Copy, Clone, Debug, Serialize)]
+struct AirwayEdge {
+    to: FixId,
+    valid_direction: bool,
+    minimum_level: Option<u32>,
+    maximum_level: Option<u32>,
 }
 
 impl PartialEq for AirwayEdge {
@@ -36,7 +40,7 @@ impl PartialEq for AirwayEdge {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct AirwayId(pub usize);
+struct AirwayId(usize);
 
 impl Display for AirwayId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -45,7 +49,7 @@ impl Display for AirwayId {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, PartialEq, Eq, Hash)]
-pub struct FixId(pub usize);
+struct FixId(usize);
 
 impl Display for FixId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -290,18 +294,6 @@ impl AirwayGraph {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
-pub struct GraphFix {
-    pub position: GraphPosition,
-    pub edges: HashMap<AirwayId, Vec<AirwayEdge>>,
-}
-
-impl PartialEq<GraphPosition> for GraphFix {
-    fn eq(&self, other: &GraphPosition) -> bool {
-        &self.position == other
-    }
-}
-
 impl Display for AirwayType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -325,5 +317,17 @@ impl Display for AirwayFix {
                 .map_or_else(String::new, |lvl| format!("{lvl:05}")),
             if self.valid_direction { "Y" } else { "N" }
         )
+    }
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+struct GraphFix {
+    position: GraphPosition,
+    edges: HashMap<AirwayId, Vec<AirwayEdge>>,
+}
+
+impl PartialEq<GraphPosition> for GraphFix {
+    fn eq(&self, other: &GraphPosition) -> bool {
+        &self.position == other
     }
 }

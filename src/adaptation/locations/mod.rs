@@ -53,7 +53,7 @@ impl PartialEq for Fix {
 }
 impl Eq for Fix {}
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize)]
 pub struct GraphPosition(pub Point);
 
 impl GraphPosition {

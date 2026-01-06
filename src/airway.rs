@@ -99,31 +99,21 @@ pub fn parse_airway_txt(content: &[u8]) -> AirwayGraphResult {
                     // TODO: parse airway type
                     let _airway_type = AirwayType::parse(&airway_line.next().unwrap());
 
-                    if let Some(previous) = AirwayFix::parse(airway_line.next().unwrap()) {
-                        acc.insert_or_update_segment(
-                            airway,
-                            &fix_name,
-                            fix.clone(),
-                            &previous.fix.designator,
-                            GraphPosition(previous.fix.coordinate),
-                            previous.valid_direction,
-                            None,
-                            previous.minimum_level,
-                            None,
-                        );
-                    }
-                    if let Some(next) = AirwayFix::parse(airway_line.next().unwrap()) {
-                        acc.insert_or_update_segment(
-                            airway,
-                            &fix_name,
-                            fix,
-                            &next.fix.designator,
-                            GraphPosition(next.fix.coordinate),
-                            next.valid_direction,
-                            None,
-                            next.minimum_level,
-                            None,
-                        );
+                    // parse 2 neighbour segments
+                    for _ in 0..2 {
+                        if let Some(segment) = AirwayFix::parse(airway_line.next().unwrap()) {
+                            acc.insert_or_update_segment(
+                                airway,
+                                &fix_name,
+                                fix,
+                                &segment.fix.designator,
+                                GraphPosition(segment.fix.coordinate),
+                                segment.valid_direction,
+                                None,
+                                segment.minimum_level,
+                                None,
+                            );
+                        }
                     }
                 }
 
