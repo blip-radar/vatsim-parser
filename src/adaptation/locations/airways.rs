@@ -6,9 +6,9 @@ use std::{
 
 use serde::Serialize;
 
-use crate::adaptation::locations::GraphPosition;
+use crate::adaptation::locations::Locations;
 
-use super::Fix;
+use super::{Fix, GraphPosition};
 
 #[derive(Copy, Clone, Debug, Serialize, PartialEq)]
 pub enum AirwayType {
@@ -72,7 +72,8 @@ impl AirwayGraph {
         start: &Fix,
         end: &str,
         airway: &str,
-    ) -> Option<Vec<AirwayFix>> {
+        locations: &Locations,
+    ) -> Option<Vec<(AirwayFix, bool)>> {
         let Some(airway) = self.get_airway_id(airway) else {
             tracing::debug!("Airway {} not found in AirwayGraph", airway);
             return None;
@@ -120,16 +121,38 @@ impl AirwayGraph {
                 return Some(
                     expanded_fixes
                         .iter()
-                        .map(|(fix, valid_direction, minimum_level)| AirwayFix {
-                            fix: Fix {
-                                designator: self.fix_name_by_id[fix.0].clone(),
-                                coordinate: self.fixes[fix.0].position.0,
-                            },
-                            valid_direction: *valid_direction,
-                            minimum_level: *minimum_level,
+                        .map(|(fix, valid_direction, minimum_level)| {
+                            let designator = self.fix_name_by_id[fix.0].clone();
+                            let coordinate = self.fixes[fix.0].position;
+                            let is_internal =
+                                locations.contains_nav_element(&designator, coordinate);
+
+                            let af = AirwayFix {
+                                fix: Fix {
+                                    designator: designator,
+                                    coordinate: coordinate.0,
+                                },
+                                valid_direction: *valid_direction,
+                                minimum_level: *minimum_level,
+                            };
+                            (af, is_internal)
                         })
                         .collect(),
                 );
+
+                // return Some(
+                //     expanded_fixes
+                //         .iter()
+                //         .map(|(fix, valid_direction, minimum_level)| AirwayFix {
+                //             fix: Fix {
+                //                 designator: self.fix_name_by_id[fix.0].clone(),
+                //                 coordinate: self.fixes[fix.0].position.0,
+                //             },
+                //             valid_direction: *valid_direction,
+                //             minimum_level: *minimum_level,
+                //         })
+                //         .collect(),
+                // );
             }
         }
 
