@@ -129,7 +129,7 @@ impl AirwayGraph {
 
                             let af = AirwayFix {
                                 fix: Fix {
-                                    designator: designator,
+                                    designator,
                                     coordinate: coordinate.0,
                                 },
                                 valid_direction: *valid_direction,
