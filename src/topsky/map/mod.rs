@@ -9,6 +9,7 @@ use pest::{
     Parser,
 };
 use serde::Serialize;
+use tracing::warn;
 
 use crate::{
     adaptation::{colours::Colour, line_styles::LineStyle, maps::active::Active, Alignment},
@@ -296,13 +297,17 @@ impl MapRule {
                         pair.into_inner().next().unwrap().as_str().to_string(),
                     )),
                     // TODO
-                    Rule::circle => None,
-                    Rule::fontstyle => None,
-                    Rule::textalign => None,
-                    Rule::override_sct => None,
-                    Rule::sctfiledata => None,
-                    Rule::sctdata => None,
-                    Rule::coord_af => None,
+                    rule @ (Rule::circle
+                    | Rule::fontstyle
+                    | Rule::textalign
+                    | Rule::override_sct
+                    | Rule::sctfiledata
+                    | Rule::sctdata
+                    | Rule::coord_af
+                    | Rule::coord_hm) => {
+                        warn!("{rule:?} not implemented");
+                        None
+                    }
                     rule => unreachable!("{rule:?}"),
                 }
             })

@@ -18,7 +18,12 @@ map = { "MAP:" ~ colon_delimited_text ~ NL ~ map_setting+ }
 
 // MAP
 map_setting = _{
-    (" " | "\t")* ~ (folder | colour | asrdata | active | andactive | layer | mapsymbol | fontstyle | fontsize | zoom | style | mapline | text | global | screen_specific | circle | coordline | coordpoly | coord | textalign | override_sct | hidden | sctfiledata | sctdata | coord_af) ~ NL?
+    (" " | "\t")* ~ (
+      folder | colour | asrdata | active | andactive | layer | mapsymbol
+      | fontstyle | fontsize | zoom | style | mapline | text | global
+      | screen_specific | circle | coordline | coordpoly | coord | textalign
+      | override_sct | hidden | sctfiledata | sctdata | coord_af | coord_hm
+    ) ~ NL?
 }
 
 folder = { "FOLDER:" ~ colon_delimited_text }
@@ -105,12 +110,24 @@ verticalalign    = { "T" | "C" | "B" }
 screen_specific = { "SCREEN-SPECIFIC" }
 global          = { "GLOBAL" }
 
+inbound_course = { decimal ~ is_magnetic? }
+is_magnetic = { "M" }
+turn_direction = { "L" | "R" }
+length = { decimal ~ is_minutes? }
+is_minutes = { "MIN" }
+radius = { decimal ~ is_knots? }
+is_knots = { "KTS" }
+
 hidden = { "HIDDEN" }
 
 circle = { ("COORD_CIRCLE:" | "CIRCLE:") ~ coordinate ~ ":" ~ decimal ~ ":" ~ decimal }
 
 coord    = { "COORD:" ~ (coordinate | colon_delimited_text) }
 coord_af = { "COORD_AF:" ~ (coordinate | colon_delimited_text) ~ ":" ~ (decimal ~ ":"){3} ~ direction ~ ":" ~ decimal }
+coord_hm = {
+  "COORD_HM:" ~ (coordinate | colon_delimited_text) ~ ":" ~ inbound_course
+  ~ ":" ~ turn_direction ~ ":" ~ length ~ ":" ~ radius ~ ":" ~ decimal
+}
 
 coordline = { "COORDLINE" }
 coordpoly = { "COORDPOLY:" ~ integer }
