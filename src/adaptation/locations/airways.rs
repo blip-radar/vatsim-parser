@@ -139,20 +139,6 @@ impl AirwayGraph {
                         })
                         .collect(),
                 );
-
-                // return Some(
-                //     expanded_fixes
-                //         .iter()
-                //         .map(|(fix, valid_direction, minimum_level)| AirwayFix {
-                //             fix: Fix {
-                //                 designator: self.fix_name_by_id[fix.0].clone(),
-                //                 coordinate: self.fixes[fix.0].position.0,
-                //             },
-                //             valid_direction: *valid_direction,
-                //             minimum_level: *minimum_level,
-                //         })
-                //         .collect(),
-                // );
             }
         }
 
