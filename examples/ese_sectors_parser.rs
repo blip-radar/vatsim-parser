@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io;
 use std::{env::args_os, fs};
 
@@ -13,7 +13,7 @@ use vatsim_parser::ese::Ese;
 #[derive(Serialize)]
 struct OpenDataSector {
     description: String,
-    volumes: Vec<String>,
+    volumes: HashSet<String>,
     position_priority: Vec<Vec<String>>,
     runway_filter: Vec<Vec<RunwayIdentifier>>,
 }

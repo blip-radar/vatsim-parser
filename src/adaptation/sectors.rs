@@ -25,7 +25,9 @@ pub struct Sector {
     pub id: String,
     pub position_priority: Vec<String>,
     pub runway_filter: Vec<Vec<RunwayIdentifier>>,
-    pub volumes: Vec<String>,
+    pub volumes: HashSet<String>,
+    pub departure_aerodromes: HashSet<String>,
+    pub arrival_aerodromes: HashSet<String>,
 }
 
 // FIXME better error handling and reporting
@@ -118,7 +120,7 @@ impl Sector {
                 if let Some(polygon) = polygon_from_ese(sector) {
                     sectors.0.insert(
                         (sector.owner_priority.clone(), sector.runway_filter.clone()),
-                        id.clone(),
+                        (id.clone(), sector.clone()),
                     );
 
                     volumes.insert(
@@ -138,14 +140,27 @@ impl Sector {
         );
         let sectors = by_priorities_filters.0.into_iter().fold(
             HashMap::new(),
-            |mut acc, ((position_priority, runway_filter), volumes)| {
+            |mut acc, ((position_priority, runway_filter), volumes_and_sector)| {
+                let (volumes, sectors): (Vec<String>, Vec<ese::Sector>) =
+                    volumes_and_sector.into_iter().unzip();
                 acc.insert(
+                    // FIXME better sector name than that of the first volume
                     volumes[0].clone(),
                     Sector {
                         id: volumes[0].clone(),
                         position_priority,
                         runway_filter: vec![runway_filter],
-                        volumes,
+                        volumes: volumes.into_iter().collect(),
+                        departure_aerodromes: sectors
+                            .iter()
+                            .flat_map(|s| &s.departure_airports)
+                            .cloned()
+                            .collect(),
+                        arrival_aerodromes: sectors
+                            .iter()
+                            .flat_map(|s| &s.arrival_airports)
+                            .cloned()
+                            .collect(),
                     },
                 );
                 acc
