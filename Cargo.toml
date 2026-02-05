@@ -22,7 +22,7 @@ itertools = "0.14.0"
 multimap = "0.10.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-pest = "2.8.2"
+pest = "2.8.6"
 pest-ast = "0.3.6"
 pest_derive = "2.8.2"
 phf = { version = "0.13", features = ["macros"] }
