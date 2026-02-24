@@ -145,6 +145,8 @@ impl AirwayGraph {
         None
     }
 
+    // TODO: reduce number of arguments?
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_or_update_segment(
         &mut self,
         airway_name: &str,
