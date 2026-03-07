@@ -31,6 +31,7 @@ struct AirwayEdge {
     valid_direction: bool,
     minimum_level: Option<u32>,
     maximum_level: Option<u32>,
+    airway_type: AirwayType,
 }
 
 impl PartialEq for AirwayEdge {
@@ -145,38 +146,37 @@ impl AirwayGraph {
         None
     }
 
-    // TODO: reduce number of arguments?
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_or_update_segment(
         &mut self,
         airway_name: &str,
         from_name: &str,
         from_fix: GraphPosition,
-        to_name: &str,
-        to_fix: GraphPosition,
-        allowed_to: bool,
-        allowed_from: Option<bool>,
-        minimum_level: Option<u32>,
-        maximum_level: Option<u32>,
+        segment: &AirwayFix,
+        airway_type: AirwayType,
     ) {
         let self_id = self.get_or_insert_fix_id(from_fix, from_name);
-        let to_id = self.get_or_insert_fix_id(to_fix, to_name);
+        let to_id = self.get_or_insert_fix_id(
+            GraphPosition(segment.fix.coordinate),
+            &segment.fix.designator,
+        );
         let awy_id = self.get_or_insert_airway_id(airway_name);
 
         let to_edge = AirwayEdge {
             to: to_id,
-            valid_direction: allowed_to,
-            minimum_level,
-            maximum_level,
+            valid_direction: segment.valid_direction,
+            minimum_level: segment.minimum_level,
+            maximum_level: None,
+            airway_type,
         };
 
         self.insert_or_update_edge(self_id, awy_id, to_edge);
 
         let from_edge = AirwayEdge {
             to: self_id,
-            valid_direction: allowed_from.unwrap_or_default(),
-            minimum_level,
-            maximum_level,
+            valid_direction: false,
+            minimum_level: segment.minimum_level,
+            maximum_level: None,
+            airway_type,
         };
 
         self.insert_or_update_edge(to_id, awy_id, from_edge);

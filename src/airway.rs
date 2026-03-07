@@ -91,27 +91,23 @@ pub fn parse_airway_txt(content: &[u8]) -> AirwayGraphResult {
             .fold(AirwayGraph::default(), |mut acc, pair| {
                 if matches!(pair.as_rule(), Rule::airway) {
                     let mut airway_line = pair.into_inner();
-                    let fix_name = airway_line.next().unwrap().as_str().to_string();
+                    let fix_name = airway_line.next().unwrap().as_str();
                     let coordinate = parse_coord(airway_line.next().unwrap());
 
                     let fix = GraphPosition(coordinate);
                     let airway = airway_line.next().unwrap().as_str();
                     // TODO: parse airway type
-                    let _airway_type = AirwayType::parse(&airway_line.next().unwrap());
+                    let airway_type = AirwayType::parse(&airway_line.next().unwrap());
 
                     // parse 2 neighbour segments
                     for _ in 0..2 {
                         if let Some(segment) = AirwayFix::parse(airway_line.next().unwrap()) {
                             acc.insert_or_update_segment(
                                 airway,
-                                &fix_name,
+                                fix_name,
                                 fix,
-                                &segment.fix.designator,
-                                GraphPosition(segment.fix.coordinate),
-                                segment.valid_direction,
-                                None,
-                                segment.minimum_level,
-                                None,
+                                &segment,
+                                airway_type,
                             );
                         }
                     }
