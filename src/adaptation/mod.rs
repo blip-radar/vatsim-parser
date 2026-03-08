@@ -217,24 +217,24 @@ impl Adaptation {
 }
 
 pub trait Quantize {
-    const DECIMALS: u32 = 6;
-    const FACTOR: f64 = (10_i64.pow(Self::DECIMALS)) as f64;
+    // Quantize coordinates to 6 decimal places.
+    const FACTOR: f64 = 1e6;
+
+    fn q(x: f64) -> i64 {
+        (x * Self::FACTOR).round() as i64
+    }
 
     fn quantize(&self) -> (i64, i64);
 }
 
 impl Quantize for Point {
     fn quantize(&self) -> (i64, i64) {
-        let lat = (self.y() * Self::FACTOR).round();
-        let lon = (self.x() * Self::FACTOR).round();
-        (lat as i64, lon as i64)
+        (Self::q(self.x()), Self::q(self.y()))
     }
 }
 
 impl Quantize for Coord {
     fn quantize(&self) -> (i64, i64) {
-        let x = (self.x * Self::FACTOR).round();
-        let y = (self.y * Self::FACTOR).round();
-        (x as i64, y as i64)
+        (Self::q(self.x), Self::q(self.y))
     }
 }

@@ -13,6 +13,7 @@ use uom::si::f64::Length;
 use uom::si::length::{meter, nautical_mile};
 
 use crate::adaptation::locations::airways::AirwayGraph;
+use crate::adaptation::Quantize as _;
 use crate::{
     ese::{Ese, SidStar},
     sct::{self, Sct},
@@ -412,21 +413,6 @@ impl Locations {
                 .get(designator)
                 .iter()
                 .any(|fix| fix.coordinate.quantize() == other)
-    }
-}
-
-trait Quantize {
-    const DECIMALS: u32 = 6;
-    const FACTOR: f64 = (10_i64.pow(Self::DECIMALS)) as f64;
-
-    fn quantize(&self) -> (i64, i64);
-}
-
-impl Quantize for Point {
-    fn quantize(&self) -> (i64, i64) {
-        let lat = (self.y() * Self::FACTOR).round();
-        let lon = (self.x() * Self::FACTOR).round();
-        (lat as i64, lon as i64)
     }
 }
 
