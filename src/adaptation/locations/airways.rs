@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fmt::{Debug, Display},
     hash::Hash,
+    sync::Arc,
 };
 
 use serde::Serialize;
@@ -58,13 +59,15 @@ impl Display for FixId {
     }
 }
 
+pub type SharedStr = Arc<str>;
+
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct AirwayGraph {
     fixes: Vec<GraphFix>,
-    fix_id_by_name: HashMap<String, Vec<FixId>>,
-    fix_name_by_id: Vec<String>,
-    airway_id_by_name: HashMap<String, AirwayId>,
-    airway_name_by_id: Vec<String>,
+    fix_id_by_name: HashMap<SharedStr, Vec<FixId>>,
+    fix_name_by_id: Vec<SharedStr>,
+    airway_id_by_name: HashMap<SharedStr, AirwayId>,
+    airway_name_by_id: Vec<SharedStr>,
 }
 
 impl AirwayGraph {
@@ -88,7 +91,7 @@ impl AirwayGraph {
             return None;
         };
 
-        if !self.is_fix_id_on_airway(start, airway) {
+        if !self.is_fix_id_on_airway(*start, airway) {
             tracing::debug!(
                 "Start Point {} not on airway {}",
                 self.fix_name_by_id[start.0],
@@ -118,31 +121,31 @@ impl AirwayGraph {
         }
 
         for edge in edges {
-            if let Some(expanded_fixes) = self.traverse_airway(start, edge, end, airway) {
-                return Some(
-                    expanded_fixes
-                        .iter()
-                        .map(|(fix, valid_direction, minimum_level)| {
-                            let designator = self.fix_name_by_id[fix.0].clone();
-                            let coordinate = self.fixes[fix.0].position;
-                            let is_internal =
-                                locations.contains_nav_element(&designator, coordinate);
+            let Some(expanded_fixes) = self.traverse_airway(*start, edge, *end, airway) else {
+                continue;
+            };
 
-                            let af = AirwayFix {
-                                fix: Fix {
-                                    designator,
-                                    coordinate: coordinate.0,
-                                },
-                                valid_direction: *valid_direction,
-                                minimum_level: *minimum_level,
-                            };
-                            (af, is_internal)
-                        })
-                        .collect(),
-                );
-            }
+            return Some(
+                expanded_fixes
+                    .iter()
+                    .map(|(fix, valid_direction, minimum_level)| {
+                        let designator = self.fix_name_by_id[fix.0].clone();
+                        let coordinate = self.fixes[fix.0].position;
+                        let is_internal = locations.contains_nav_element(&designator, coordinate);
+
+                        let af = AirwayFix {
+                            fix: Fix {
+                                designator: designator.to_string(),
+                                coordinate: coordinate.0,
+                            },
+                            valid_direction: *valid_direction,
+                            minimum_level: *minimum_level,
+                        };
+                        (af, is_internal)
+                    })
+                    .collect(),
+            );
         }
-
         None
     }
 
@@ -189,27 +192,24 @@ impl AirwayGraph {
             edges: HashMap::new(),
         });
 
-        self.fix_name_by_id.push(name.to_owned());
-        self.fix_id_by_name
-            .entry(name.to_owned())
-            .or_default()
-            .push(id);
+        let name_arc = SharedStr::from(name);
+
+        self.fix_name_by_id.push(name_arc.clone());
+        self.fix_id_by_name.entry(name_arc).or_default().push(id);
 
         id
     }
 
-    fn find_fix_id(&self, fix: &Fix) -> Option<FixId> {
+    fn find_fix_id(&self, fix: &Fix) -> Option<&FixId> {
         let pos = GraphPosition(fix.coordinate);
         self.get_fix_ids(&fix.designator)?
             .iter()
-            .copied()
             .find(|&id| self.fixes[id.0].position == pos)
     }
 
-    fn find_fix_on_airway(&self, designator: &str, airway: AirwayId) -> Option<FixId> {
+    fn find_fix_on_airway(&self, designator: &str, airway: AirwayId) -> Option<&FixId> {
         self.get_fix_ids(designator)?
             .iter()
-            .copied()
             .find(|&id| self.fixes[id.0].edges.contains_key(&airway))
     }
 
@@ -237,9 +237,11 @@ impl AirwayGraph {
             return id;
         }
 
+        let name_arc = SharedStr::from(name);
+
         let id = AirwayId(self.airway_name_by_id.len());
-        self.airway_name_by_id.push(name.to_owned());
-        self.airway_id_by_name.insert(name.to_owned(), id);
+        self.airway_name_by_id.push(name_arc.clone());
+        self.airway_id_by_name.insert(name_arc, id);
         id
     }
 

@@ -13,6 +13,7 @@ use std::{collections::HashMap, io};
 
 use agreements::extract_agreements;
 use bevy_reflect::Reflect;
+use geo::Coord;
 use geo::Point;
 use icao::AircraftMap;
 use icao::Airline;
@@ -212,5 +213,28 @@ impl Adaptation {
             airports,
             sct_items,
         })
+    }
+}
+
+pub trait Quantize {
+    const DECIMALS: u32 = 6;
+    const FACTOR: f64 = (10_i64.pow(Self::DECIMALS)) as f64;
+
+    fn quantize(&self) -> (i64, i64);
+}
+
+impl Quantize for Point {
+    fn quantize(&self) -> (i64, i64) {
+        let lat = (self.y() * Self::FACTOR).round();
+        let lon = (self.x() * Self::FACTOR).round();
+        (lat as i64, lon as i64)
+    }
+}
+
+impl Quantize for Coord {
+    fn quantize(&self) -> (i64, i64) {
+        let x = (self.x * Self::FACTOR).round();
+        let y = (self.y * Self::FACTOR).round();
+        (x as i64, y as i64)
     }
 }

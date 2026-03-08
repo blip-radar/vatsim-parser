@@ -6,6 +6,7 @@ use serde::Serialize;
 use tracing::warn;
 
 use crate::{
+    adaptation::Quantize as _,
     ese::{self, Ese},
     TwoKeyMultiMap,
 };
@@ -38,16 +39,7 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
         .flat_map(|lines| {
             lines.points.lines().map(|line| {
                 // i64 to be able to use as key below
-                Line::<i64>::new(
-                    (
-                        (line.start.x * 1_000_000.0) as i64,
-                        (line.start.y * 1_000_000.0) as i64,
-                    ),
-                    (
-                        (line.end.x * 1_000_000.0) as i64,
-                        (line.end.y * 1_000_000.0) as i64,
-                    ),
-                )
+                Line::<i64>::new(line.start.quantize(), line.end.quantize())
             })
         })
         .collect();
