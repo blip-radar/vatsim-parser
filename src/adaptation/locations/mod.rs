@@ -24,8 +24,7 @@ pub struct Fix {
     pub designator: String,
     pub coordinate: Point,
 }
-// FIXME format! performance? maybe use fixed point decimals, 6 decimals seems to be common (ca 1.1m)
-// but our data is bad enough that we have to use .2
+
 impl Hash for Fix {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.designator.hash(state);
@@ -41,6 +40,7 @@ impl Hash for Fix {
         );
     }
 }
+
 impl PartialEq for Fix {
     fn eq(&self, other: &Self) -> bool {
         let res = self.designator == other.designator
@@ -340,37 +340,27 @@ impl Locations {
     }
 
     fn convert_rwy(&self, designator: &str) -> Option<Fix> {
-        matches!(designator.len(), 6..=7)
-            .then(|| {
-                designator
-                    .split_at_checked(4)
-                    .and_then(|(ad_designator, rwy_designator)| {
-                        self.airports.get(ad_designator).and_then(|airport| {
-                            airport.runways.iter().find_map(|rwy| {
-                                if rwy.designators.0 == rwy_designator {
-                                    Some(Fix {
-                                        designator: format!(
-                                            "{}{}",
-                                            airport.designator, rwy.designators.0
-                                        ),
-                                        coordinate: rwy.location.0,
-                                    })
-                                } else if rwy.designators.1 == rwy_designator {
-                                    Some(Fix {
-                                        designator: format!(
-                                            "{}{}",
-                                            airport.designator, rwy.designators.1
-                                        ),
-                                        coordinate: rwy.location.1,
-                                    })
-                                } else {
-                                    None
-                                }
-                            })
-                        })
-                    })
+        if !matches!(designator.len(), 6..=7) {
+            return None;
+        }
+
+        let (ad_designator, rwy_designator) = designator.split_at_checked(4)?;
+        let airport = self.airports.get(ad_designator)?;
+
+        airport.runways.iter().find_map(|rwy| {
+            let (rwy_des, coord) = if rwy.designators.0 == rwy_designator {
+                (&rwy.designators.0, rwy.location.0)
+            } else if rwy.designators.1 == rwy_designator {
+                (&rwy.designators.1, rwy.location.1)
+            } else {
+                return None;
+            };
+
+            Some(Fix {
+                designator: format!("{ad}{rwy_des}", ad = airport.designator),
+                coordinate: coord,
             })
-            .flatten()
+        })
     }
 
     fn convert_fix(&self, designator: &str) -> Option<Fix> {
