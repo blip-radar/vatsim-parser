@@ -32,26 +32,51 @@ fn read_to_string(contents: &[u8]) -> Result<String, io::Error> {
 }
 
 // deg: i16, because, i.e. UK uses invalid coordinates for dummy data: S999.00.00.000 E999.00.00.000
-type DegMinSec = (i16, u8, f64);
+#[derive(Copy, Clone, Debug, Default)]
+pub enum Sign {
+    #[default]
+    Pos,
+    Neg,
+}
+
+impl Sign {
+    fn sign(self) -> i8 {
+        match self {
+            Self::Pos => 1,
+            Self::Neg => -1,
+        }
+    }
+}
+
+impl From<&str> for Sign {
+    fn from(hemi: &str) -> Self {
+        match hemi {
+            "N" | "E" | "n" | "e" => Sign::Pos,
+            "S" | "W" | "s" | "w" => Sign::Neg,
+            _ => unreachable!("{hemi} is not a hemisphere"),
+        }
+    }
+}
+
+type DegMinSec = (Sign, u16, u8, f64);
 
 fn decimal_to_dms(decimal: f64, is_latitude: bool) -> (u8, u8, f64, char) {
-    let degrees = decimal as i8;
-    let minutes = (decimal.abs().fract() * 60.0) as u8;
-    let seconds = (decimal.abs() - decimal.abs().floor() - f64::from(minutes) / 60.) * 3600.0;
+    let is_negative = decimal.is_sign_negative();
+    let abs = decimal.abs();
 
-    let direction = if is_latitude {
-        if degrees >= 0 {
-            'N'
-        } else {
-            'S'
-        }
-    } else if degrees >= 0 {
-        'E'
-    } else {
-        'W'
+    let degrees = abs.floor() as u8;
+    let minutes_f64 = abs.fract() * 60.0;
+    let minutes = minutes_f64.floor() as u8;
+    let seconds = minutes_f64.fract() * 60.0;
+
+    let direction = match (is_latitude, is_negative) {
+        (true, false) => 'N',
+        (true, true) => 'S',
+        (false, false) => 'E',
+        (false, true) => 'W',
     };
 
-    (degrees.unsigned_abs(), minutes, seconds, direction)
+    (degrees, minutes, seconds, direction)
 }
 
 pub trait DegMinSecExt {
@@ -69,13 +94,13 @@ pub trait DegMinSecExt {
 
 impl DegMinSecExt for Coord {
     fn from_deg_min_sec(lat: DegMinSec, lng: DegMinSec) -> Self {
-        let lat_deg = f64::from(lat.0);
-        let lat_min = f64::from(lat.1);
-        let lng_deg = f64::from(lng.0);
-        let lng_min = f64::from(lng.1);
+        let lat_deg = f64::from(lat.1);
+        let lat_min = f64::from(lat.2);
+        let lng_deg = f64::from(lng.1);
+        let lng_min = f64::from(lng.2);
         Self {
-            y: lat_deg + lat_deg.signum() * lat_min / 60.0 + lat_deg.signum() * lat.2 / 3600.0,
-            x: lng_deg + lng_deg.signum() * lng_min / 60.0 + lng_deg.signum() * lng.2 / 3600.0,
+            y: (lat_deg + lat_min / 60.0 + lat.3 / 3600.0) * f64::from(lat.0.sign()),
+            x: (lng_deg + lng_min / 60.0 + lng.3 / 3600.0) * f64::from(lng.0.sign()),
         }
     }
 
@@ -178,12 +203,12 @@ where
 mod test {
     use geo::Coord;
 
-    use crate::DegMinSecExt as _;
+    use crate::{DegMinSecExt as _, Sign};
 
     #[test]
     fn test_dms_roundtrip() {
-        let lat = (48, 40, 0.);
-        let lng = (10, 58, 0.5);
+        let lat = (Sign::Pos, 48, 40, 0.);
+        let lng = (Sign::Pos, 10, 58, 0.5);
         let coord = Coord::from_deg_min_sec(lat, lng);
         let expected = 48.666_666_666_666_666;
         assert!(
@@ -200,5 +225,21 @@ mod test {
             expected
         );
         assert_eq!(coord.deg_min_sec_fmt(), "N048.40.00.000 E010.58.00.500");
+    }
+
+    #[test]
+    fn test_negative_zero_degree() {
+        let lat = (0, 30, 0.0); // S00°30'00"
+        let lng = (Sign::Neg, 0, 0, 0.0);
+
+        let coord = Coord::from_deg_min_sec((Sign::Neg, lat.0, lat.1, lat.2), lng);
+
+        assert!(coord.y < 0.0);
+    }
+
+    #[test]
+    fn test_south_zero_degree() {
+        let coord = Coord { x: 0.0, y: -0.5 };
+        assert_eq!(coord.lat_deg_min_sec_fmt(), "S000.30.00.000");
     }
 }

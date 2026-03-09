@@ -13,7 +13,7 @@ use tracing::warn;
 
 use crate::{
     adaptation::{colours::Colour, line_styles::LineStyle, maps::active::Active, Alignment},
-    read_to_string, DegMinSec, DegMinSecExt as _, Location,
+    read_to_string, DegMinSec, DegMinSecExt as _, Location, Sign,
 };
 
 use super::{
@@ -34,21 +34,17 @@ impl CoordinatePart {
             Rule::sct_coord_part => {
                 let mut sct_coord_part = coordinate_part.into_inner();
                 let hemi = sct_coord_part.next().unwrap().as_str();
+                let sign = Sign::from(hemi);
                 let degrees = sct_coord_part
                     .next()
                     .unwrap()
                     .as_str()
-                    .parse::<i16>()
-                    .unwrap()
-                    * match hemi {
-                        "N" | "n" | "E" | "e" => 1,
-                        "S" | "s" | "W" | "w" => -1,
-                        _ => unreachable!("{hemi} is not a hemisphere"),
-                    };
+                    .parse::<u16>()
+                    .unwrap();
                 let min = sct_coord_part.next().unwrap().as_str().parse().unwrap();
                 let sec = sct_coord_part.next().unwrap().as_str().parse().unwrap();
 
-                Self::DegMinSec((degrees, min, sec))
+                Self::DegMinSec((sign, degrees, min, sec))
             }
             rule => unreachable!("{rule:?}"),
         }

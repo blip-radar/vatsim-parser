@@ -9,7 +9,7 @@ use serde::Serialize;
 use thiserror::Error;
 use tracing::warn;
 
-use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, DegMinSecExt as _};
+use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, DegMinSecExt as _, Sign};
 
 use super::read_to_string;
 
@@ -346,21 +346,18 @@ enum SectionName {
 fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
     let mut coordinate_part = pair.into_inner().next().unwrap().into_inner();
     let hemi = coordinate_part.next().unwrap().as_str();
+    let sign = Sign::from(hemi);
     let degrees = coordinate_part
         .next()
         .unwrap()
         .as_str()
-        .parse::<i16>()
-        .unwrap()
-        * match hemi {
-            "N" | "E" | "n" | "e" => 1,
-            "S" | "W" | "s" | "w" => -1,
-            _ => unreachable!("{hemi} is not a hemisphere"),
-        };
+        .parse::<u16>()
+        .unwrap();
+
     let min = coordinate_part.next().unwrap().as_str().parse().unwrap();
     let sec = coordinate_part.next().unwrap().as_str().parse().unwrap();
 
-    (degrees, min, sec)
+    (sign, degrees, min, sec)
 }
 
 // TODO generalise this and other similar into trait

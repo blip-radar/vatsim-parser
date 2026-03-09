@@ -12,6 +12,7 @@ use thiserror::Error;
 use tracing::warn;
 
 use crate::topsky::map::MapLine;
+use crate::Sign;
 use crate::{
     adaptation::{
         colours::Colour,
@@ -527,20 +528,16 @@ enum SectionName {
 fn parse_coordinate_part(pair: Pair<Rule>) -> DegMinSec {
     let mut coordinate_part = pair.into_inner();
     let hemi = coordinate_part.next().unwrap().as_str();
+    let sign = Sign::from(hemi);
     let degrees_str = coordinate_part.next().unwrap().as_str();
     let degrees = degrees_str
-        .parse::<i16>()
+        .parse::<u16>()
         .inspect_err(|e| warn!("Could not parse coordinate, {e}: {degrees_str}"))
-        .unwrap()
-        * match hemi {
-            "N" | "n" | "E" | "e" => 1,
-            "S" | "s" | "W" | "w" => -1,
-            _ => unreachable!("{hemi} is not a hemisphere"),
-        };
+        .unwrap();
     let min = coordinate_part.next().unwrap().as_str().parse().unwrap();
     let sec = coordinate_part.next().unwrap().as_str().parse().unwrap();
 
-    (degrees, min, sec)
+    (sign, degrees, min, sec)
 }
 
 fn parse_coordinate(pair: Pair<Rule>) -> Coord {
