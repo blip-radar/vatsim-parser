@@ -12,7 +12,7 @@ use crate::{
 
 use super::settings::Settings;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Reflect)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Reflect)]
 pub struct Colour {
     pub r: u8,
     pub g: u8,
@@ -98,8 +98,19 @@ impl<'de> Deserialize<'de> for Colour {
     }
 }
 
+impl Serialize for Colour {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        // Serialize in the same format that Deserialize expects: #RRGGBB
+        let hex_string = format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b);
+        serializer.serialize_str(&hex_string)
+    }
+}
+
 /// Colours used in the ASR map
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MapColours {
     pub fix_symbol: Colour,
     pub fix_name: Colour,
@@ -308,7 +319,7 @@ impl Default for MapColours {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SectorColours {
     pub active_background: Colour,
     pub inactive_background: Colour,
@@ -345,7 +356,7 @@ impl Default for SectorColours {
 }
 
 // TODO Euroscope colour fallback?
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrackColours {
     pub assumed: Colour,
     pub advanced: Colour,
@@ -444,7 +455,7 @@ impl Default for TrackColours {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UIColours {
     pub foreground: Colour,
     pub background: Colour,
@@ -519,7 +530,7 @@ impl Default for UIColours {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Colours {
     pub track: TrackColours,
     pub sector: SectorColours,

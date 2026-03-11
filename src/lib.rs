@@ -4,7 +4,7 @@ use bevy_derive::{Deref, DerefMut};
 use bevy_reflect::Reflect;
 use geo::{Coord, Point};
 use multimap::MultiMap;
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use tracing::warn;
 
 pub mod adaptation;
@@ -136,7 +136,7 @@ impl DegMinSecExt for Point {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
 #[reflect(Debug)]
 pub enum Location {
     Fix(String),

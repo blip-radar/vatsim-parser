@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
 use bevy_reflect::Reflect;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::topsky::Topsky;
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
 pub struct Dash {
     pub length: f32,
     pub gap: f32,
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
 pub struct LineStyle {
     pub width: i32,
     pub style: String,

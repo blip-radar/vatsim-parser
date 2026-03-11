@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use geo::{Coord, Line, LineString, Polygon, Winding};
 use multimap::MultiMap;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 
 use super::maps::active::RunwayIdentifier;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Volume {
     pub id: String,
     pub lower_level: u32,
@@ -21,7 +21,7 @@ pub struct Volume {
     pub lateral_border: Polygon,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Sector {
     pub id: String,
     pub position_priority: Vec<String>,

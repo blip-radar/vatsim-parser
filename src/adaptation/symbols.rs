@@ -1,14 +1,14 @@
 use std::{collections::HashMap, sync::OnceLock};
 
 use bevy_reflect::Reflect;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     symbology::{SymbolType, Symbology},
     topsky::Topsky,
 };
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 pub enum SymbolRule {
     Move((f64, f64)),
     Line((f64, f64)),
@@ -21,7 +21,7 @@ pub enum SymbolRule {
 }
 
 type Symbol = Vec<SymbolRule>;
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Symbols {
     pub history_dot: Symbol,
     pub fix: Symbol,

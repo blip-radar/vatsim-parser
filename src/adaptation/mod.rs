@@ -21,7 +21,7 @@ use icao::Airport;
 use line_styles::{line_styles_from_topsky, Dash};
 use sct_items::SctItems;
 use sectors::{Sector, Volume};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use symbols::Symbols;
 use thiserror::Error;
 use tracing::warn;
@@ -42,7 +42,7 @@ use crate::{
 
 use self::{colours::Colours, locations::Locations, maps::MapFolders, settings::Settings};
 
-#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HorizontalAlignment {
     Left,
     #[default]
@@ -50,7 +50,7 @@ pub enum HorizontalAlignment {
     Right,
 }
 
-#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, Deserialize, PartialEq, Eq)]
 pub enum VerticalAlignment {
     Top,
     #[default]
@@ -58,13 +58,13 @@ pub enum VerticalAlignment {
     Bottom,
 }
 
-#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Alignment {
     pub horizontal: HorizontalAlignment,
     pub vertical: VerticalAlignment,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Position {
     pub id: String,
     pub name: String,
@@ -121,7 +121,7 @@ pub enum AdaptationError {
 }
 
 pub type AdaptationResult = Result<Adaptation, AdaptationError>;
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Adaptation {
     pub name: String,
     pub locations: Locations,

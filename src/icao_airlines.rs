@@ -12,7 +12,7 @@ use super::read_to_string;
 pub struct AirlinesParser;
 
 use pest::{Parser, Span};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 fn span_into_string(span: Span) -> String {
     span.as_str().to_string()
@@ -29,7 +29,7 @@ pub struct Airlines {
 #[pest_ast(rule(Rule::EOI))]
 struct Eoi;
 
-#[derive(Debug, FromPest, Serialize, Default, Clone, PartialEq)]
+#[derive(Debug, FromPest, Serialize, Deserialize, Default, Clone, PartialEq)]
 #[pest_ast(rule(Rule::definition))]
 pub struct Airline {
     #[pest_ast(inner(rule(Rule::designator), with(span_into_string)))]

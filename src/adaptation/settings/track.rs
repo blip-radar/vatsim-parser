@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::topsky::Topsky;
 
@@ -6,7 +6,7 @@ const DEFAULT_VECTOR_LENGTH: f32 = 1.0;
 const DEFAULT_HISTORY_DOTS_COUNT: u32 = 6;
 
 // TODO some systems support duration instead of count
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HistoryDotsSettings {
     pub enabled: bool,
     pub count: u32,
@@ -39,7 +39,7 @@ impl Default for HistoryDotsSettings {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VectorSettings {
     pub enabled: bool,
     pub length: f32,
@@ -74,7 +74,7 @@ impl Default for VectorSettings {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TrackSettings {
     pub vector: VectorSettings,
     pub history_dots: HistoryDotsSettings,

@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use pest::iterators::Pairs;
 use pest::{iterators::Pair, Parser as _};
 use pest_derive::Parser;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::warn;
 
@@ -50,14 +50,14 @@ pub struct Airway {
     pub end: Location,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Region {
     pub name: String,
     pub colour_name: String,
     pub polygon: Vec<Coord>,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Label {
     pub name: String,
     pub coordinate: Location,

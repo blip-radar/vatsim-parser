@@ -5,7 +5,7 @@ use bevy_reflect::Reflect;
 use geo::{Coord, LineString};
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::warn;
 
@@ -259,7 +259,7 @@ fn parse_wildcard_u32(pair: &Pair<Rule>) -> Option<u32> {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Agreement {
     pub previous_fix: Option<String>,
     pub departure_runway: Option<String>,

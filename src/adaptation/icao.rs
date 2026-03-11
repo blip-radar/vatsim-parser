@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use bevy_derive::{Deref, DerefMut};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub use crate::icao_airlines::Airline;
 
-#[derive(Copy, Clone, Debug, Serialize, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub enum Wtc {
     LIGHT,
     MEDIUM,
@@ -49,7 +49,7 @@ impl Display for Wtc {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum AircraftType {
     LANDPLANE,
     SEAPLANE,
@@ -84,7 +84,7 @@ impl FromStr for AircraftType {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum EngineType {
     JET,
     TURBOPROP,
@@ -117,7 +117,7 @@ impl FromStr for EngineType {
     }
 }
 
-#[derive(Clone, Debug, Default, Deref, DerefMut, Serialize)]
+#[derive(Clone, Debug, Default, Deref, DerefMut, Serialize, Deserialize)]
 pub struct AircraftMap(pub HashMap<String, Aircraft>);
 
 impl AircraftMap {
@@ -128,7 +128,7 @@ impl AircraftMap {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Aircraft {
     pub designator: String,
     pub wtc: Wtc,
@@ -139,7 +139,7 @@ pub struct Aircraft {
     pub name: String,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Airport {
     pub designator: String,
     pub name: String,

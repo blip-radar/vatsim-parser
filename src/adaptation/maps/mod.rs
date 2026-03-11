@@ -3,7 +3,7 @@ pub mod active;
 use std::collections::HashMap;
 
 use geo::{MultiLineString, Point, Polygon};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
@@ -25,14 +25,14 @@ use super::{
 
 pub type MapFolders = HashMap<String, Folder>;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Folder {
     pub name: String,
     pub hidden: bool,
     pub maps: HashMap<String, Map>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Map {
     pub name: String,
     pub folder: String,
@@ -73,7 +73,7 @@ impl Map {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MapGroup {
     pub colour: Colour,
     pub font_size: f32,
@@ -168,14 +168,14 @@ impl MapGroup {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Label {
     pub coordinate: Point,
     pub alignment: Alignment,
     pub text: String,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Symbol {
     pub name: String,
     pub coordinate: Point,

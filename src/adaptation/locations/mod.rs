@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 use geo::{point, Destination as _, Geodesic, Point};
 use multimap::MultiMap;
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::{trace, warn};
 use uom::si::f64::Length;
 use uom::si::length::{meter, nautical_mile};
@@ -20,7 +20,7 @@ use crate::{
     Location,
 };
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fix {
     pub designator: String,
     pub coordinate: Point,
@@ -55,7 +55,7 @@ impl PartialEq for Fix {
 
 impl Eq for Fix {}
 
-#[derive(Copy, Clone, Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct GraphPosition(pub Point);
 
 impl PartialEq for GraphPosition {
@@ -66,20 +66,20 @@ impl PartialEq for GraphPosition {
 
 impl Eq for GraphPosition {}
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NDB {
     pub designator: String,
     pub frequency: String,
     pub coordinate: Point,
 }
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct VOR {
     pub designator: String,
     pub frequency: String,
     pub coordinate: Point,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Runway {
     pub designators: (String, String),
     pub headings: (u32, u32),
@@ -87,7 +87,7 @@ pub struct Runway {
     pub aerodrome: String,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Airport {
     pub designator: String,
     pub coordinate: Point,
@@ -118,7 +118,7 @@ impl Airport {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SID {
     pub name: String,
     pub airport: String,
@@ -126,7 +126,7 @@ pub struct SID {
     pub waypoints: Vec<Fix>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct STAR {
     pub name: String,
     pub airport: String,
@@ -145,7 +145,7 @@ impl PartialEq<String> for STAR {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Locations {
     pub fixes: MultiMap<String, Fix>,
     pub vors: MultiMap<String, VOR>,

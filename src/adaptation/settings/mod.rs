@@ -2,7 +2,7 @@ pub mod track;
 
 use std::{collections::HashMap, path::PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{squawks::SquawksJson, symbology::Symbology, topsky::Topsky};
@@ -13,7 +13,7 @@ use super::{line_styles::LineStyle, Alignment};
 
 const EUROSCOPE_FONT_SIZE_FACTOR: f32 = 3.5;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LineSettings {
     /// line style of .sct runway centre lines
     pub runway_centreline: LineStyle,
@@ -221,7 +221,7 @@ impl Default for LineSettings {
 }
 
 /// settings for .sct labels activated in .asr
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LabelSettings {
     pub vor_alignment: Alignment,
     pub vor_font_size: f32,
@@ -292,7 +292,7 @@ impl Default for LabelSettings {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MapsSettings {
     // TODO font from name is complicated in bevy currently
     /// path to font file
@@ -337,7 +337,7 @@ impl Default for MapsSettings {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SsrSettings {
     pub special_use_codes: HashMap<String, String>,
 }
@@ -373,7 +373,7 @@ impl SsrSettings {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Settings {
     // text, enabled, divergence, delay(?),  ...?
     // clam: ClamSettings,

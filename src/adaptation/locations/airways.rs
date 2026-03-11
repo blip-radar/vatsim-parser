@@ -5,13 +5,13 @@ use std::{
     sync::Arc,
 };
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::adaptation::locations::Locations;
 
 use super::{Fix, GraphPosition};
 
-#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum AirwayType {
     High,
     Low,
@@ -26,7 +26,7 @@ pub struct AirwayFix {
     pub minimum_level: Option<u32>,
 }
 
-#[derive(Copy, Clone, Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 struct AirwayEdge {
     to: FixId,
     valid_direction: bool,
@@ -41,7 +41,7 @@ impl PartialEq for AirwayEdge {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct AirwayId(usize);
 
 impl Display for AirwayId {
@@ -50,7 +50,7 @@ impl Display for AirwayId {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 struct FixId(usize);
 
 impl Display for FixId {
@@ -61,7 +61,7 @@ impl Display for FixId {
 
 pub type SharedStr = Arc<str>;
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AirwayGraph {
     fixes: Vec<GraphFix>,
     fix_id_by_name: HashMap<SharedStr, Vec<FixId>>,
@@ -333,7 +333,7 @@ impl Display for AirwayFix {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct GraphFix {
     position: GraphPosition,
     edges: HashMap<AirwayId, Vec<AirwayEdge>>,

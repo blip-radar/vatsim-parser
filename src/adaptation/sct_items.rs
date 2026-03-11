@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use geo::{Coord, HasDimensions, Line, LineString, MultiLineString};
 use itertools::Itertools as _;
 use multimap::MultiMap;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::sct::{Airway, Label, Region, Sct};
@@ -14,7 +14,7 @@ use super::{
     settings::Settings,
 };
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ColouredLines {
     pub colour: Colour,
     pub lines: MultiLineString,
@@ -151,7 +151,7 @@ fn airway_to_multi_line_string(
         .0
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SctItems {
     pub sids: MultiMap<String, ColouredLines>,
     pub stars: MultiMap<String, ColouredLines>,
