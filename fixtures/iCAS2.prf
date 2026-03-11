@@ -66,7 +66,7 @@ Settings	airportcoords	\EDMM\NavData\icao.txt
 Settings	airports	\EDMM\ICAO\ICAO_Airports.txt
 Settings	airways	\EDMM\NavData\airway.txt
 Settings	alias	\EDMM\Alias\alias.txt
-Settings	sector	\EDMM-AeroNav.sct
+Settings	sector	\EDMM.sct
 Sounds	Sound18	\EDMM\Sounds\startup_silent.wav
 TeamSpeakVccs	Ts3DialogBottom	721
 TeamSpeakVccs	Ts3DialogLeft	119

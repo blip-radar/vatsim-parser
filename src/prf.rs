@@ -183,7 +183,7 @@ mod test {
             PathBuf::from(".")
                 .canonicalize()
                 .unwrap()
-                .join("./fixtures/EDMM-AeroNav.sct")
+                .join("./fixtures/EDMM.sct")
         );
     }
 

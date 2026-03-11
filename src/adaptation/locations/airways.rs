@@ -61,6 +61,7 @@ impl Display for FixId {
 
 pub type SharedStr = Arc<str>;
 
+// FIXME serialise to a human-overridable
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AirwayGraph {
     fixes: Vec<GraphFix>,

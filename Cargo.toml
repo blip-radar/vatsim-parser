@@ -19,6 +19,7 @@ from-pest = "0.3.4"
 fs-err = "3.3.0"
 geo = { version = "0.32", features = ["use-serde"] }
 itertools = "0.14.0"
+jrsonnet-evaluator = "0.5.0-pre97"
 multimap = "0.10.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
@@ -36,6 +37,7 @@ uom = { version = "0.38", features = ["serde"] }
 [dev-dependencies]
 geojson = { version = "1.0", features = ["geo-types"] }
 pretty_assertions_sorted = "1.0.0"
+test-log = { version = "0.2.19", features = ["trace"] }
 tracing-subscriber = "0.3.23"
 
 [lints.clippy]

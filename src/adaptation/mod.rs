@@ -9,7 +9,7 @@ pub mod sectors;
 pub mod settings;
 pub mod symbols;
 
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, fmt::Write as _, io, path::Path};
 
 use agreements::extract_agreements;
 use bevy_reflect::Reflect;
@@ -18,12 +18,15 @@ use geo::Point;
 use icao::AircraftMap;
 use icao::Airline;
 use icao::Airport;
+use jrsonnet_evaluator::manifest::escape_string_json;
+use jrsonnet_evaluator::{FileImportResolver, StateBuilder};
 use line_styles::{line_styles_from_topsky, Dash};
 use sct_items::SctItems;
 use sectors::{Sector, Volume};
 use serde::{Deserialize, Serialize};
 use symbols::Symbols;
 use thiserror::Error;
+use tracing::trace;
 use tracing::warn;
 
 use crate::airway::parse_airway_txt;
@@ -116,6 +119,12 @@ pub enum AdaptationError {
     Airlines(#[from] AirlinesError),
     #[error("ICAO_Airports.txt: {0}")]
     Airports(#[from] AirportsError),
+    #[error("Failed to serialize/deserialize JSON: {0}")]
+    JSON(#[from] serde_json::Error),
+    #[error("Failed to format: {0}")]
+    Formatting(#[from] std::fmt::Error),
+    #[error("Jsonnet: {0}")]
+    Jsonnet(#[from] jrsonnet_evaluator::Error),
     #[error("failed to read file: {0}")]
     FileRead(#[from] io::Error),
 }
@@ -214,6 +223,48 @@ impl Adaptation {
             sct_items,
         })
     }
+
+    /// Apply jsonnet overlays to this adaptation using jsonnet's native merging
+    /// Each .jsonnet file will be merged using jsonnet's + operator
+    pub fn apply_jsonnet_overlays<P: AsRef<Path>>(
+        self,
+        jsonnet_paths: impl Iterator<Item = P>,
+    ) -> Result<Self, AdaptationError> {
+        let mut jsonnet_paths = jsonnet_paths.peekable();
+        if jsonnet_paths.peek().is_none() {
+            return Ok(self);
+        }
+
+        let mut jsonnet = serde_json::to_string(&self)?;
+
+        for path in jsonnet_paths {
+            write!(
+                jsonnet,
+                "\n + (import {})",
+                escape_string_json(&path.as_ref().display().to_string())
+            )?;
+        }
+        trace!("jsonnet_file: {jsonnet}");
+
+        // Create a State with file import resolver for overlay files
+        let mut state_builder = StateBuilder::default();
+        state_builder.import_resolver(FileImportResolver::new(vec![std::env::current_dir()?]));
+        let state = state_builder.build();
+
+        let merged_jsonnet_val = state.evaluate_snippet("combined.jsonnet", jsonnet)?;
+
+        let json_string = merged_jsonnet_val.to_string()?;
+
+        Ok(serde_json::from_str(&json_string)?)
+    }
+
+    /// Create adaptation from .prf and apply .jsonnet overlays
+    pub fn from_prf_with_overlays<P: AsRef<Path>>(
+        prf: &Prf,
+        jsonnet_paths: impl Iterator<Item = P>,
+    ) -> AdaptationResult {
+        Self::from_prf(prf)?.apply_jsonnet_overlays(jsonnet_paths)
+    }
 }
 
 pub trait Quantize {
@@ -229,12 +280,42 @@ pub trait Quantize {
 
 impl Quantize for Point {
     fn quantize(&self) -> (i64, i64) {
-        (Self::q(self.x()), Self::q(self.y()))
+        self.0.quantize()
     }
 }
 
 impl Quantize for Coord {
     fn quantize(&self) -> (i64, i64) {
         (Self::q(self.x), Self::q(self.y))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use test_log::test;
+
+    use crate::{adaptation::Adaptation, prf::Prf};
+    use std::{collections::HashMap, fs, path::Path};
+
+    #[test]
+    fn test_jsonnet_overlays() {
+        let prf_path = Path::new("fixtures/iCAS2.prf");
+
+        let contents = fs::read(prf_path).unwrap();
+        let prf = Prf::parse(prf_path, &contents).unwrap();
+
+        let adaptation_res = Adaptation::from_prf_with_overlays(
+            &prf,
+            [Path::new("fixtures/overlay.jsonnet")].into_iter(),
+        );
+
+        assert!(adaptation_res.is_ok(), "{}", adaptation_res.unwrap_err());
+        let adaptation = adaptation_res.unwrap();
+
+        assert_eq!(
+            adaptation.settings.ssr.special_use_codes,
+            HashMap::from([("7000".to_string(), "V".to_string())])
+        );
+        assert!(adaptation.settings.track.vector.enabled);
     }
 }
