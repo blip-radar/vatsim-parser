@@ -34,7 +34,7 @@ tracing = "0.1.43"
 uom = { version = "0.38", features = ["serde"] }
 
 [dev-dependencies]
-geojson = { version = "0.24", features = ["geo-types"] }
+geojson = { version = "1.0", features = ["geo-types"] }
 pretty_assertions_sorted = "1.0.0"
 tracing-subscriber = "0.3.22"
 
