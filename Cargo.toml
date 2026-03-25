@@ -36,7 +36,7 @@ uom = { version = "0.38", features = ["serde"] }
 [dev-dependencies]
 geojson = { version = "1.0", features = ["geo-types"] }
 pretty_assertions_sorted = "1.0.0"
-tracing-subscriber = "0.3.22"
+tracing-subscriber = "0.3.23"
 
 [lints.clippy]
 # TODO fix
