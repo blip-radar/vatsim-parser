@@ -124,7 +124,7 @@ pub enum AdaptationError {
     #[error("Failed to format: {0}")]
     Formatting(#[from] std::fmt::Error),
     #[error("Jsonnet: {0}")]
-    Jsonnet(#[from] jrsonnet_evaluator::Error),
+    Jsonnet(String),
     #[error("failed to read file: {0}")]
     FileRead(#[from] io::Error),
 }
@@ -251,9 +251,13 @@ impl Adaptation {
         state_builder.import_resolver(FileImportResolver::new(vec![std::env::current_dir()?]));
         let state = state_builder.build();
 
-        let merged_jsonnet_val = state.evaluate_snippet("combined.jsonnet", jsonnet)?;
+        let merged_jsonnet_val = state
+            .evaluate_snippet("combined.jsonnet", jsonnet)
+            .map_err(|e| AdaptationError::Jsonnet(e.to_string()))?;
 
-        let json_string = merged_jsonnet_val.to_string()?;
+        let json_string = merged_jsonnet_val
+            .to_string()
+            .map_err(|e| AdaptationError::Jsonnet(e.to_string()))?;
 
         Ok(serde_json::from_str(&json_string)?)
     }
