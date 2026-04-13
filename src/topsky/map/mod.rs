@@ -300,7 +300,8 @@ impl MapRule {
                     | Rule::sctfiledata
                     | Rule::sctdata
                     | Rule::coord_af
-                    | Rule::coord_hm) => {
+                    | Rule::coord_hm
+                    | Rule::coord_pbd) => {
                         warn!("{rule:?} not implemented");
                         None
                     }

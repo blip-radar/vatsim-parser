@@ -23,6 +23,7 @@ map_setting = _{
       | fontstyle | fontsize | zoom | style | mapline | text | global
       | screen_specific | circle | coordline | coordpoly | coord | textalign
       | override_sct | hidden | sctfiledata | sctdata | coord_af | coord_hm
+      | coord_pbd
     ) ~ NL?
 }
 
@@ -128,6 +129,7 @@ coord_hm = {
   "COORD_HM:" ~ (coordinate | colon_delimited_text) ~ ":" ~ inbound_course
   ~ ":" ~ turn_direction ~ ":" ~ length ~ ":" ~ radius ~ ":" ~ decimal
 }
+coord_pbd = { "COORD_PBD:" ~ icao ~ "/" ~ runway_designator ~ ":" ~ decimal ~ ":" ~ ASCII_DIGIT+ }
 
 coordline = { "COORDLINE" }
 coordpoly = { "COORDPOLY:" ~ integer }
