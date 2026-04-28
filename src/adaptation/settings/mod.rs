@@ -5,7 +5,7 @@ use std::{collections::HashMap, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::{squawks::SquawksJson, symbology::Symbology, topsky::Topsky};
+use crate::{prf::Prf, squawks::SquawksJson, symbology::Symbology, topsky::Topsky};
 
 use self::track::TrackSettings;
 
@@ -382,6 +382,7 @@ pub struct Settings {
     pub track: TrackSettings,
     pub coopans: bool,
     pub ssr: SsrSettings,
+    pub asr_files: Vec<PathBuf>,
 }
 
 impl Settings {
@@ -389,6 +390,7 @@ impl Settings {
         symbology: &Symbology,
         topsky: Option<&Topsky>,
         squawks: Option<&SquawksJson>,
+        prf: &Prf,
     ) -> Self {
         Self {
             maps: MapsSettings::from_euroscope(symbology, topsky),
@@ -400,6 +402,7 @@ impl Settings {
                 .as_ref()
                 .map(|sq| SsrSettings::from_squawks_json(sq))
                 .unwrap_or_default(),
+            asr_files: (1..10).filter_map(|i| prf.recent_path(i)).collect(),
         }
     }
 }

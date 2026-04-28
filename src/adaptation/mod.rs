@@ -226,7 +226,7 @@ impl Adaptation {
                 Some,
             )
         });
-        let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref());
+        let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref(), prf);
         let colours = Colours::from_euroscope(&symbology, &sct, &topsky, &settings);
         let locations = Locations::from_euroscope(sct.clone(), ese, airways);
         let sct_items = SctItems::from_sct(sct, &locations, &colours, &settings);
