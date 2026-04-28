@@ -9,15 +9,18 @@ pub mod sectors;
 pub mod settings;
 pub mod symbols;
 
+use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Write as _, io, path::Path};
 
 use agreements::extract_agreements;
 use bevy_reflect::Reflect;
+use fs_err::read;
 use geo::Coord;
 use geo::Point;
 use icao::AircraftMap;
 use icao::Airline;
 use icao::Airport;
+use itertools::Itertools;
 use jrsonnet_evaluator::manifest::escape_string_json;
 use jrsonnet_evaluator::{FileImportResolver, StateBuilder};
 use line_styles::{line_styles_from_topsky, Dash};
@@ -31,6 +34,7 @@ use tracing::warn;
 
 use crate::airway::parse_airway_txt;
 use crate::ese::Agreement;
+use crate::prf::PrfError;
 use crate::{
     airway::AirwayError,
     ese::{self, Ese, EseError},
@@ -107,6 +111,8 @@ pub enum AdaptationError {
     Sct(#[from] SctError),
     #[error("ESE: {0}")]
     Ese(#[from] EseError),
+    #[error("Prf: {0}")]
+    Prf(#[from] PrfError),
     #[error("Symbology: {0}")]
     Symbology(#[from] SymbologyError),
     #[error("Topsky: {0}")]
@@ -121,12 +127,39 @@ pub enum AdaptationError {
     Airports(#[from] AirportsError),
     #[error("Failed to serialize/deserialize JSON: {0}")]
     JSON(#[from] serde_json::Error),
+    #[error("Failed to serialize/deserialize TOML: {0}")]
+    TOML(#[from] toml::de::Error),
     #[error("Failed to format: {0}")]
     Formatting(#[from] std::fmt::Error),
     #[error("Jsonnet: {0}")]
     Jsonnet(String),
     #[error("failed to read file: {0}")]
     FileRead(#[from] io::Error),
+}
+
+fn normalise_path(base: &Path, to_normalise: PathBuf) -> Result<PathBuf, AdaptationError> {
+    Ok(base.join(to_normalise).canonicalize()?)
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AdaptationSetup {
+    pub prf: PathBuf,
+    pub overlays: Vec<PathBuf>,
+}
+impl AdaptationSetup {
+    pub fn parse(adaptation_toml: &Path) -> Result<Self, AdaptationError> {
+        let mut adaptation_setup: AdaptationSetup = toml::from_slice(&read(adaptation_toml)?)?;
+        let adaptation_toml_parent = adaptation_toml.parent().expect("Cannot be root/prefix");
+        adaptation_setup.prf = normalise_path(adaptation_toml_parent, adaptation_setup.prf)?;
+        adaptation_setup.overlays = adaptation_setup
+            .overlays
+            .into_iter()
+            .map(|overlay| normalise_path(adaptation_toml_parent, overlay))
+            .try_collect()?;
+        trace!("{adaptation_setup:?}");
+
+        Ok(adaptation_setup)
+    }
 }
 
 pub type AdaptationResult = Result<Adaptation, AdaptationError>;
@@ -174,8 +207,7 @@ impl Adaptation {
         // TODO parallelise/asyncify where able
         let sct = Sct::parse(&fs_err::read(prf.sct_path())?)?;
         let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
-        // let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
-        let airways2 = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
+        let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let name = sct.info.name.clone();
         let (volumes, sectors) = Sector::from_ese(&ese);
         let (departure_agreements, destination_agreements) = extract_agreements(&ese);
@@ -196,7 +228,7 @@ impl Adaptation {
         });
         let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref());
         let colours = Colours::from_euroscope(&symbology, &sct, &topsky, &settings);
-        let locations = Locations::from_euroscope(sct.clone(), ese, airways2);
+        let locations = Locations::from_euroscope(sct.clone(), ese, airways);
         let sct_items = SctItems::from_sct(sct, &locations, &colours, &settings);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
@@ -269,6 +301,16 @@ impl Adaptation {
     ) -> AdaptationResult {
         Self::from_prf(prf)?.apply_jsonnet_overlays(jsonnet_paths)
     }
+
+    /// Create adaptation from adaptation.toml
+    pub fn from_adaptation_toml<P: AsRef<Path>>(adaptation_toml: &P) -> AdaptationResult {
+        let adaptation_setup = AdaptationSetup::parse(adaptation_toml.as_ref())?;
+
+        Self::from_prf_with_overlays(
+            &Prf::parse(&adaptation_setup.prf, &read(&adaptation_setup.prf)?)?,
+            adaptation_setup.overlays.iter(),
+        )
+    }
 }
 
 pub trait Quantize {
@@ -300,6 +342,21 @@ mod tests {
 
     use crate::{adaptation::Adaptation, prf::Prf};
     use std::{collections::HashMap, fs, path::Path};
+
+    #[test]
+    fn test_adaptation_toml() {
+        let adaptation_res =
+            Adaptation::from_adaptation_toml(&Path::new("fixtures/adaptation.toml"));
+
+        assert!(adaptation_res.is_ok(), "{}", adaptation_res.unwrap_err());
+        let adaptation = adaptation_res.unwrap();
+
+        assert_eq!(
+            adaptation.settings.ssr.special_use_codes,
+            HashMap::from([("7000".to_string(), "V".to_string())])
+        );
+        assert!(adaptation.settings.track.vector.enabled);
+    }
 
     #[test]
     fn test_jsonnet_overlays() {
