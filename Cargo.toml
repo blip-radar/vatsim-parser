@@ -1,4 +1,5 @@
 [package]
+
 name = "vatsim-parser"
 authors = [
         "Robin Gloster <mail@glob.in>",
