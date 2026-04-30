@@ -260,7 +260,7 @@ fn parse_wildcard_u32(pair: &Pair<Rule>) -> Option<u32> {
 }
 
 #[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Agreement {
+pub struct Constraint {
     pub previous_fix: Option<String>,
     pub departure_runway: Option<String>,
     pub subsequent_fix: Option<String>,
@@ -272,7 +272,7 @@ pub struct Agreement {
     pub descent_level: Option<u32>,
     pub description: String,
 }
-impl Agreement {
+impl Constraint {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut cop = pair.into_inner();
         let previous_fix = parse_wildcard_string(&cop.next().unwrap());
@@ -321,7 +321,7 @@ pub struct STAR {
 pub struct Ese {
     pub positions: HashMap<String, Position>,
     pub sectors: HashMap<String, Sector>,
-    pub agreements: Vec<Agreement>,
+    pub constraints: Vec<Constraint>,
     pub sids_stars: Vec<SidStar>,
 }
 
@@ -330,7 +330,7 @@ pub type EseResult = Result<Ese, EseError>;
 #[derive(Debug)]
 enum Section {
     Positions(HashMap<String, Position>),
-    Sectors((HashMap<String, Sector>, Vec<Agreement>)),
+    Sectors((HashMap<String, Sector>, Vec<Constraint>)),
     SidsStars(Vec<SidStar>),
     Unsupported,
 }
@@ -371,8 +371,8 @@ fn parse_coordinate(pair: Pair<Rule>) -> Coord {
 enum SectorRule {
     Sector((Vec<String>, Sector)),
     SectorLine((String, SectorLine)),
-    FirCop(Agreement),
-    Cop(Agreement),
+    FirCop(Constraint),
+    Cop(Constraint),
     CircleSectorLine((String, CircleSectorLine)),
     DisplaySectorline,
     Msaw((String, MSAW)),
@@ -382,8 +382,8 @@ fn parse_airspace(pair: Pair<Rule>) -> SectorRule {
     match pair.as_rule() {
         Rule::sectorline => SectorRule::SectorLine(SectorLine::parse(pair)),
         Rule::sector => SectorRule::Sector(Sector::parse(pair)),
-        Rule::cop => SectorRule::Cop(Agreement::parse(pair)),
-        Rule::fir_cop => SectorRule::FirCop(Agreement::parse(pair)),
+        Rule::cop => SectorRule::Cop(Constraint::parse(pair)),
+        Rule::fir_cop => SectorRule::FirCop(Constraint::parse(pair)),
         Rule::display_sectorline => SectorRule::DisplaySectorline,
         Rule::circle_sectorline => SectorRule::CircleSectorLine(CircleSectorLine::parse(pair)),
         Rule::msaw => SectorRule::Msaw(MSAW::parse(pair)),
@@ -438,17 +438,17 @@ type SectorsLinesBorders = (
     HashMap<String, CircleSectorLine>,
     HashMap<String, SectorLine>,
     HashMap<String, Vec<String>>,
-    Vec<Agreement>,
+    Vec<Constraint>,
 );
 fn collect_sectors(
-    (mut sectors, mut circle_sector_lines, mut sector_lines, mut borders, mut agreements): SectorsLinesBorders,
+    (mut sectors, mut circle_sector_lines, mut sector_lines, mut borders, mut constraints): SectorsLinesBorders,
     rule: SectorRule,
 ) -> SectorsLinesBorders {
     match rule {
         SectorRule::Cop(cop) => {
-            agreements.push(cop);
+            constraints.push(cop);
         }
-        SectorRule::FirCop(cop) => agreements.push(cop),
+        SectorRule::FirCop(cop) => constraints.push(cop),
         SectorRule::SectorLine((id, sector_line)) => {
             if let Some(_overwritten) = sector_lines.insert(id.clone(), sector_line) {
                 warn!("duplicate sector_line: {id}");
@@ -474,13 +474,13 @@ fn collect_sectors(
         circle_sector_lines,
         sector_lines,
         borders,
-        agreements,
+        constraints,
     )
 }
 
 fn combine_sectors_with_borders(
-    (sectors, _circle_sector_lines, lines, borders, agreements): SectorsLinesBorders,
-) -> (HashMap<String, Sector>, Vec<Agreement>) {
+    (sectors, _circle_sector_lines, lines, borders, constraints): SectorsLinesBorders,
+) -> (HashMap<String, Sector>, Vec<Constraint>) {
     // TODO circle_sector_lines
     (
         sectors
@@ -499,7 +499,7 @@ fn combine_sectors_with_borders(
                 (id, sector)
             })
             .collect(),
-        agreements,
+        constraints,
     )
 }
 
@@ -591,7 +591,7 @@ impl Ese {
             Some((_, Section::Positions(positions))) => positions,
             _ => HashMap::new(),
         };
-        let (sectors, agreements) = match sections.remove_entry(&SectionName::Airspace) {
+        let (sectors, constraints) = match sections.remove_entry(&SectionName::Airspace) {
             Some((_, Section::Sectors(sectors))) => sectors,
             _ => (HashMap::new(), vec![]),
         };
@@ -603,7 +603,7 @@ impl Ese {
         Ok(Ese {
             positions,
             sectors,
-            agreements,
+            constraints,
             sids_stars,
         })
     }
@@ -616,7 +616,7 @@ mod test {
     use geo::line_string;
 
     use crate::{
-        ese::{Agreement, Ese, Position, SectorLine, SidStar, SID, STAR},
+        ese::{Constraint, Ese, Position, SectorLine, SidStar, SID, STAR},
         Coord,
     };
 
@@ -990,13 +990,14 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
         assert_eq!(alb_0_105.top, 10500);
         assert_eq!(alb_0_105.bottom, 0);
         assert_eq!(
-            ese.agreements
+            ese.constraints
                 .iter()
-                .filter(|agreement| agreement.entry_sector
-                    == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105")
+                .filter(
+                    |constraint| constraint.entry_sector == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105"
+                )
                 .collect::<Vec<_>>(),
             vec![
-                &Agreement {
+                &Constraint {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("RUDNO".to_string()),
@@ -1008,7 +1009,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     descent_level: Some(9000),
                     description: "RUDNO".to_string(),
                 },
-                &Agreement {
+                &Constraint {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("STAUB".to_string()),
@@ -1023,12 +1024,14 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
             ]
         );
         assert_eq!(
-            ese.agreements
+            ese.constraints
                 .iter()
-                .filter(|agreement| agreement.exit_sector == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105")
+                .filter(
+                    |constraint| constraint.exit_sector == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105"
+                )
                 .collect::<Vec<_>>(),
             vec![
-                &Agreement {
+                &Constraint {
                     previous_fix: None,
                     departure_runway: None,
                     fix: None,
@@ -1040,7 +1043,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     descent_level: Some(9300),
                     description: "INDIV".to_string(),
                 },
-                &Agreement {
+                &Constraint {
                     previous_fix: None,
                     departure_runway: None,
                     fix: Some("MIQ".to_string()),

@@ -1,5 +1,5 @@
-pub mod agreements;
 pub mod colours;
+pub mod constraints;
 pub mod icao;
 pub mod line_styles;
 pub mod locations;
@@ -12,8 +12,8 @@ pub mod symbols;
 use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Write as _, io, path::Path};
 
-use agreements::extract_agreements;
 use bevy_reflect::Reflect;
+use constraints::extract_constraints;
 use fs_err::read;
 use geo::Coord;
 use geo::Point;
@@ -33,7 +33,7 @@ use tracing::trace;
 use tracing::warn;
 
 use crate::airway::parse_airway_txt;
-use crate::ese::Agreement;
+use crate::ese::Constraint;
 use crate::prf::PrfError;
 use crate::{
     airway::AirwayError,
@@ -171,8 +171,8 @@ pub struct Adaptation {
     pub positions: HashMap<String, Position>,
     pub volumes: HashMap<String, Volume>,
     pub sectors: HashMap<String, Sector>,
-    pub departure_agreements: Vec<Agreement>,
-    pub destination_agreements: Vec<Agreement>,
+    pub departure_constraints: Vec<Constraint>,
+    pub destination_constraints: Vec<Constraint>,
     pub maps: MapFolders,
     // TODO
     // pub areas,
@@ -210,7 +210,7 @@ impl Adaptation {
         let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let name = sct.info.name.clone();
         let (volumes, sectors) = Sector::from_ese(&ese);
-        let (departure_agreements, destination_agreements) = extract_agreements(&ese);
+        let (departure_constraints, destination_constraints) = extract_constraints(&ese);
         let positions = Position::from_ese_positions(ese.positions.clone());
         let symbology = Symbology::parse(&fs_err::read(prf.symbology_path())?)?;
         let squawks = prf
@@ -238,8 +238,8 @@ impl Adaptation {
             positions,
             volumes,
             sectors,
-            departure_agreements,
-            destination_agreements,
+            departure_constraints,
+            destination_constraints,
             maps: topsky
                 .as_ref()
                 .map(|topsky| maps::from_topsky(topsky, &settings, &colours, &locations))
