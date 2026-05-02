@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::io;
 
 use bevy_reflect::Reflect;
@@ -272,6 +273,31 @@ pub struct Constraint {
     pub descent_level: Option<u32>,
     pub description: String,
 }
+impl fmt::Display for Constraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let fix = self.fix.as_deref().unwrap_or("*");
+        write!(
+            f,
+            "{fix:<8} {:<30} → {:<30}",
+            self.exit_sector, self.entry_sector
+        )?;
+        if let Some(cl) = self.climb_level {
+            write!(f, "  FL{}", cl / 100)?;
+        }
+        if let Some(dl) = self.descent_level {
+            write!(f, "  FL{}", dl / 100)?;
+        }
+        if let Some(rwy) = self
+            .departure_runway
+            .as_deref()
+            .or(self.arrival_runway.as_deref())
+        {
+            write!(f, "  [{rwy}]")?;
+        }
+        Ok(())
+    }
+}
+
 impl Constraint {
     fn parse(pair: Pair<Rule>) -> Self {
         let mut cop = pair.into_inner();
