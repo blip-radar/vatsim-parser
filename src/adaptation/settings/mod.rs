@@ -4,6 +4,8 @@ use std::{collections::HashMap, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tracing::warn;
+use uom::si::time::minute;
+use uom::si::{f32::Time, time::second};
 
 use crate::{prf::Prf, squawks::SquawksJson, symbology::Symbology, topsky::Topsky};
 
@@ -373,6 +375,32 @@ impl SsrSettings {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CoordinationSettings {
+    pub act_time: Time,
+    pub abi_time: Time,
+    pub rev_time: Time,
+    pub lam_timeout: Time,
+}
+
+impl CoordinationSettings {
+    const DEFAULT_ACT_TIME_MIN: f32 = 15.0;
+    const DEFAULT_ABI_TIME_MIN: f32 = 30.0;
+    const DEFAULT_REV_TIME_MIN: f32 = 5.0;
+    const DEFAULT_LAM_TIMEOUT_SEC: f32 = 5.0;
+}
+
+impl Default for CoordinationSettings {
+    fn default() -> Self {
+        Self {
+            act_time: Time::new::<minute>(Self::DEFAULT_ACT_TIME_MIN),
+            abi_time: Time::new::<minute>(Self::DEFAULT_ABI_TIME_MIN),
+            rev_time: Time::new::<minute>(Self::DEFAULT_REV_TIME_MIN),
+            lam_timeout: Time::new::<second>(Self::DEFAULT_LAM_TIMEOUT_SEC),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Settings {
     // text, enabled, divergence, delay(?),  ...?
@@ -383,6 +411,7 @@ pub struct Settings {
     pub coopans: bool,
     pub ssr: SsrSettings,
     pub asr_files: Vec<PathBuf>,
+    pub coordination: CoordinationSettings,
 }
 
 impl Settings {
@@ -403,6 +432,7 @@ impl Settings {
                 .map(|sq| SsrSettings::from_squawks_json(sq))
                 .unwrap_or_default(),
             asr_files: (1..10).filter_map(|i| prf.recent_path(i)).collect(),
+            coordination: CoordinationSettings::default(),
         }
     }
 }
