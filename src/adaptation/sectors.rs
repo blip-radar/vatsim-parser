@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    marker::PhantomData,
+};
 
 use geo::{Coord, Line, LineString, Polygon, Winding};
 use multimap::MultiMap;
@@ -19,6 +22,24 @@ pub struct Volume {
     pub lower_level: u32,
     pub upper_level: u32,
     pub lateral_border: Polygon,
+    private: PhantomData<()>,
+}
+impl Volume {
+    pub fn new(
+        id: String,
+        lower_level: u32,
+        upper_level: u32,
+        mut lateral_border: LineString,
+    ) -> Self {
+        lateral_border.make_ccw_winding();
+        Self {
+            id,
+            lower_level,
+            upper_level,
+            lateral_border: Polygon::new(lateral_border, vec![]),
+            private: PhantomData,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -32,7 +53,7 @@ pub struct Sector {
 }
 
 // FIXME better error handling and reporting
-fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
+fn polygon_from_ese(sector: &ese::Sector) -> Option<LineString> {
     let lines: Vec<_> = sector
         .border
         .iter()
@@ -65,7 +86,7 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
         return None;
     }
 
-    let mut line_ring = if let Some(start_point) = points.iter().next() {
+    let line_ring = if let Some(start_point) = points.iter().next() {
         let mut stack = vec![*start_point];
         let mut line_ring = vec![];
         let mut current = *start_point;
@@ -95,10 +116,9 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<Polygon> {
     .iter()
     .map(|c| Coord::from((c.x as f64, c.y as f64)) / 1_000_000.0)
     .collect::<LineString>();
-    line_ring.make_ccw_winding();
 
     if line_ring.0.len() == lines.len() + 1 {
-        Some(Polygon::new(line_ring, vec![]))
+        Some(line_ring)
     } else {
         None
     }
@@ -117,12 +137,7 @@ impl Sector {
 
                     volumes.insert(
                         id.clone(),
-                        Volume {
-                            id: id.clone(),
-                            lower_level: sector.bottom,
-                            upper_level: sector.top,
-                            lateral_border: polygon,
-                        },
+                        Volume::new(id.clone(), sector.bottom, sector.top, polygon),
                     );
                 } else {
                     warn!("Could not compute valid polygon for {id}");
