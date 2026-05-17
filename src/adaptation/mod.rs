@@ -282,6 +282,7 @@ impl Adaptation {
         let mut state_builder = StateBuilder::default();
         state_builder.import_resolver(FileImportResolver::new(vec![std::env::current_dir()?]));
         let state = state_builder.build();
+        let _enter = state.enter();
 
         let merged_jsonnet_val = state
             .evaluate_snippet("combined.jsonnet", jsonnet)
