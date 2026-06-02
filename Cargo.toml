@@ -39,7 +39,7 @@ uom = { version = "0.38", features = ["serde"] }
 [dev-dependencies]
 geojson = { version = "1.0", features = ["geo-types"] }
 pretty_assertions_sorted = "1.0.0"
-test-log = { version = "0.2.20", features = ["trace"] }
+test-log = { version = "0.2.21", features = ["trace"] }
 tracing-subscriber = "0.3.23"
 
 [lints.clippy]
