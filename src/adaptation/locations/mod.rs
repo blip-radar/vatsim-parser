@@ -12,8 +12,12 @@ use tracing::{trace, warn};
 use uom::si::f64::Length;
 use uom::si::length::{meter, nautical_mile};
 
+use std::collections::hash_map::Entry;
+
+use crate::adaptation::icao::IcaoAirport;
 use crate::adaptation::locations::airways::AirwayGraph;
 use crate::adaptation::Quantize as _;
+use crate::navdata_airports::NavdataAirport;
 use crate::{
     ese::{Ese, SidStar},
     sct::{self, Sct},
@@ -91,6 +95,8 @@ pub struct Runway {
 pub struct Airport {
     pub designator: String,
     pub coordinate: Point,
+    pub name: Option<String>,
+    pub country: Option<String>,
     pub runways: Vec<Runway>,
 }
 impl Airport {
@@ -111,6 +117,8 @@ impl Airport {
                             .cloned()
                             .collect(),
                         designator: ap.designator,
+                        name: None,
+                        country: None,
                     },
                 )
             })
@@ -170,8 +178,9 @@ impl Locations {
     pub(super) fn from_euroscope(
         sct: Sct,
         ese: Ese,
-        // airways: FixAirwayMap,
-        airways2: AirwayGraph,
+        airways: AirwayGraph,
+        icao_airports: HashMap<String, IcaoAirport>,
+        navdata_airports: HashMap<String, NavdataAirport>,
     ) -> Self {
         let fixes = sct.fixes.into_iter().fold(MultiMap::new(), |mut acc, fix| {
             acc.insert(fix.designator.clone(), fix);
@@ -185,13 +194,43 @@ impl Locations {
             acc.insert(ndb.designator.clone(), ndb);
             acc
         });
+        let airports = navdata_airports.into_iter().fold(
+            Airport::from_sct_airports(sct.airports, &sct.runways),
+            |mut airports, (designator, navdata_ap)| {
+                match airports.entry(designator.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        entry.get_mut().name.get_or_insert(navdata_ap.name);
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(Airport {
+                            designator,
+                            coordinate: navdata_ap.location,
+                            name: Some(navdata_ap.name),
+                            country: None,
+                            runways: vec![],
+                        });
+                    }
+                }
+                airports
+            },
+        );
+        let airports =
+            icao_airports
+                .into_iter()
+                .fold(airports, |mut airports, (designator, icao_ap)| {
+                    if let Some(ap) = airports.get_mut(&designator) {
+                        let IcaoAirport { name, country, .. } = icao_ap;
+                        ap.name.get_or_insert(name);
+                        ap.country.get_or_insert(country);
+                    }
+                    airports
+                });
         let mut locations = Locations {
             fixes,
             vors,
             ndbs,
-            airports: Airport::from_sct_airports(sct.airports, &sct.runways),
-            // airways,
-            airways: airways2,
+            airports,
+            airways,
             sids: HashMap::new(),
             stars: HashMap::new(),
         };
@@ -480,6 +519,8 @@ mod test {
                 "EDDM".to_string(),
                 Airport {
                     designator: "EDDM".to_string(),
+                    name: None,
+                    country: None,
                     runways: vec![
                         Runway {
                             designators: ("08R".to_string(), "26L".to_string()),

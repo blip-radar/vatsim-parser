@@ -15,6 +15,7 @@ pub mod icao_aircraft;
 pub mod icao_airlines;
 pub mod icao_airports;
 pub mod isec;
+pub mod navdata_airports;
 pub mod prf;
 pub mod sct;
 pub mod squawks;

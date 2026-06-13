@@ -140,7 +140,7 @@ pub struct Aircraft {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Airport {
+pub struct IcaoAirport {
     pub designator: String,
     pub name: String,
     pub country: String,

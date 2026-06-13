@@ -19,7 +19,6 @@ use geo::Coord;
 use geo::Point;
 use icao::AircraftMap;
 use icao::Airline;
-use icao::Airport;
 use itertools::Itertools;
 use jrsonnet_evaluator::manifest::escape_string_json;
 use jrsonnet_evaluator::{FileImportResolver, StateBuilder};
@@ -34,6 +33,7 @@ use tracing::warn;
 
 use crate::airway::parse_airway_txt;
 use crate::ese::Constraint;
+use crate::navdata_airports::{parse_navdata_airports, NavdataAirportsError};
 use crate::prf::PrfError;
 use crate::{
     airway::AirwayError,
@@ -119,6 +119,8 @@ pub enum AdaptationError {
     Topsky(#[from] TopskyError),
     #[error("airway.txt: {0}")]
     Airways(#[from] AirwayError),
+    #[error("icao.txt: {0}")]
+    NavdataAirports(#[from] NavdataAirportsError),
     #[error("ICAO_Aircraft.txt: {0}")]
     Aircraft(#[from] AircraftError),
     #[error("ICAO_Airlines.txt: {0}")]
@@ -197,7 +199,6 @@ pub struct Adaptation {
     // external/extra_plugin_settings?
     pub aircraft: AircraftMap,
     pub airlines: HashMap<String, Airline>,
-    pub airports: HashMap<String, Airport>,
     /// .sct items used for drawing maps and otherwise not usable
     pub sct_items: SctItems,
 }
@@ -228,11 +229,13 @@ impl Adaptation {
         });
         let settings = Settings::from_euroscope(&symbology, topsky.as_ref(), squawks.as_ref(), prf);
         let colours = Colours::from_euroscope(&symbology, &sct, &topsky, &settings);
-        let locations = Locations::from_euroscope(sct.clone(), ese, airways);
+        let airports = parse_airports(&fs_err::read(prf.airports_path())?)?;
+        let navdata_airports = parse_navdata_airports(&fs_err::read(prf.navdata_airports_path())?)?;
+        let locations =
+            Locations::from_euroscope(sct.clone(), ese, airways, airports, navdata_airports);
         let sct_items = SctItems::from_sct(sct, &locations, &colours, &settings);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
-        let airports = parse_airports(&fs_err::read(prf.airports_path())?)?;
         Ok(Adaptation {
             name,
             positions,
@@ -251,7 +254,6 @@ impl Adaptation {
             settings,
             aircraft,
             airlines,
-            airports,
             sct_items,
         })
     }

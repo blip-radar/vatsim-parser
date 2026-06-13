@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::io;
 use thiserror::Error;
 
-use crate::adaptation::icao::Airport;
+use crate::adaptation::icao::IcaoAirport;
 
 use super::read_to_string;
 
@@ -21,7 +21,7 @@ pub enum AirportsError {
     FileRead(#[from] io::Error),
 }
 
-pub type AirportsResult = Result<HashMap<String, Airport>, AirportsError>;
+pub type AirportsResult = Result<HashMap<String, IcaoAirport>, AirportsError>;
 
 pub fn parse_airports(content: &[u8]) -> AirportsResult {
     let unparsed_file = read_to_string(content)?;
@@ -39,7 +39,7 @@ pub fn parse_airports(content: &[u8]) -> AirportsResult {
                     let name = line.next().unwrap().as_str().to_string();
                     let country = line.next().unwrap().as_str().to_string();
 
-                    acc.entry(designator.clone()).or_insert(Airport {
+                    acc.entry(designator.clone()).or_insert(IcaoAirport {
                         designator,
                         name,
                         country,
@@ -57,7 +57,7 @@ mod test {
 
     use pretty_assertions_sorted::assert_eq_sorted;
 
-    use crate::adaptation::icao::Airport;
+    use crate::adaptation::icao::IcaoAirport;
 
     use super::parse_airports;
 
@@ -76,7 +76,7 @@ EDGL	BERUFSGENOSSENSCHAFTLICHE UNFALLKLINIK LUDWIGSHAFEN	Germany";
             HashMap::from([
                 (
                     "EBOS".to_string(),
-                    Airport {
+                    IcaoAirport {
                         designator: "EBOS".to_string(),
                         name: "OOSTENDE BRUGGE/OOSTENDE".to_string(),
                         country: "Belgium".to_string(),
@@ -84,7 +84,7 @@ EDGL	BERUFSGENOSSENSCHAFTLICHE UNFALLKLINIK LUDWIGSHAFEN	Germany";
                 ),
                 (
                     "EDDM".to_string(),
-                    Airport {
+                    IcaoAirport {
                         designator: "EDDM".to_string(),
                         name: "MUNICH".to_string(),
                         country: "Germany".to_string(),
@@ -92,7 +92,7 @@ EDGL	BERUFSGENOSSENSCHAFTLICHE UNFALLKLINIK LUDWIGSHAFEN	Germany";
                 ),
                 (
                     "EDGL".to_string(),
-                    Airport {
+                    IcaoAirport {
                         designator: "EDGL".to_string(),
                         name: "BERUFSGENOSSENSCHAFTLICHE UNFALLKLINIK LUDWIGSHAFEN".to_string(),
                         country: "Germany".to_string(),

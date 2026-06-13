@@ -1,0 +1,11 @@
+airports = { SOI ~ NL? ~ (COMMENT | definition)* ~ EOI }
+
+definition = {
+    designator ~ decimal ~ decimal ~ name ~ NL?
+}
+
+designator = @{ (LETTER | ASCII_DIGIT)+ }
+name       = @{ (!NEWLINE ~ ANY)+ }
+
+COMMENT    = _{ (";" | "//") ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " | "\t" }
