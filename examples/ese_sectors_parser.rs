@@ -7,7 +7,7 @@ use geojson::{Feature, FeatureCollection};
 use serde::Serialize;
 use serde_json::Map;
 use vatsim_parser::adaptation::maps::active::RunwayIdentifier;
-use vatsim_parser::adaptation::sectors::Sector;
+use vatsim_parser::adaptation::sectors::Sectors;
 use vatsim_parser::ese::Ese;
 
 #[derive(Serialize)]
@@ -33,8 +33,9 @@ fn main() {
         .into_string()
         .unwrap();
     let ese = Ese::parse(&fs::read(ese_path).unwrap()).expect("unsuccessful parse");
-    let (volumes, sectors) = Sector::from_ese(&ese);
+    let (volumes, sectors) = Sectors::from_ese(&ese);
     let open_data_sectors = sectors
+        .0
         .into_iter()
         .filter(|(_id, s)| s.volumes.iter().any(|v| v.starts_with(&filter)))
         .map(|(id, s)| {
