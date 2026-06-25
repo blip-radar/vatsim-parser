@@ -24,13 +24,14 @@ use jrsonnet_evaluator::manifest::escape_string_json;
 use jrsonnet_evaluator::{FileImportResolver, StateBuilder};
 use line_styles::{line_styles_from_topsky, Dash};
 use sct_items::SctItems;
-use sectors::{Sector, Volume};
+use sectors::Volume;
 use serde::{Deserialize, Serialize};
 use symbols::Symbols;
 use thiserror::Error;
 use tracing::trace;
 use tracing::warn;
 
+use crate::adaptation::sectors::Sectors;
 use crate::airway::parse_airway_txt;
 use crate::ese::Constraint;
 use crate::navdata_airports::{parse_navdata_airports, NavdataAirportsError};
@@ -172,7 +173,7 @@ pub struct Adaptation {
     // TODO id -> pos? something else might be more useful/efficient (freq, prefix, suffix)?
     pub positions: HashMap<String, Position>,
     pub volumes: HashMap<String, Volume>,
-    pub sectors: HashMap<String, Sector>,
+    pub sectors: Sectors,
     pub departure_constraints: Vec<Constraint>,
     pub destination_constraints: Vec<Constraint>,
     pub maps: MapFolders,
@@ -210,7 +211,7 @@ impl Adaptation {
         let ese = Ese::parse(&fs_err::read(prf.ese_path())?)?;
         let airways = parse_airway_txt(&fs_err::read(prf.airways_path())?)?;
         let name = sct.info.name.clone();
-        let (volumes, sectors) = Sector::from_ese(&ese);
+        let (volumes, sectors) = Sectors::from_ese(&ese);
         let (departure_constraints, destination_constraints) = extract_constraints(&ese);
         let positions = Position::from_ese_positions(ese.positions.clone());
         let symbology = Symbology::parse(&fs_err::read(prf.symbology_path())?)?;

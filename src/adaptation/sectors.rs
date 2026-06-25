@@ -3,6 +3,7 @@ use std::{
     marker::PhantomData,
 };
 
+use bevy_derive::Deref;
 use geo::{Coord, Line, LineString, Polygon, Winding};
 use multimap::MultiMap;
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,9 @@ use crate::{
 };
 
 use super::maps::active::RunwayIdentifier;
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Deref)]
+pub struct Sectors(pub HashMap<String, Sector>);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Volume {
@@ -124,8 +128,8 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<LineString> {
     }
 }
 
-impl Sector {
-    pub fn from_ese(ese: &Ese) -> (HashMap<String, Volume>, HashMap<String, Sector>) {
+impl Sectors {
+    pub fn from_ese(ese: &Ese) -> (HashMap<String, Volume>, Sectors) {
         let (by_priorities_filters, volumes) = ese.sectors.iter().fold(
             (TwoKeyMultiMap(MultiMap::new()), HashMap::new()),
             |(mut sectors, mut volumes), (id, sector)| {
@@ -173,6 +177,11 @@ impl Sector {
                 acc
             },
         );
-        (volumes, sectors)
+        (volumes, Sectors(sectors))
+    }
+
+    pub fn find_id_by_volume(&self, vol: &str) -> Option<&String> {
+        self.iter()
+            .find_map(|(id, sector)| sector.volumes.contains(vol).then_some(id))
     }
 }
