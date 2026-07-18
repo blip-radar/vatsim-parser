@@ -20,6 +20,15 @@ use super::maps::active::RunwayIdentifier;
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Deref)]
 pub struct Sectors(pub HashMap<String, Sector>);
 
+impl<'a> IntoIterator for &'a Sectors {
+    type Item = (&'a String, &'a Sector);
+    type IntoIter = std::collections::hash_map::Iter<'a, String, Sector>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Volume {
     pub id: String,
