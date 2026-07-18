@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::warn;
 
-use crate::{adaptation::maps::active::RunwayIdentifier, DegMinSec, DegMinSecExt as _, Sign};
+use crate::{
+    adaptation::maps::active::RunwayIdentifier, adaptation::settings::CoordinationTiming,
+    DegMinSec, DegMinSecExt as _, Sign,
+};
 
 use super::read_to_string;
 
@@ -260,7 +263,7 @@ fn parse_wildcard_u32(pair: &Pair<Rule>) -> Option<u32> {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
 pub struct Constraint {
     pub previous_fix: Option<String>,
     pub departure_runway: Option<String>,
@@ -272,6 +275,10 @@ pub struct Constraint {
     pub climb_level: Option<u32>,
     pub descent_level: Option<u32>,
     pub description: String,
+    /// OLDI timing override.
+    #[serde(default)]
+    #[reflect(ignore)]
+    pub coord_timing: Option<CoordinationTiming>,
 }
 impl fmt::Display for Constraint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -323,7 +330,28 @@ impl Constraint {
             climb_level,
             descent_level,
             description,
+            coord_timing: None,
         }
+    }
+
+    /// A deterministic, unique key identifying this exact constraint.
+    ///
+    /// This allows indexing in `HashMap`, to be able to override easily.
+    #[must_use]
+    pub fn key(&self) -> String {
+        fn opt(f: Option<&str>) -> &str {
+            f.unwrap_or("*")
+        }
+        format!(
+            "{}#{}#{}#{}#{}#{}#{}",
+            opt(self.previous_fix.as_deref()),
+            opt(self.departure_runway.as_deref()),
+            opt(self.subsequent_fix.as_deref()),
+            opt(self.arrival_runway.as_deref()),
+            opt(self.fix.as_deref()),
+            self.exit_sector,
+            self.entry_sector,
+        )
     }
 }
 
@@ -645,6 +673,36 @@ mod test {
         ese::{Constraint, Ese, Position, SectorLine, SidStar, SID, STAR},
         Coord,
     };
+
+    #[test]
+    fn constraint_key_distinguishes_same_designator_different_crossing() {
+        let base = Constraint {
+            previous_fix: None,
+            departure_runway: None,
+            subsequent_fix: Some("EDDN".to_string()),
+            arrival_runway: None,
+            fix: Some("UPALA".to_string()),
+            exit_sector: "EDMM\u{b7}EDMMALB\u{b7}105\u{b7}135".to_string(),
+            entry_sector: "EDMM\u{b7}EDMMFRK\u{b7}000\u{b7}135".to_string(),
+            climb_level: None,
+            descent_level: Some(13000),
+            description: "UPALA".to_string(),
+            coord_timing: None,
+        };
+        let other = Constraint {
+            subsequent_fix: Some("EDDE".to_string()),
+            exit_sector: "EDMM\u{b7}EDMMALB\u{b7}245\u{b7}315".to_string(),
+            entry_sector: "EDMM\u{b7}EDMMBBG\u{b7}245\u{b7}295".to_string(),
+            descent_level: Some(25000),
+            ..base.clone()
+        };
+
+        assert_ne!(
+            base.key(),
+            other.key(),
+            "same COP designator with different sector/subsequent_fix must yield different keys"
+        );
+    }
 
     #[test]
     fn test_ese_positions() {
@@ -1034,6 +1092,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     climb_level: None,
                     descent_level: Some(9000),
                     description: "RUDNO".to_string(),
+                    coord_timing: None,
                 },
                 &Constraint {
                     previous_fix: None,
@@ -1046,6 +1105,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     climb_level: None,
                     descent_level: Some(10000),
                     description: "STAUB".to_string(),
+                    coord_timing: None,
                 },
             ]
         );
@@ -1068,6 +1128,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     climb_level: None,
                     descent_level: Some(9300),
                     description: "INDIV".to_string(),
+                    coord_timing: None,
                 },
                 &Constraint {
                     previous_fix: None,
@@ -1080,6 +1141,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     climb_level: None,
                     descent_level: Some(8000),
                     description: "MIQ".to_string(),
+                    coord_timing: None,
                 },
             ]
         );

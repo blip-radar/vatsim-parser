@@ -375,12 +375,34 @@ impl SsrSettings {
     }
 }
 
+/// Override of ABI/ACT/REV send-window timing.
+///
+/// Falls through to the next-less-specific level (constraint > FIR > global) when
+/// `None`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct CoordinationTiming {
+    pub act_time: Option<Time>,
+    pub abi_time: Option<Time>,
+    pub rev_time: Option<Time>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResolvedCoordinationTiming {
+    pub act_time: Time,
+    pub abi_time: Time,
+    pub rev_time: Time,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CoordinationSettings {
     pub act_time: Time,
     pub abi_time: Time,
     pub rev_time: Time,
+    /// LAM acknowledgement timeout
     pub lam_timeout: Time,
+    /// Per-partner-FIR overrides, keyed by the partner FIR.
+    #[serde(default)]
+    pub fir_overrides: HashMap<String, CoordinationTiming>,
 }
 
 impl CoordinationSettings {
@@ -388,6 +410,30 @@ impl CoordinationSettings {
     const DEFAULT_ABI_TIME_MIN: f32 = 30.0;
     const DEFAULT_REV_TIME_MIN: f32 = 5.0;
     const DEFAULT_LAM_TIMEOUT_SEC: f32 = 5.0;
+
+    /// Resolves the effective ABI/ACT/REV timing for a given partner FIR and/or a
+    /// specific matched `Constraint`'s own override.
+    #[must_use]
+    pub fn resolve(
+        &self,
+        fir: Option<&str>,
+        constraint_timing: Option<&CoordinationTiming>,
+    ) -> ResolvedCoordinationTiming {
+        let fir_override = fir.and_then(|f| self.fir_overrides.get(f));
+
+        let pick = |select: fn(&CoordinationTiming) -> Option<Time>, default: Time| {
+            constraint_timing
+                .and_then(select)
+                .or_else(|| fir_override.and_then(select))
+                .unwrap_or(default)
+        };
+
+        ResolvedCoordinationTiming {
+            act_time: pick(|t| t.act_time, self.act_time),
+            abi_time: pick(|t| t.abi_time, self.abi_time),
+            rev_time: pick(|t| t.rev_time, self.rev_time),
+        }
+    }
 }
 
 impl Default for CoordinationSettings {
@@ -397,6 +443,7 @@ impl Default for CoordinationSettings {
             abi_time: Time::new::<minute>(Self::DEFAULT_ABI_TIME_MIN),
             rev_time: Time::new::<minute>(Self::DEFAULT_REV_TIME_MIN),
             lam_timeout: Time::new::<second>(Self::DEFAULT_LAM_TIMEOUT_SEC),
+            fir_overrides: HashMap::new(),
         }
     }
 }
@@ -434,5 +481,109 @@ impl Settings {
             asr_files: (1..10).filter_map(|i| prf.recent_path(i)).collect(),
             coordination: CoordinationSettings::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod coordination_settings_tests {
+    use test_log::test;
+    use uom::si::f32::Time;
+    use uom::si::time::{minute, second};
+
+    use super::{CoordinationSettings, CoordinationTiming};
+
+    fn settings() -> CoordinationSettings {
+        CoordinationSettings::default()
+    }
+
+    #[test]
+    fn no_overrides_resolves_to_global_defaults() {
+        let s = settings();
+        let resolved = s.resolve(None, None);
+        assert_eq!(resolved.act_time, s.act_time);
+        assert_eq!(resolved.abi_time, s.abi_time);
+        assert_eq!(resolved.rev_time, s.rev_time);
+    }
+
+    #[test]
+    fn fir_override_wins_over_global_per_field() {
+        let mut s = settings();
+        s.fir_overrides.insert(
+            "EDMM".to_string(),
+            CoordinationTiming {
+                act_time: Some(Time::new::<minute>(20.0)),
+                abi_time: None,
+                rev_time: None,
+            },
+        );
+
+        let resolved = s.resolve(Some("EDMM"), None);
+        assert_eq!(resolved.act_time, Time::new::<minute>(20.0));
+        assert_eq!(resolved.abi_time, s.abi_time);
+        assert_eq!(resolved.rev_time, s.rev_time);
+    }
+
+    #[test]
+    fn constraint_timing_wins_over_fir_and_global() {
+        let mut s = settings();
+        s.fir_overrides.insert(
+            "EDMM".to_string(),
+            CoordinationTiming {
+                act_time: Some(Time::new::<minute>(20.0)),
+                abi_time: Some(Time::new::<minute>(40.0)),
+                rev_time: None,
+            },
+        );
+        let constraint_timing = CoordinationTiming {
+            act_time: Some(Time::new::<minute>(10.0)),
+            abi_time: None,
+            rev_time: None,
+        };
+
+        let resolved = s.resolve(Some("EDMM"), Some(&constraint_timing));
+        assert_eq!(
+            resolved.act_time,
+            Time::new::<minute>(10.0),
+            "constraint override wins over FIR override"
+        );
+        assert_eq!(
+            resolved.abi_time,
+            Time::new::<minute>(40.0),
+            "unset constraint field falls through to FIR override"
+        );
+        assert_eq!(
+            resolved.rev_time, s.rev_time,
+            "unset in both constraint and FIR falls through to global"
+        );
+    }
+
+    #[test]
+    fn unresolved_fir_and_constraint_falls_back_to_global() {
+        let s = settings();
+        let resolved = s.resolve(None, None);
+        assert_eq!(resolved.act_time, s.act_time);
+        assert_eq!(resolved.abi_time, s.abi_time);
+        assert_eq!(resolved.rev_time, s.rev_time);
+    }
+
+    #[test]
+    fn serde_round_trip_preserves_fir_overrides() {
+        let mut s = settings();
+        s.fir_overrides.insert(
+            "EDMM".to_string(),
+            CoordinationTiming {
+                act_time: Some(Time::new::<second>(1200.0)),
+                abi_time: None,
+                rev_time: None,
+            },
+        );
+
+        let json = serde_json::to_string(&s).unwrap();
+        let round_tripped: CoordinationSettings = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(
+            round_tripped.fir_overrides.get("EDMM").unwrap().act_time,
+            Some(Time::new::<second>(1200.0))
+        );
     }
 }

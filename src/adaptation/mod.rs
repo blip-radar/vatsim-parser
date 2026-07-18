@@ -177,8 +177,8 @@ pub struct Adaptation {
     pub positions: HashMap<String, Position>,
     pub volumes: HashMap<String, Volume>,
     pub sectors: Sectors,
-    pub departure_constraints: Vec<Constraint>,
-    pub destination_constraints: Vec<Constraint>,
+    pub departure_constraints: HashMap<String, Constraint>,
+    pub destination_constraints: HashMap<String, Constraint>,
     pub maps: MapFolders,
     // TODO
     // pub areas,
