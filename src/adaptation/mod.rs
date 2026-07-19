@@ -5,6 +5,7 @@ pub mod line_styles;
 pub mod locations;
 pub mod maps;
 pub mod sct_items;
+pub mod sector_index;
 pub mod sectors;
 pub mod settings;
 pub mod symbols;
@@ -16,6 +17,7 @@ use bevy_reflect::Reflect;
 use constraints::extract_constraints;
 use fs_err::read;
 use geo::Coord;
+use geo::Line;
 use geo::Point;
 use icao::AircraftMap;
 use icao::Airline;
@@ -24,6 +26,7 @@ use jrsonnet_evaluator::manifest::escape_string_json;
 use jrsonnet_evaluator::{FileImportResolver, StateBuilder};
 use line_styles::{line_styles_from_topsky, Dash};
 use sct_items::SctItems;
+use sector_index::SectorVolumeIndex;
 use sectors::Volume;
 use serde::{Deserialize, Serialize};
 use symbols::Symbols;
@@ -202,6 +205,10 @@ pub struct Adaptation {
     pub airlines: HashMap<String, Airline>,
     /// .sct items used for drawing maps and otherwise not usable
     pub sct_items: SctItems,
+    /// Spatial index over `sectors`/`volumes`,. Not part of the adaptation's actual
+    /// data and excluded from serde and rebuilt explicitly by `rebuild_sector_index`.
+    #[serde(skip)]
+    pub sector_index: SectorVolumeIndex,
 }
 
 impl Adaptation {
@@ -237,6 +244,8 @@ impl Adaptation {
         let sct_items = SctItems::from_sct(sct, &locations, &colours, &settings);
         let aircraft = parse_aircraft(&fs_err::read(prf.aircraft_path())?)?;
         let airlines = parse_airlines(&fs_err::read(prf.airlines_path())?)?;
+        let mut sector_index = SectorVolumeIndex::default();
+        sector_index.rebuild(&sectors, &volumes);
         Ok(Adaptation {
             name,
             positions,
@@ -256,6 +265,7 @@ impl Adaptation {
             aircraft,
             airlines,
             sct_items,
+            sector_index,
         })
     }
 
@@ -295,7 +305,41 @@ impl Adaptation {
             .to_string()
             .map_err(|e| AdaptationError::Jsonnet(e.to_string()))?;
 
-        Ok(serde_json::from_str(&json_string)?)
+        let mut result: Self = serde_json::from_str(&json_string)?;
+        // The `sector_index` field is `#[serde(skip)]`, so the freshly deserialized value
+        // would be empty.
+        result.rebuild_sector_index();
+        Ok(result)
+    }
+
+    /// Rebuilds the sector/volume spatial index from the current `sectors`/`volumes`,
+    /// forcing a refresh even if it was already lazily built. `from_prf`/
+    /// `apply_jsonnet_overlays` call this to pre-warm the index at load time; it's
+    /// otherwise built lazily on first query (see `SectorVolumeIndex`), so calling this
+    /// explicitly is only needed after mutating `sectors`/`volumes` directly post-construction.
+    pub fn rebuild_sector_index(&mut self) {
+        self.sector_index.rebuild(&self.sectors, &self.volumes);
+    }
+
+    /// The single sector containing `coordinate` at `level_ft`, tie-broken by the lowest
+    /// sector id designator when multiple volumes overlap.
+    #[must_use]
+    pub fn find_sector(&self, coordinate: Point, level_ft: f32) -> Option<&str> {
+        self.sector_index
+            .find_sector(&self.sectors, &self.volumes, coordinate, level_ft)
+    }
+
+    /// All volumes whose lateral border contains `coordinate`, regardless of level.
+    pub fn volumes_at(&self, coordinate: Point) -> impl Iterator<Item = &(String, Volume)> {
+        self.sector_index
+            .volumes_at(&self.sectors, &self.volumes, coordinate)
+    }
+
+    /// Coarse candidate volumes whose bounding box intersects `line`'s bounding box,
+    /// callers must still apply their own exact intersection check.
+    pub fn volumes_near_line(&self, line: Line) -> impl Iterator<Item = &(String, Volume)> {
+        self.sector_index
+            .volumes_near_line(&self.sectors, &self.volumes, line)
     }
 
     /// Create adaptation from .prf and apply .jsonnet overlays
