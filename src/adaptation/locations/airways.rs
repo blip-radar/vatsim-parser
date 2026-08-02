@@ -5,17 +5,19 @@ use std::{
     sync::Arc,
 };
 
+use geo::Point;
 use serde::{Deserialize, Serialize};
 
 use crate::adaptation::locations::Locations;
 
 use super::{Fix, GraphPosition};
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub enum AirwayType {
     High,
     Low,
     Both,
+    #[default]
     Unknown,
 }
 
@@ -26,7 +28,7 @@ pub struct AirwayFix {
     pub minimum_level: Option<u32>,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug)]
 struct AirwayEdge {
     to: FixId,
     valid_direction: bool,
@@ -41,7 +43,7 @@ impl PartialEq for AirwayEdge {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct AirwayId(usize);
 
 impl Display for AirwayId {
@@ -50,7 +52,7 @@ impl Display for AirwayId {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 struct FixId(usize);
 
 impl Display for FixId {
@@ -61,8 +63,30 @@ impl Display for FixId {
 
 pub type SharedStr = Arc<str>;
 
-// FIXME serialise to a human-overridable
+/// Human/jsonnet-overridable view of an [`AirwayGraph`]: each airway is an ordered
+/// chain of waypoints, keyed by airway designator.
+pub type AirwayGraphView = HashMap<String, Vec<AirwayWaypointView>>;
+
+/// One waypoint in an airway's ordered chain. `valid_direction`, `minimum_level`,
+/// `maximum_level` and `airway_type` describe the segment leading INTO this waypoint
+/// from the previous one in the chain; they are meaningless (default) on the first
+/// waypoint of a chain, which has no incoming segment.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct AirwayWaypointView {
+    pub fix: String,
+    pub coordinate: Point,
+    #[serde(default)]
+    pub valid_direction: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum_level: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maximum_level: Option<u32>,
+    #[serde(default)]
+    pub airway_type: AirwayType,
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(into = "AirwayGraphView", from = "AirwayGraphView")]
 pub struct AirwayGraph {
     fixes: Vec<GraphFix>,
     fix_id_by_name: HashMap<SharedStr, Vec<FixId>>,
@@ -306,6 +330,128 @@ impl AirwayGraph {
             prev = current;
         }
     }
+
+    /// Walk every fix participating in `airway` into a single ordered chain,
+    /// starting from a chain endpoint (a fix with only one edge on this airway) if
+    /// one exists, otherwise from an arbitrary fix (closed loop).
+    fn chain_fix_ids(&self, airway: AirwayId) -> Vec<FixId> {
+        let participants: Vec<FixId> = self
+            .fixes
+            .iter()
+            .enumerate()
+            .filter(|(_, fix)| fix.edges.contains_key(&airway))
+            .map(|(idx, _)| FixId(idx))
+            .collect();
+
+        let Some(&start) = participants
+            .iter()
+            .find(|&&id| {
+                self.fixes[id.0]
+                    .edges
+                    .get(&airway)
+                    .is_some_and(|edges| edges.len() == 1)
+            })
+            .or_else(|| participants.first())
+        else {
+            return participants;
+        };
+
+        std::iter::successors(Some((start, start)), |&(prev, current)| {
+            let edges = self.fixes[current.0].edges.get(&airway)?;
+            let next = match edges.len() {
+                2 => edges.iter().find(|e| e.to != prev)?,
+                1 if edges[0].to != prev => &edges[0],
+                _ => return None,
+            };
+            (next.to != start).then_some((current, next.to))
+        })
+        .take(self.fixes.len() + 1)
+        .map(|(_, current)| current)
+        .collect()
+    }
+}
+
+impl From<AirwayGraph> for AirwayGraphView {
+    fn from(graph: AirwayGraph) -> Self {
+        graph
+            .airway_name_by_id
+            .iter()
+            .enumerate()
+            .map(|(idx, name)| {
+                let airway = AirwayId(idx);
+                let chain = graph.chain_fix_ids(airway);
+
+                let waypoints = chain
+                    .iter()
+                    .enumerate()
+                    .map(|(pos, &fix_id)| {
+                        let fix = &graph.fixes[fix_id.0];
+                        let incoming_edge = pos.checked_sub(1).and_then(|prev_pos| {
+                            let prev_id = chain[prev_pos];
+                            graph.fixes[prev_id.0]
+                                .edges
+                                .get(&airway)?
+                                .iter()
+                                .find(|e| e.to == fix_id)
+                        });
+
+                        AirwayWaypointView {
+                            fix: graph.fix_name_by_id[fix_id.0].to_string(),
+                            coordinate: fix.position.0,
+                            valid_direction: incoming_edge.is_none_or(|e| e.valid_direction),
+                            minimum_level: incoming_edge.and_then(|e| e.minimum_level),
+                            maximum_level: incoming_edge.and_then(|e| e.maximum_level),
+                            airway_type: incoming_edge
+                                .map_or(AirwayType::Unknown, |e| e.airway_type),
+                        }
+                    })
+                    .collect();
+
+                (name.to_string(), waypoints)
+            })
+            .collect()
+    }
+}
+
+impl From<AirwayGraphView> for AirwayGraph {
+    fn from(def: AirwayGraphView) -> Self {
+        def.into_iter()
+            .fold(Self::default(), |mut graph, (airway_name, waypoints)| {
+                let awy_id = graph.get_or_insert_airway_id(&airway_name);
+
+                waypoints.windows(2).for_each(|pair| {
+                    let [from, to] = pair else { unreachable!() };
+                    let from_id =
+                        graph.get_or_insert_fix_id(GraphPosition(from.coordinate), &from.fix);
+                    let to_id = graph.get_or_insert_fix_id(GraphPosition(to.coordinate), &to.fix);
+
+                    graph.insert_or_update_edge(
+                        from_id,
+                        awy_id,
+                        AirwayEdge {
+                            to: to_id,
+                            valid_direction: to.valid_direction,
+                            minimum_level: to.minimum_level,
+                            maximum_level: to.maximum_level,
+                            airway_type: to.airway_type,
+                        },
+                    );
+                    graph.insert_or_update_edge(
+                        to_id,
+                        awy_id,
+                        AirwayEdge {
+                            to: from_id,
+                            valid_direction: false,
+                            minimum_level: to.minimum_level,
+                            maximum_level: to.maximum_level,
+                            airway_type: to.airway_type,
+                        },
+                    );
+                });
+
+                graph
+            })
+    }
 }
 
 impl Display for AirwayType {
@@ -334,7 +480,7 @@ impl Display for AirwayFix {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 struct GraphFix {
     position: GraphPosition,
     edges: HashMap<AirwayId, Vec<AirwayEdge>>,
@@ -343,5 +489,91 @@ struct GraphFix {
 impl PartialEq<GraphPosition> for GraphFix {
     fn eq(&self, other: &GraphPosition) -> bool {
         &self.position == other
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use geo::point;
+
+    use super::*;
+    use crate::adaptation::locations::Locations;
+
+    fn fix(designator: &str, lng: f64, lat: f64) -> AirwayFix {
+        AirwayFix {
+            fix: Fix {
+                designator: designator.to_string(),
+                coordinate: point! { x: lng, y: lat },
+            },
+            valid_direction: true,
+            minimum_level: None,
+        }
+    }
+
+    fn build_graph() -> AirwayGraph {
+        let mut graph = AirwayGraph::default();
+
+        // linear airway UL997: FIXA - FIXB - FIXC
+        graph.insert_or_update_segment(
+            "UL997",
+            "FIXA",
+            GraphPosition(point! { x: 1.0, y: 1.0 }),
+            &AirwayFix {
+                minimum_level: Some(5000),
+                ..fix("FIXB", 2.0, 2.0)
+            },
+            AirwayType::High,
+        );
+        graph.insert_or_update_segment(
+            "UL997",
+            "FIXB",
+            GraphPosition(point! { x: 2.0, y: 2.0 }),
+            &fix("FIXC", 3.0, 3.0),
+            AirwayType::High,
+        );
+
+        // separate airway L601 with a single segment
+        graph.insert_or_update_segment(
+            "L601",
+            "FIXD",
+            GraphPosition(point! { x: 4.0, y: 4.0 }),
+            &fix("FIXE", 5.0, 5.0),
+            AirwayType::Low,
+        );
+
+        graph
+    }
+
+    #[test]
+    fn serializes_keyed_by_airway_name() {
+        let graph = build_graph();
+        let value = serde_json::to_value(&graph).unwrap();
+        let obj = value.as_object().unwrap();
+
+        assert!(obj.contains_key("UL997"));
+        assert!(obj.contains_key("L601"));
+
+        let ul997 = obj["UL997"].as_array().unwrap();
+        let names: Vec<&str> = ul997.iter().map(|w| w["fix"].as_str().unwrap()).collect();
+        assert_eq!(names, ["FIXA", "FIXB", "FIXC"]);
+    }
+
+    #[test]
+    fn round_trips_through_json() {
+        let graph = build_graph();
+        let locations = Locations::default();
+
+        let before = graph
+            .expand_airway_segment(&fix("FIXA", 1.0, 1.0).fix, "FIXC", "UL997", &locations)
+            .unwrap();
+
+        let json = serde_json::to_string(&graph).unwrap();
+        let round_tripped: AirwayGraph = serde_json::from_str(&json).unwrap();
+
+        let after = round_tripped
+            .expand_airway_segment(&fix("FIXA", 1.0, 1.0).fix, "FIXC", "UL997", &locations)
+            .unwrap();
+
+        assert_eq!(before, after);
     }
 }
