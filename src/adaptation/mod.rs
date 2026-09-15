@@ -13,47 +13,44 @@ pub mod symbols;
 use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Write as _, io, path::Path};
 
-use bevy_reflect::Reflect;
-use constraints::extract_constraints;
 use fs_err::read;
-use geo::Coord;
-use geo::Line;
-use geo::Point;
-use icao::AircraftMap;
-use icao::Airline;
+use geo::{Coord, Line, Point};
 use itertools::Itertools;
 use jrsonnet_evaluator::manifest::escape_string_json;
 use jrsonnet_evaluator::{FileImportResolver, StateBuilder};
-use line_styles::{line_styles_from_topsky, Dash};
-use sct_items::SctItems;
-use sector_index::SectorVolumeIndex;
 use sectors::Volume;
 use serde::{Deserialize, Serialize};
-use symbols::Symbols;
 use thiserror::Error;
-use tracing::trace;
-use tracing::warn;
+use tracing::{trace, warn};
 
 use crate::adaptation::sectors::Sectors;
-use crate::airway::parse_airway_txt;
-use crate::ese::Constraint;
-use crate::navdata_airports::{parse_navdata_airports, NavdataAirportsError};
-use crate::prf::PrfError;
 use crate::{
-    airway::AirwayError,
-    ese::{self, Ese, EseError},
+    airway::{parse_airway_txt, AirwayError},
+    ese::{self, Constraint, Ese, EseError},
     icao_aircraft::{parse_aircraft, AircraftError},
     icao_airlines::{parse_airlines, AirlinesError},
     icao_airports::{parse_airports, AirportsError},
-    prf::Prf,
+    navdata_airports::{parse_navdata_airports, NavdataAirportsError},
+    prf::{Prf, PrfError},
     sct::{Sct, SctError},
     symbology::{Symbology, SymbologyError},
     topsky::{Topsky, TopskyError},
 };
 
-use self::{colours::Colours, locations::Locations, maps::MapFolders, settings::Settings};
+use self::{
+    colours::Colours,
+    constraints::extract_constraints,
+    icao::{AircraftMap, Airline},
+    line_styles::{line_styles_from_topsky, Dash},
+    locations::Locations,
+    maps::MapFolders,
+    sct_items::SctItems,
+    sector_index::SectorVolumeIndex,
+    settings::Settings,
+    symbols::Symbols,
+};
 
-#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HorizontalAlignment {
     Left,
     #[default]
@@ -61,7 +58,7 @@ pub enum HorizontalAlignment {
     Right,
 }
 
-#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum VerticalAlignment {
     Top,
     #[default]
@@ -69,7 +66,7 @@ pub enum VerticalAlignment {
     Bottom,
 }
 
-#[derive(Clone, Copy, Debug, Default, Reflect, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Alignment {
     pub horizontal: HorizontalAlignment,
     pub vertical: VerticalAlignment,
@@ -175,7 +172,7 @@ pub struct Adaptation {
     pub locations: Locations,
     // TODO id -> pos? something else might be more useful/efficient (freq, prefix, suffix)?
     pub positions: HashMap<String, Position>,
-    pub volumes: HashMap<String, Volume>,
+    pub volumes: HashMap<VolumeId, Volume>,
     pub sectors: Sectors,
     pub departure_constraints: HashMap<String, Constraint>,
     pub destination_constraints: HashMap<String, Constraint>,

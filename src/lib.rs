@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, io};
 
 use bevy_derive::{Deref, DerefMut};
-use bevy_reflect::Reflect;
 use geo::{Coord, Point};
 use multimap::MultiMap;
 use serde::{Deserialize, Serialize, Serializer};
@@ -137,11 +136,10 @@ impl DegMinSecExt for Point {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
-#[reflect(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Location {
     Fix(String),
-    Coordinate(#[reflect(ignore)] Point),
+    Coordinate(Point),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deref, DerefMut)]

@@ -12,14 +12,14 @@ repository = "https://github.com/blip-radar/vatsim-parser"
 license = "LGPL-3.0-or-later"
 
 [dependencies]
-bevy_derive = "0.18"
-bevy_reflect = "0.18"
+bevy_derive = "0.19"
 encoding_rs = "0.8.35"
 from-pest = "0.3.4"
 fs-err = "3.3.0"
 geo = { version = "0.33", features = ["use-serde"] }
 itertools = "0.15"
-jrsonnet-evaluator = "0.5.0-pre97"
+# jrsonnet-evaluator = "0.5.0-pre98"
+jrsonnet-evaluator = { git = "https://github.com/deltarocks/jrsonnet", rev = "8b828f93e4fdf30d0fef817ace44f2eb2b364045" }
 multimap = "0.10.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"

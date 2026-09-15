@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::OnceLock};
 
-use bevy_reflect::Reflect;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -8,7 +7,7 @@ use crate::{
     topsky::Topsky,
 };
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum SymbolRule {
     Move((f64, f64)),
     Line((f64, f64)),

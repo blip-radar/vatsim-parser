@@ -1,6 +1,5 @@
 use std::{collections::HashMap, num::TryFromIntError, sync::OnceLock};
 
-use bevy_reflect::Reflect;
 use regex::Regex;
 use serde::{de::Visitor, Deserialize, Serialize};
 
@@ -12,7 +11,7 @@ use crate::{
 
 use super::settings::Settings;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Reflect)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Colour {
     pub r: u8,
     pub g: u8,

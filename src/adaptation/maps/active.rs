@@ -1,13 +1,12 @@
-use bevy_reflect::Reflect;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct RunwayIdentifier {
     pub icao: String,
     pub designator: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActiveIds {
     pub own: Option<Vec<String>>,
     pub own_excludes: Option<Vec<String>>,
@@ -15,7 +14,7 @@ pub struct ActiveIds {
     pub online_excludes: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActiveRunways {
     pub arrival: Option<Vec<RunwayIdentifier>>,
     pub arrival_excludes: Option<Vec<RunwayIdentifier>>,
@@ -23,13 +22,13 @@ pub struct ActiveRunways {
     pub departure_excludes: Option<Vec<RunwayIdentifier>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActiveAreas {
     pub areas: Vec<String>,
     pub area_excludes: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActiveMapOperator {
     Same,
     Opposite,

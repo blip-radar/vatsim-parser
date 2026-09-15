@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io;
 
-use bevy_reflect::Reflect;
 use geo::{Coord, LineString};
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
@@ -30,7 +29,7 @@ pub enum EseError {
     FileRead(#[from] io::Error),
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Position {
     pub name: String,
     pub callsign: String,
@@ -40,14 +39,12 @@ pub struct Position {
     pub middle: String,
     pub suffix: String,
     pub squawk_range: Option<(u16, u16)>,
-    #[reflect(ignore)]
     pub visibility_points: Vec<Coord>,
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct MSAW {
     pub altitude: u32,
-    #[reflect(ignore)]
     pub points: Vec<Coord>,
 }
 impl MSAW {
@@ -84,7 +81,7 @@ impl SectorLine {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct CircleSectorLine {
     pub center: String,
     pub radius: f32,
@@ -101,7 +98,7 @@ impl CircleSectorLine {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
 enum SectorSubsetting {
     Owner(Vec<String>),
     AlternativeOwner(String, Vec<String>),
@@ -263,7 +260,7 @@ fn parse_wildcard_u32(pair: &Pair<Rule>) -> Option<u32> {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Constraint {
     pub previous_fix: Option<String>,
     pub departure_runway: Option<String>,
@@ -277,7 +274,6 @@ pub struct Constraint {
     pub description: String,
     /// OLDI timing override.
     #[serde(default)]
-    #[reflect(ignore)]
     pub coord_timing: Option<CoordinationTiming>,
 }
 impl fmt::Display for Constraint {

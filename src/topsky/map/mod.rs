@@ -2,7 +2,6 @@ pub mod active;
 
 use std::collections::HashMap;
 
-use bevy_reflect::Reflect;
 use geo::Coord;
 use pest::{
     iterators::{Pair, Pairs},
@@ -145,7 +144,7 @@ impl Text {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub enum FontSize {
     Exact(f32),
     Add(f32),
@@ -186,7 +185,7 @@ impl LineStyle {
     }
 }
 
-#[derive(Clone, Debug, Reflect, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct MapLine {
     pub points: Vec<Location>,
 }
@@ -312,19 +311,19 @@ impl MapRule {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct OverrideSct {
     pub folder: String,
     pub name: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct ColourDef {
     pub name: String,
     pub colour: Colour,
 }
 
-#[derive(Clone, Debug, PartialEq, Reflect, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct LineStyleDef {
     pub name: String,
     pub brush: String,
