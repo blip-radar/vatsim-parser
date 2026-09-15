@@ -18,12 +18,10 @@ use geo::{Coord, Line, Point};
 use itertools::Itertools;
 use jrsonnet_evaluator::manifest::escape_string_json;
 use jrsonnet_evaluator::{FileImportResolver, StateBuilder};
-use sectors::Volume;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{trace, warn};
 
-use crate::adaptation::sectors::Sectors;
 use crate::{
     airway::{parse_airway_txt, AirwayError},
     ese::{self, Constraint, Ese, EseError},
@@ -46,6 +44,7 @@ use self::{
     maps::MapFolders,
     sct_items::SctItems,
     sector_index::SectorVolumeIndex,
+    sectors::{SectorId, Sectors, Volume, VolumeId},
     settings::Settings,
     symbols::Symbols,
 };
@@ -326,17 +325,17 @@ impl Adaptation {
             .find_sector(&self.sectors, &self.volumes, coordinate, level_ft)
     }
 
-    /// All volumes whose lateral border contains `coordinate`, regardless of level.
-    pub fn volumes_at(&self, coordinate: Point) -> impl Iterator<Item = &(String, Volume)> {
+    /// All sectors whose lateral border contains `coordinate`, regardless of level.
+    pub fn sectors_at(&self, coordinate: Point) -> impl Iterator<Item = &(SectorId, Volume)> {
         self.sector_index
-            .volumes_at(&self.sectors, &self.volumes, coordinate)
+            .sectors_at(&self.sectors, &self.volumes, coordinate)
     }
 
-    /// Coarse candidate volumes whose bounding box intersects `line`'s bounding box,
+    /// Coarse candidate sectors whose bounding box intersects `line`'s bounding box,
     /// callers must still apply their own exact intersection check.
-    pub fn volumes_near_line(&self, line: Line) -> impl Iterator<Item = &(String, Volume)> {
+    pub fn sectors_near_line(&self, line: Line) -> impl Iterator<Item = &(SectorId, Volume)> {
         self.sector_index
-            .volumes_near_line(&self.sectors, &self.volumes, line)
+            .sectors_near_line(&self.sectors, &self.volumes, line)
     }
 
     /// Create adaptation from .prf and apply .jsonnet overlays

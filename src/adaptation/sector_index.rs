@@ -7,9 +7,9 @@ use rstar::{
     RTree, AABB,
 };
 
-use super::sectors::{Sectors, Volume};
+use super::sectors::{SectorId, Sectors, Volume, VolumeId};
 
-type Entry = GeomWithData<Rectangle<[f64; 2]>, (String, Volume)>;
+type Entry = GeomWithData<Rectangle<[f64; 2]>, (SectorId, Volume)>;
 
 fn rectangle_for(volume: &Volume) -> Option<Rectangle<[f64; 2]>> {
     let rect = volume.lateral_border.bounding_rect()?;
@@ -18,7 +18,7 @@ fn rectangle_for(volume: &Volume) -> Option<Rectangle<[f64; 2]>> {
     Some(Rectangle::from_corners([min.x, min.y], [max.x, max.y]))
 }
 
-fn build_tree(sectors: &Sectors, volumes: &HashMap<String, Volume>) -> RTree<Entry> {
+fn build_tree(sectors: &Sectors, volumes: &HashMap<VolumeId, Volume>) -> RTree<Entry> {
     let entries: Vec<Entry> = sectors
         .iter()
         .filter(|(_, sector)| !sector.position_priority.is_empty())
@@ -61,26 +61,26 @@ impl SectorVolumeIndex {
     fn get_or_build<'a>(
         &'a self,
         sectors: &Sectors,
-        volumes: &HashMap<String, Volume>,
+        volumes: &HashMap<VolumeId, Volume>,
     ) -> &'a RTree<Entry> {
         self.0.get_or_init(|| build_tree(sectors, volumes))
     }
 
     /// Forces a rebuild, overwriting any already-cached tree.
-    pub(crate) fn rebuild(&mut self, sectors: &Sectors, volumes: &HashMap<String, Volume>) {
+    pub(crate) fn rebuild(&mut self, sectors: &Sectors, volumes: &HashMap<VolumeId, Volume>) {
         self.0 = OnceLock::new();
         self.0.set(build_tree(sectors, volumes)).ok();
     }
 
-    /// All volumes whose lateral border contains `coordinate`, regardless of level --
+    /// All sectors whose lateral border contains `coordinate`, regardless of level,
     /// callers needing a level-range filter (e.g. `vertical_border_wpts`, which scans across
     /// levels to find a boundary) apply that themselves.
-    pub fn volumes_at<'a>(
+    pub fn sectors_at<'a>(
         &'a self,
         sectors: &Sectors,
-        volumes: &HashMap<String, Volume>,
+        volumes: &HashMap<VolumeId, Volume>,
         coordinate: Point,
-    ) -> impl Iterator<Item = &'a (String, Volume)> {
+    ) -> impl Iterator<Item = &'a (SectorId, Volume)> {
         self.get_or_build(sectors, volumes)
             .locate_all_at_point([coordinate.x(), coordinate.y()])
             .map(|entry| &entry.data)
@@ -90,12 +90,12 @@ impl SectorVolumeIndex {
     /// Coarse candidates whose bounding box laterally intersects `line`'s bounding box,
     /// callers still need their own exact `intersects`/`line_string_intersection` check
     /// on the returned candidates.
-    pub fn volumes_near_line<'a>(
+    pub fn sectors_near_line<'a>(
         &'a self,
         sectors: &Sectors,
-        volumes: &HashMap<String, Volume>,
+        volumes: &HashMap<VolumeId, Volume>,
         line: Line,
-    ) -> impl Iterator<Item = &'a (String, Volume)> {
+    ) -> impl Iterator<Item = &'a (SectorId, Volume)> {
         let rect = line.bounding_rect();
         let envelope =
             AABB::from_corners([rect.min().x, rect.min().y], [rect.max().x, rect.max().y]);
@@ -108,12 +108,12 @@ impl SectorVolumeIndex {
     pub fn find_sector(
         &self,
         sectors: &Sectors,
-        volumes: &HashMap<String, Volume>,
+        volumes: &HashMap<VolumeId, Volume>,
         coordinate: Point,
         // TODO uom?
         level_ft: f32,
     ) -> Option<&str> {
-        self.volumes_at(sectors, volumes, coordinate)
+        self.sectors_at(sectors, volumes, coordinate)
             .filter(|(_, volume)| {
                 level_ft >= volume.lower_level as f32 && level_ft < volume.upper_level as f32
             })
@@ -138,15 +138,15 @@ mod tests {
             (x: min.0, y: max.1),
             (x: min.0, y: min.1),
         ];
-        Volume::new(id.to_string(), lower, upper, border)
+        Volume::new(VolumeId::from(id), lower, upper, border)
     }
 
     fn sector(id: &str, volumes: &[&str]) -> Sector {
         Sector {
-            id: id.to_string(),
+            id: SectorId::from(id),
             position_priority: vec!["POS".to_string()],
             runway_filter: vec![],
-            volumes: volumes.iter().map(|v| (*v).to_string()).collect(),
+            volumes: volumes.iter().map(|v| VolumeId::from(*v)).collect(),
             departure_aerodromes: std::collections::HashSet::default(),
             arrival_aerodromes: std::collections::HashSet::default(),
         }
@@ -154,7 +154,7 @@ mod tests {
 
     fn built(
         entries: Vec<(Sector, Volume)>,
-    ) -> (Sectors, HashMap<String, Volume>, SectorVolumeIndex) {
+    ) -> (Sectors, HashMap<VolumeId, Volume>, SectorVolumeIndex) {
         let mut sectors = HashMap::new();
         let mut volumes = HashMap::new();
         for (sector, volume) in entries {
@@ -226,15 +226,15 @@ mod tests {
 
         let crossing = Line::new(point! { x: 0.0, y: 0.0 }, point! { x: 20.0, y: 0.0 });
         let candidates: Vec<_> = index
-            .volumes_near_line(&sectors, &volumes, crossing)
+            .sectors_near_line(&sectors, &volumes, crossing)
             .collect();
         assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].0, "SEC1");
+        assert_eq!(candidates[0].0.as_str(), "SEC1");
 
         let far_away = Line::new(point! { x: 100.0, y: 100.0 }, point! { x: 200.0, y: 100.0 });
         assert_eq!(
             index
-                .volumes_near_line(&sectors, &volumes, far_away)
+                .sectors_near_line(&sectors, &volumes, far_away)
                 .count(),
             0
         );

@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::warn;
 
+use crate::adaptation::sectors::VolumeId;
 use crate::{
     adaptation::maps::active::RunwayIdentifier, adaptation::settings::CoordinationTiming,
     DegMinSec, DegMinSecExt as _, Sign,
@@ -267,8 +268,8 @@ pub struct Constraint {
     pub subsequent_fix: Option<String>,
     pub arrival_runway: Option<String>,
     pub fix: Option<String>,
-    pub exit_sector: String,
-    pub entry_sector: String,
+    pub exit_sector: VolumeId,
+    pub entry_sector: VolumeId,
     pub climb_level: Option<u32>,
     pub descent_level: Option<u32>,
     pub description: String,
@@ -309,8 +310,8 @@ impl Constraint {
         let fix = parse_wildcard_string(&cop.next().unwrap());
         let subsequent_fix = parse_wildcard_string(&cop.next().unwrap());
         let arrival_runway = parse_wildcard_string(&cop.next().unwrap());
-        let exit_sector = cop.next().unwrap().as_str().to_string();
-        let entry_sector = cop.next().unwrap().as_str().to_string();
+        let exit_sector = VolumeId(cop.next().unwrap().as_str().to_string());
+        let entry_sector = VolumeId(cop.next().unwrap().as_str().to_string());
         let climb_level = parse_wildcard_u32(&cop.next().unwrap());
         let descent_level = parse_wildcard_u32(&cop.next().unwrap());
         let description = cop.next().unwrap().as_str().to_string();
@@ -666,6 +667,7 @@ mod test {
     use geo::line_string;
 
     use crate::{
+        adaptation::sectors::VolumeId,
         ese::{Constraint, Ese, Position, SectorLine, SidStar, SID, STAR},
         Coord,
     };
@@ -678,8 +680,8 @@ mod test {
             subsequent_fix: Some("EDDN".to_string()),
             arrival_runway: None,
             fix: Some("UPALA".to_string()),
-            exit_sector: "EDMM\u{b7}EDMMALB\u{b7}105\u{b7}135".to_string(),
-            entry_sector: "EDMM\u{b7}EDMMFRK\u{b7}000\u{b7}135".to_string(),
+            exit_sector: VolumeId("EDMM\u{b7}EDMMALB\u{b7}105\u{b7}135".to_string()),
+            entry_sector: VolumeId("EDMM\u{b7}EDMMFRK\u{b7}000\u{b7}135".to_string()),
             climb_level: None,
             descent_level: Some(13000),
             description: "UPALA".to_string(),
@@ -687,8 +689,8 @@ mod test {
         };
         let other = Constraint {
             subsequent_fix: Some("EDDE".to_string()),
-            exit_sector: "EDMM\u{b7}EDMMALB\u{b7}245\u{b7}315".to_string(),
-            entry_sector: "EDMM\u{b7}EDMMBBG\u{b7}245\u{b7}295".to_string(),
+            exit_sector: VolumeId("EDMM\u{b7}EDMMALB\u{b7}245\u{b7}315".to_string()),
+            entry_sector: VolumeId("EDMM\u{b7}EDMMBBG\u{b7}245\u{b7}295".to_string()),
             descent_level: Some(25000),
             ..base.clone()
         };
@@ -1072,9 +1074,8 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
         assert_eq!(
             ese.constraints
                 .iter()
-                .filter(
-                    |constraint| constraint.entry_sector == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105"
-                )
+                .filter(|constraint| constraint.entry_sector.0
+                    == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105")
                 .collect::<Vec<_>>(),
             vec![
                 &Constraint {
@@ -1083,8 +1084,8 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     fix: Some("RUDNO".to_string()),
                     subsequent_fix: Some("ETSI".to_string()),
                     arrival_runway: None,
-                    exit_sector: "EDMM\u{b7}EDMMRDG\u{b7}000\u{b7}135".to_string(),
-                    entry_sector: "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string(),
+                    exit_sector: VolumeId("EDMM\u{b7}EDMMRDG\u{b7}000\u{b7}135".to_string()),
+                    entry_sector: VolumeId("EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string()),
                     climb_level: None,
                     descent_level: Some(9000),
                     description: "RUDNO".to_string(),
@@ -1096,8 +1097,8 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     fix: Some("STAUB".to_string()),
                     subsequent_fix: Some("ETSI".to_string()),
                     arrival_runway: None,
-                    exit_sector: "EDMM\u{b7}EDMMRDG\u{b7}000\u{b7}135".to_string(),
-                    entry_sector: "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string(),
+                    exit_sector: VolumeId("EDMM\u{b7}EDMMRDG\u{b7}000\u{b7}135".to_string()),
+                    entry_sector: VolumeId("EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string()),
                     climb_level: None,
                     descent_level: Some(10000),
                     description: "STAUB".to_string(),
@@ -1109,7 +1110,7 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
             ese.constraints
                 .iter()
                 .filter(
-                    |constraint| constraint.exit_sector == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105"
+                    |constraint| constraint.exit_sector.0 == *"EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105"
                 )
                 .collect::<Vec<_>>(),
             vec![
@@ -1119,8 +1120,8 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     fix: None,
                     subsequent_fix: Some("EDMO".to_string()),
                     arrival_runway: None,
-                    exit_sector: "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string(),
-                    entry_sector: "EDMM\u{b7}EDMMTMANL\u{b7}000\u{b7}095".to_string(),
+                    exit_sector: VolumeId("EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string()),
+                    entry_sector: VolumeId("EDMM\u{b7}EDMMTMANL\u{b7}000\u{b7}095".to_string()),
                     climb_level: None,
                     descent_level: Some(9300),
                     description: "INDIV".to_string(),
@@ -1132,8 +1133,8 @@ COPX:*:*:ERNAS:EDDF:*:EDMM\xb7EDUUDON14\xb7315\xb7355:EDMM\xb7EDMMALB\xb7245\xb7
                     fix: Some("MIQ".to_string()),
                     subsequent_fix: Some("EDMA".to_string()),
                     arrival_runway: None,
-                    exit_sector: "EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string(),
-                    entry_sector: "EDMM\u{b7}EDMMTMANL\u{b7}000\u{b7}095".to_string(),
+                    exit_sector: VolumeId("EDMM\u{b7}EDMMALB\u{b7}000\u{b7}105".to_string()),
+                    entry_sector: VolumeId("EDMM\u{b7}EDMMTMANL\u{b7}000\u{b7}095".to_string()),
                     climb_level: None,
                     descent_level: Some(8000),
                     description: "MIQ".to_string(),

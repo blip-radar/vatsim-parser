@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::{self, Display},
     marker::PhantomData,
 };
 
@@ -17,12 +18,62 @@ use crate::{
 
 use super::maps::active::RunwayIdentifier;
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SectorId(pub String);
+
+impl SectorId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+impl Display for SectorId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl From<String> for SectorId {
+    fn from(id: String) -> Self {
+        Self(id)
+    }
+}
+impl From<&str> for SectorId {
+    fn from(id: &str) -> Self {
+        Self(id.to_string())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct VolumeId(pub String);
+
+impl VolumeId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+impl Display for VolumeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl From<String> for VolumeId {
+    fn from(id: String) -> Self {
+        Self(id)
+    }
+}
+impl From<&str> for VolumeId {
+    fn from(id: &str) -> Self {
+        Self(id.to_string())
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Deref)]
-pub struct Sectors(pub HashMap<String, Sector>);
+pub struct Sectors(pub HashMap<SectorId, Sector>);
 
 impl<'a> IntoIterator for &'a Sectors {
-    type Item = (&'a String, &'a Sector);
-    type IntoIter = std::collections::hash_map::Iter<'a, String, Sector>;
+    type Item = (&'a SectorId, &'a Sector);
+    type IntoIter = std::collections::hash_map::Iter<'a, SectorId, Sector>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
@@ -31,7 +82,7 @@ impl<'a> IntoIterator for &'a Sectors {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Volume {
-    pub id: String,
+    pub id: VolumeId,
     pub lower_level: u32,
     pub upper_level: u32,
     pub lateral_border: Polygon,
@@ -39,7 +90,7 @@ pub struct Volume {
 }
 impl Volume {
     pub fn new(
-        id: String,
+        id: VolumeId,
         lower_level: u32,
         upper_level: u32,
         mut lateral_border: LineString,
@@ -57,10 +108,10 @@ impl Volume {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Sector {
-    pub id: String,
+    pub id: SectorId,
     pub position_priority: Vec<String>,
     pub runway_filter: Vec<Vec<RunwayIdentifier>>,
-    pub volumes: HashSet<String>,
+    pub volumes: HashSet<VolumeId>,
     pub departure_aerodromes: HashSet<String>,
     pub arrival_aerodromes: HashSet<String>,
 }
@@ -99,7 +150,8 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<LineString> {
         return None;
     }
 
-    let line_ring = if let Some(start_point) = points.iter().next() {
+    let line_ring = {
+        let start_point = points.iter().next()?;
         let mut stack = vec![*start_point];
         let mut line_ring = vec![];
         let mut current = *start_point;
@@ -123,8 +175,6 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<LineString> {
         }
 
         line_ring
-    } else {
-        return None;
     }
     .iter()
     .map(|c| Coord::from((c.x as f64, c.y as f64)) / 1_000_000.0)
@@ -138,19 +188,24 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<LineString> {
 }
 
 impl Sectors {
-    pub fn from_ese(ese: &Ese) -> (HashMap<String, Volume>, Sectors) {
+    pub fn from_ese(ese: &Ese) -> (HashMap<VolumeId, Volume>, Sectors) {
         let (by_priorities_filters, volumes) = ese.sectors.iter().fold(
             (TwoKeyMultiMap(MultiMap::new()), HashMap::new()),
             |(mut sectors, mut volumes), (id, sector)| {
                 if let Some(polygon) = polygon_from_ese(sector) {
                     sectors.0.insert(
                         (sector.owner_priority.clone(), sector.runway_filter.clone()),
-                        (id.clone(), sector.clone()),
+                        (VolumeId::from(id.clone()), sector.clone()),
                     );
 
                     volumes.insert(
-                        id.clone(),
-                        Volume::new(id.clone(), sector.bottom, sector.top, polygon),
+                        VolumeId::from(id.clone()),
+                        Volume::new(
+                            VolumeId::from(id.clone()),
+                            sector.bottom,
+                            sector.top,
+                            polygon,
+                        ),
                     );
                 } else {
                     warn!("Could not compute valid polygon for {id}");
@@ -161,13 +216,14 @@ impl Sectors {
         let sectors = by_priorities_filters.0.into_iter().fold(
             HashMap::new(),
             |mut acc, ((position_priority, runway_filter), volumes_and_sector)| {
-                let (volumes, sectors): (Vec<String>, Vec<ese::Sector>) =
+                let (volumes, sectors): (Vec<VolumeId>, Vec<ese::Sector>) =
                     volumes_and_sector.into_iter().unzip();
+                // FIXME better sector name than that of the first volume
+                let id = SectorId(volumes[0].0.clone());
                 acc.insert(
-                    // FIXME better sector name than that of the first volume
-                    volumes[0].clone(),
+                    id.clone(),
                     Sector {
-                        id: volumes[0].clone(),
+                        id,
                         position_priority,
                         runway_filter: vec![runway_filter],
                         volumes: volumes.into_iter().collect(),
@@ -189,7 +245,7 @@ impl Sectors {
         (volumes, Sectors(sectors))
     }
 
-    pub fn find_id_by_volume(&self, vol: &str) -> Option<&String> {
+    pub fn find_id_by_volume(&self, vol: &VolumeId) -> Option<&SectorId> {
         self.iter()
             .find_map(|(id, sector)| sector.volumes.contains(vol).then_some(id))
     }

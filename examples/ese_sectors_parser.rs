@@ -37,13 +37,13 @@ fn main() {
     let open_data_sectors = sectors
         .0
         .into_iter()
-        .filter(|(_id, s)| s.volumes.iter().any(|v| v.starts_with(&filter)))
+        .filter(|(_id, s)| s.volumes.iter().any(|v| v.as_str().starts_with(&filter)))
         .map(|(id, s)| {
             (
                 id.clone(),
                 OpenDataSector {
                     description: String::new(),
-                    volumes: s.volumes,
+                    volumes: s.volumes.into_iter().map(|v| v.0).collect(),
                     position_priority: s.position_priority.into_iter().map(|p| vec![p]).collect(),
                     runway_filter: s.runway_filter,
                 },
@@ -52,9 +52,9 @@ fn main() {
         .collect::<HashMap<_, _>>();
     let feature_collection: FeatureCollection = volumes
         .into_iter()
-        .filter(|(id, _v)| id.starts_with(&filter))
+        .filter(|(id, _v)| id.as_str().starts_with(&filter))
         .map(|(id, v)| Feature {
-            id: Some(Id::String(id)),
+            id: Some(Id::String(id.0)),
             geometry: Some((&v.lateral_border).into()),
             properties: Some(Map::from_iter(vec![
                 ("lower_level".to_string(), v.lower_level.into()),
