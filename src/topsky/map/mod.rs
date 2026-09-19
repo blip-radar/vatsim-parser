@@ -4,21 +4,21 @@ use std::collections::HashMap;
 
 use geo::Coord;
 use pest::{
-    iterators::{Pair, Pairs},
     Parser,
+    iterators::{Pair, Pairs},
 };
 use serde::Serialize;
 use tracing::warn;
 
 use crate::{
-    adaptation::{colours::Colour, line_styles::LineStyle, maps::active::Active, Alignment},
-    read_to_string, DegMinSec, DegMinSecExt as _, Location, Sign,
+    DegMinSec, DegMinSecExt as _, Location, Sign,
+    adaptation::{Alignment, colours::Colour, line_styles::LineStyle, maps::active::Active},
+    read_to_string,
 };
 
 use super::{
-    parse_point,
-    symbol::{parse_symbol, SymbolDef},
-    Rule, TopskyError, TopskyParser,
+    Rule, TopskyError, TopskyParser, parse_point,
+    symbol::{SymbolDef, parse_symbol},
 };
 
 enum CoordinatePart {
@@ -196,16 +196,15 @@ impl MapLine {
             let mut line = pair.into_inner();
             let start = Location::parse(line.next().unwrap());
             let end = Location::parse(line.next().unwrap());
-            if let Some(last_line) = acc.last_mut() {
-                if let Some(last_loc) = last_line.points.last() {
-                    if *last_loc == start {
-                        if *last_loc != end {
-                            last_line.points.push(end);
-                        }
-
-                        return acc;
-                    }
+            if let Some(last_line) = acc.last_mut()
+                && let Some(last_loc) = last_line.points.last()
+                && *last_loc == start
+            {
+                if *last_loc != end {
+                    last_line.points.push(end);
                 }
+
+                return acc;
             }
 
             acc.push(Self {
@@ -473,7 +472,7 @@ pub(super) fn parse_topsky_maps(file_contents: &[u8]) -> ParseMapResult {
 mod test {
     use crate::{
         adaptation::maps::active::{ActiveIds, ActiveRunways, RunwayIdentifier},
-        topsky::map::{parse_topsky_maps, Active, MapRule},
+        topsky::map::{Active, MapRule, parse_topsky_maps},
     };
 
     #[test]

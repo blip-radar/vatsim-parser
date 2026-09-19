@@ -1,14 +1,14 @@
 use std::{collections::HashMap, num::ParseIntError, str::FromStr};
 
 use bevy_derive::Deref;
-use pest::{iterators::Pair, Parser};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
 use serde::Serialize;
 use tracing::warn;
 
 use crate::adaptation::colours::Colour;
 
-use super::{map::ColourDef, TopskyError};
+use super::{TopskyError, map::ColourDef};
 
 #[derive(Parser)]
 #[grammar = "pest/topsky_settings.pest"]
@@ -126,18 +126,25 @@ Color_Active_Map_Type_17=205,255,255
         ";
         let colours = parse_topsky_settings(settings_str).unwrap().0;
 
-        assert!(
-            colours.get("Active_Map_Type_16").unwrap().colour == Colour::from_rgb(160, 160, 160)
+        assert_eq!(
+            colours.get("Active_Map_Type_16").unwrap().colour,
+            Colour::from_rgb(160, 160, 160)
         );
-        assert!(
-            colours.get("Active_Map_Type_17").unwrap().colour == Colour::from_rgb(255, 255, 255)
+        assert_eq!(
+            colours.get("Active_Map_Type_17").unwrap().colour,
+            Colour::from_rgb(255, 255, 255)
         );
-        assert!(colours.get("Active_Map_Type_18").unwrap().colour == Colour::from_rgb(0, 160, 0));
-        assert!(
-            colours.get("Active_Map_Type_19").unwrap().colour == Colour::from_rgb(225, 225, 225)
+        assert_eq!(
+            colours.get("Active_Map_Type_18").unwrap().colour,
+            Colour::from_rgb(0, 160, 0)
         );
-        assert!(
-            colours.get("Active_Map_Type_20").unwrap().colour == Colour::from_rgb(140, 140, 140)
+        assert_eq!(
+            colours.get("Active_Map_Type_19").unwrap().colour,
+            Colour::from_rgb(225, 225, 225)
+        );
+        assert_eq!(
+            colours.get("Active_Map_Type_20").unwrap().colour,
+            Colour::from_rgb(140, 140, 140)
         );
     }
 }

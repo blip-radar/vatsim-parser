@@ -6,7 +6,7 @@ authors = [
         "Alex Legler",
 ]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Parser for a variety of vatsim-related file formats"
 repository = "https://github.com/blip-radar/vatsim-parser"
 license = "LGPL-3.0-or-later"

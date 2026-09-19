@@ -1,12 +1,12 @@
-use geo::{point, Point};
-use pest::{iterators::Pair, Parser};
+use geo::{Point, point};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
 use std::io;
 use thiserror::Error;
 
 use crate::adaptation::locations::{
-    airways::{AirwayFix, AirwayGraph, AirwayType},
     Fix, GraphPosition,
+    airways::{AirwayFix, AirwayGraph, AirwayType},
 };
 
 use super::read_to_string;

@@ -1,12 +1,12 @@
 use std::{collections::HashMap, num::TryFromIntError, sync::OnceLock};
 
 use regex::Regex;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 
 use crate::{
     sct::Sct,
     symbology::Symbology,
-    topsky::{Topsky, DEFAULT_COLOURS},
+    topsky::{DEFAULT_COLOURS, Topsky},
 };
 
 use super::settings::Settings;

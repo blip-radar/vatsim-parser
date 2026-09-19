@@ -3,7 +3,7 @@ use std::io;
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use pest::{iterators::Pair, Parser};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
@@ -12,8 +12,8 @@ use tracing::warn;
 use crate::adaptation::line_styles::LineStyle;
 use crate::adaptation::{Alignment, HorizontalAlignment, VerticalAlignment};
 use crate::{
-    adaptation::{colours::Colour, symbols::SymbolRule},
     TwoKeyMap,
+    adaptation::{colours::Colour, symbols::SymbolRule},
 };
 
 use super::read_to_string;
@@ -277,8 +277,8 @@ mod test {
 
     use crate::{
         adaptation::{
-            colours::Colour, line_styles::LineStyle, symbols::SymbolRule, Alignment,
-            HorizontalAlignment, VerticalAlignment,
+            Alignment, HorizontalAlignment, VerticalAlignment, colours::Colour,
+            line_styles::LineStyle, symbols::SymbolRule,
         },
         symbology::{Item, SymbolType, Symbology},
     };

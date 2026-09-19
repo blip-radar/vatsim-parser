@@ -65,7 +65,7 @@ mod test {
     use geo::Point;
     use pretty_assertions_sorted::assert_eq_sorted;
 
-    use super::{parse_navdata_airports, NavdataAirport};
+    use super::{NavdataAirport, parse_navdata_airports};
 
     #[test]
     fn test_navdata_airports() {

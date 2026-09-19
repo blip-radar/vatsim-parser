@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use pest::{
-    iterators::{Pair, Pairs},
     Parser,
+    iterators::{Pair, Pairs},
 };
 use serde::Serialize;
 
 use crate::{adaptation::symbols::SymbolRule, read_to_string};
 
-use super::{parse_point, Rule, TopskyError, TopskyParser};
+use super::{Rule, TopskyError, TopskyParser, parse_point};
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct SymbolDef {

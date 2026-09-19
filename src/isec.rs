@@ -1,8 +1,8 @@
 use bevy_derive::{Deref, DerefMut};
-use geo::{point, Point};
+use geo::{Point, point};
 use itertools::Itertools;
 use multimap::MultiMap;
-use pest::{iterators::Pair, Parser};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
 use serde::Serialize;
 use std::{fmt::Display, io};

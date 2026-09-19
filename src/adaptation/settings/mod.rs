@@ -11,7 +11,7 @@ use crate::{prf::Prf, squawks::SquawksJson, symbology::Symbology, topsky::Topsky
 
 use self::track::TrackSettings;
 
-use super::{line_styles::LineStyle, Alignment};
+use super::{Alignment, line_styles::LineStyle};
 
 const EUROSCOPE_FONT_SIZE_FACTOR: f32 = 3.5;
 

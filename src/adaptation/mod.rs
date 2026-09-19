@@ -23,12 +23,12 @@ use thiserror::Error;
 use tracing::{trace, warn};
 
 use crate::{
-    airway::{parse_airway_txt, AirwayError},
+    airway::{AirwayError, parse_airway_txt},
     ese::{self, Constraint, Ese, EseError},
-    icao_aircraft::{parse_aircraft, AircraftError},
-    icao_airlines::{parse_airlines, AirlinesError},
-    icao_airports::{parse_airports, AirportsError},
-    navdata_airports::{parse_navdata_airports, NavdataAirportsError},
+    icao_aircraft::{AircraftError, parse_aircraft},
+    icao_airlines::{AirlinesError, parse_airlines},
+    icao_airports::{AirportsError, parse_airports},
+    navdata_airports::{NavdataAirportsError, parse_navdata_airports},
     prf::{Prf, PrfError},
     sct::{Sct, SctError},
     symbology::{Symbology, SymbologyError},
@@ -39,7 +39,7 @@ use self::{
     colours::Colours,
     constraints::extract_constraints,
     icao::{AircraftMap, Airline},
-    line_styles::{line_styles_from_topsky, Dash},
+    line_styles::{Dash, line_styles_from_topsky},
     locations::Locations,
     maps::MapFolders,
     sct_items::SctItems,

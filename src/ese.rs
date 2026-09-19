@@ -3,7 +3,7 @@ use std::fmt;
 use std::io;
 
 use geo::{Coord, LineString};
-use pest::{iterators::Pair, Parser};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -11,8 +11,8 @@ use tracing::warn;
 
 use crate::adaptation::sectors::VolumeId;
 use crate::{
-    adaptation::maps::active::RunwayIdentifier, adaptation::settings::CoordinationTiming,
-    DegMinSec, DegMinSecExt as _, Sign,
+    DegMinSec, DegMinSecExt as _, Sign, adaptation::maps::active::RunwayIdentifier,
+    adaptation::settings::CoordinationTiming,
 };
 
 use super::read_to_string;
@@ -667,9 +667,9 @@ mod test {
     use geo::line_string;
 
     use crate::{
-        adaptation::sectors::VolumeId,
-        ese::{Constraint, Ese, Position, SectorLine, SidStar, SID, STAR},
         Coord,
+        adaptation::sectors::VolumeId,
+        ese::{Constraint, Ese, Position, SID, STAR, SectorLine, SidStar},
     };
 
     #[test]

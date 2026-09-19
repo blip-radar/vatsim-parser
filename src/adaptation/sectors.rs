@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
+    TwoKeyMultiMap,
     adaptation::Quantize as _,
     ese::{self, Ese},
-    TwoKeyMultiMap,
 };
 
 use super::maps::active::RunwayIdentifier;
@@ -164,10 +164,10 @@ fn polygon_from_ese(sector: &ese::Sector) -> Option<LineString> {
                 } else {
                     stack.push(current);
                     let next = neighbours.pop().unwrap();
-                    if let Some(rev_neighbours) = adj_list.get_mut(&next) {
-                        if let Some(pos) = rev_neighbours.iter().position(|x| *x == current) {
-                            rev_neighbours.swap_remove(pos);
-                        }
+                    if let Some(rev_neighbours) = adj_list.get_mut(&next)
+                        && let Some(pos) = rev_neighbours.iter().position(|x| *x == current)
+                    {
+                        rev_neighbours.swap_remove(pos);
                     }
                     current = next;
                 }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::OnceLock;
 
-use geo::{point, Destination as _, Geodesic, Point};
+use geo::{Destination as _, Geodesic, Point, point};
 use multimap::MultiMap;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -14,14 +14,14 @@ use uom::si::length::{meter, nautical_mile};
 
 use std::collections::hash_map::Entry;
 
+use crate::adaptation::Quantize as _;
 use crate::adaptation::icao::IcaoAirport;
 use crate::adaptation::locations::airways::AirwayGraph;
-use crate::adaptation::Quantize as _;
 use crate::navdata_airports::NavdataAirport;
 use crate::{
+    Location,
     ese::{Ese, SidStar},
     sct::{self, Sct},
-    Location,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -459,7 +459,7 @@ impl Locations {
 mod test {
     use geo::point;
 
-    use crate::adaptation::locations::{Airport, Fix, Locations, Runway, NDB, VOR};
+    use crate::adaptation::locations::{Airport, Fix, Locations, NDB, Runway, VOR};
 
     #[test]
     fn test_get_by_wpt() {

@@ -7,20 +7,20 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
-    topsky::{
-        map::{FontSize, MapLine, MapRule, MapSymbol, OverrideSct, Text},
-        Topsky,
-    },
     Location,
+    topsky::{
+        Topsky,
+        map::{FontSize, MapLine, MapRule, MapSymbol, OverrideSct, Text},
+    },
 };
 
 use self::active::Active;
 
 use super::{
+    Alignment, Locations,
     colours::{Colour, Colours},
     line_styles::LineStyle,
     settings::Settings,
-    Alignment, Locations,
 };
 
 pub type MapFolders = HashMap<String, Folder>;

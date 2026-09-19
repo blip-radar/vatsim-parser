@@ -3,8 +3,8 @@ use std::sync::OnceLock;
 
 use geo::{BoundingRect as _, Contains as _, Line, Point};
 use rstar::{
+    AABB, RTree,
     primitives::{GeomWithData, Rectangle},
-    RTree, AABB,
 };
 
 use super::sectors::{SectorId, Sectors, Volume, VolumeId};
@@ -125,7 +125,7 @@ impl SectorVolumeIndex {
 
 #[cfg(test)]
 mod tests {
-    use geo::{line_string, point, Line};
+    use geo::{Line, line_string, point};
 
     use super::*;
     use crate::adaptation::sectors::Sector;

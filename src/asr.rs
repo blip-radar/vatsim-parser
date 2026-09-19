@@ -1,7 +1,7 @@
 use std::io;
 
 use geo::Coord;
-use pest::{iterators::Pair, Parser};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
 use serde::Serialize;
 use thiserror::Error;
@@ -682,11 +682,11 @@ mod test {
     use pretty_assertions_sorted::assert_eq_sorted;
 
     use crate::{
+        TwoKeyMap,
         asr::{
             AsrMap, AsrMapFixType, AsrMapNavaidType, AsrMapRunwayType, DisplayType, Leader,
             SimulationMode,
         },
-        TwoKeyMap,
     };
 
     use super::Asr;

@@ -5,20 +5,20 @@ use std::{collections::HashMap, fmt::Display};
 use geo::{Coord, Point};
 use itertools::Itertools as _;
 use pest::iterators::Pairs;
-use pest::{iterators::Pair, Parser as _};
+use pest::{Parser as _, iterators::Pair};
 use pest_derive::Parser;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::warn;
 
-use crate::topsky::map::MapLine;
 use crate::Sign;
+use crate::topsky::map::MapLine;
 use crate::{
+    DegMinSec, DegMinSecExt, Location,
     adaptation::{
         colours::Colour,
-        locations::{Fix, Runway, NDB, VOR},
+        locations::{Fix, NDB, Runway, VOR},
     },
-    DegMinSec, DegMinSecExt, Location,
 };
 
 use super::read_to_string;
@@ -657,29 +657,28 @@ fn parse_line_groups(lines: Pairs<Rule>) -> Vec<ColouredLines> {
         let start = parse_location(line.next().unwrap());
         let end = parse_location(line.next().unwrap());
         let colour_name = line.next().map(|pair| pair.as_str().to_string());
-        if let Some(last_line_group) = acc.last_mut() {
-            if last_line_group.colour_name == colour_name {
-                if let Some(last_line) = last_line_group.lines.last_mut() {
-                    if let Some(last_loc) = last_line.points.last() {
-                        if *last_loc == start {
-                            if *last_loc != end {
-                                last_line.points.push(end);
-                            }
-
-                            return acc;
-                        }
-                    }
+        if let Some(last_line_group) = acc.last_mut()
+            && last_line_group.colour_name == colour_name
+        {
+            if let Some(last_line) = last_line_group.lines.last_mut()
+                && let Some(last_loc) = last_line.points.last()
+                && *last_loc == start
+            {
+                if *last_loc != end {
+                    last_line.points.push(end);
                 }
-                last_line_group.lines.push(MapLine {
-                    points: if start == end {
-                        vec![start]
-                    } else {
-                        vec![start, end]
-                    },
-                });
 
                 return acc;
             }
+            last_line_group.lines.push(MapLine {
+                points: if start == end {
+                    vec![start]
+                } else {
+                    vec![start, end]
+                },
+            });
+
+            return acc;
         }
 
         acc.push(ColouredLines {
@@ -1198,21 +1197,21 @@ impl Display for Sct {
 mod test {
     use std::collections::HashMap;
 
-    use geo::{coord, point, Coord};
+    use geo::{Coord, coord, point};
     use pest::Parser;
     use pretty_assertions_sorted::assert_eq_sorted;
 
     use crate::{
+        Location,
         adaptation::{
             colours::Colour,
             locations::{Fix, NDB, VOR},
         },
         sct::{
-            parse_coordinate, Airport, Airway, Artcc, Geo, Label, Region, Runway, Sct, SctInfo,
-            Sid, Star,
+            Airport, Airway, Artcc, Geo, Label, Region, Runway, Sct, SctInfo, Sid, Star,
+            parse_coordinate,
         },
         topsky::map::MapLine,
-        Location,
     };
 
     use super::{ColouredLines, Rule, SctParser};

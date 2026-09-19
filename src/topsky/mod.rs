@@ -16,8 +16,8 @@ use thiserror::Error;
 
 use crate::read_to_string;
 
-use self::map::{parse_topsky_maps, ColourDef, LineStyleDef, MapDef, OverrideSct};
-use self::settings::{parse_topsky_settings, Settings};
+use self::map::{ColourDef, LineStyleDef, MapDef, OverrideSct, parse_topsky_maps};
+use self::settings::{Settings, parse_topsky_settings};
 use self::symbol::parse_topsky_symbols;
 
 #[derive(Error, Debug)]
