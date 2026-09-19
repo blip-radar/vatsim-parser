@@ -21,7 +21,7 @@ itertools = "0.15"
 # jrsonnet-evaluator = "0.5.0-pre98"
 jrsonnet-evaluator = { git = "https://github.com/deltarocks/jrsonnet", rev = "8b828f93e4fdf30d0fef817ace44f2eb2b364045" }
 multimap = "0.10.0"
-num-derive = "0.4.2"
+num-derive = "0.5.1"
 num-traits = "0.2.19"
 pest = "2.8.6"
 pest-ast = "0.3.6"
