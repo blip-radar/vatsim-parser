@@ -320,7 +320,7 @@ impl Adaptation {
     /// The single sector containing `coordinate` at `level_ft`, tie-broken by the lowest
     /// sector id designator when multiple volumes overlap.
     #[must_use]
-    pub fn find_sector(&self, coordinate: Point, level_ft: f32) -> Option<&str> {
+    pub fn find_sector(&self, coordinate: Point, level_ft: f32) -> Option<(&SectorId, &VolumeId)> {
         self.sector_index
             .find_sector(&self.sectors, &self.volumes, coordinate, level_ft)
     }

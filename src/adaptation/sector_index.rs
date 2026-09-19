@@ -112,14 +112,14 @@ impl SectorVolumeIndex {
         coordinate: Point,
         // TODO uom?
         level_ft: f32,
-    ) -> Option<&str> {
+    ) -> Option<(&SectorId, &VolumeId)> {
         self.sectors_at(sectors, volumes, coordinate)
             .filter(|(_, volume)| {
                 level_ft >= volume.lower_level as f32 && level_ft < volume.upper_level as f32
             })
             // stable return value in case of overlapping data
             .min_by_key(|(id, _)| id.as_str())
-            .map(|(id, _)| id.as_str())
+            .map(|(id, v)| (id, &v.id))
     }
 }
 
@@ -171,7 +171,7 @@ mod tests {
 
         assert_eq!(
             index.find_sector(&sectors, &volumes, point! { x: 5.0, y: 5.0 }, 5000.0),
-            Some("SEC1")
+            Some((&SectorId("SEC1".to_string()), &VolumeId("VOL1".to_string())))
         );
     }
 
@@ -197,7 +197,7 @@ mod tests {
         );
         assert_eq!(
             index.find_sector(&sectors, &volumes, point! { x: 5.0, y: 5.0 }, 15_000.0),
-            Some("SEC1")
+            Some((&SectorId("SEC1".to_string()), &VolumeId("VOL1".to_string())))
         );
         // upper_level is exclusive
         assert_eq!(
@@ -246,7 +246,7 @@ mod tests {
         let (sectors, volumes, mut index) = built(vec![(sector("SEC1", &["VOL1"]), vol)]);
         assert_eq!(
             index.find_sector(&sectors, &volumes, point! { x: 5.0, y: 5.0 }, 5000.0),
-            Some("SEC1")
+            Some((&SectorId("SEC1".to_string()), &VolumeId("VOL1".to_string())))
         );
 
         let vol2 = square_volume("VOL2", (0.0, 0.0), (10.0, 10.0), 0, 20_000);
@@ -255,7 +255,7 @@ mod tests {
 
         assert_eq!(
             index.find_sector(&sectors2, &volumes2, point! { x: 5.0, y: 5.0 }, 5000.0),
-            Some("SEC2")
+            Some((&SectorId("SEC2".to_string()), &VolumeId("VOL2".to_string())))
         );
     }
 }
