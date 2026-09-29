@@ -393,15 +393,30 @@ pub struct ResolvedCoordinationTiming {
     pub rev_time: Time,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// Missing fields deserialize from `Default::default()` below, so an older stored profile missing
+/// a field added since keeps loading with that field's documented default.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CoordinationSettings {
-    pub act_time: Time,
+    /// Time difference to the COP before an ABI is sent.
     pub abi_time: Time,
+    /// Time difference to the COP before an ACT is sent.
+    pub act_time: Time,
+    /// Time difference to the COP before a REV is no longer sent, after this only RAP/RRV are sent.
     pub rev_time: Time,
     /// LAM acknowledgement timeout
     pub lam_timeout: Time,
+    /// ACP/RJC decision timeout for an outgoing RAP/RRV/CDN once the partner has answered SBY.
+    /// Unlike `lam_timeout`, this waits on a controller's decision rather than an automatic
+    /// reply.
+    pub dialogue_timeout: Time,
+    /// How long a `HandOver` (COF sent and acknowledged, no MAS) waits before being set to `Left`.
+    pub handover_to_left: Time,
+    /// Time a `Left` coordination remains, before becoming fully `Terminated`.
+    pub left_to_terminated: Time,
+    /// Delay after sending a MAC for a partner change before the ACT to the new unit is sent.
+    pub act_delay_after_mac: Time,
     /// Per-partner-FIR overrides, keyed by the partner FIR.
-    #[serde(default)]
     pub fir_overrides: HashMap<String, CoordinationTiming>,
 }
 
@@ -410,6 +425,10 @@ impl CoordinationSettings {
     const DEFAULT_ABI_TIME_MIN: f32 = 30.0;
     const DEFAULT_REV_TIME_MIN: f32 = 5.0;
     const DEFAULT_LAM_TIMEOUT_SEC: f32 = 5.0;
+    const DEFAULT_DIALOGUE_TIMEOUT_SEC: f32 = 120.0;
+    const DEFAULT_HANDOVER_TO_LEFT_SEC: f32 = 60.0;
+    const DEFAULT_LEFT_TO_TERMINATED_SEC: f32 = 300.0;
+    const DEFAULT_ACT_DELAY_AFTER_MAC_SEC: f32 = 5.0;
 
     /// Resolves the effective ABI/ACT/REV timing for a given partner FIR and/or a
     /// specific matched `Constraint`'s own override.
@@ -443,6 +462,10 @@ impl Default for CoordinationSettings {
             abi_time: Time::new::<minute>(Self::DEFAULT_ABI_TIME_MIN),
             rev_time: Time::new::<minute>(Self::DEFAULT_REV_TIME_MIN),
             lam_timeout: Time::new::<second>(Self::DEFAULT_LAM_TIMEOUT_SEC),
+            dialogue_timeout: Time::new::<second>(Self::DEFAULT_DIALOGUE_TIMEOUT_SEC),
+            handover_to_left: Time::new::<second>(Self::DEFAULT_HANDOVER_TO_LEFT_SEC),
+            left_to_terminated: Time::new::<second>(Self::DEFAULT_LEFT_TO_TERMINATED_SEC),
+            act_delay_after_mac: Time::new::<second>(Self::DEFAULT_ACT_DELAY_AFTER_MAC_SEC),
             fir_overrides: HashMap::new(),
         }
     }
@@ -494,6 +517,42 @@ mod coordination_settings_tests {
 
     fn settings() -> CoordinationSettings {
         CoordinationSettings::default()
+    }
+
+    #[test]
+    fn all_timers_default_to_their_documented_values() {
+        let s = settings();
+        assert_eq!(s.act_time, Time::new::<minute>(15.0));
+        assert_eq!(s.abi_time, Time::new::<minute>(30.0));
+        assert_eq!(s.rev_time, Time::new::<minute>(5.0));
+        assert_eq!(s.lam_timeout, Time::new::<second>(5.0));
+        assert_eq!(s.dialogue_timeout, Time::new::<second>(120.0));
+        assert_eq!(s.handover_to_left, Time::new::<second>(60.0));
+        assert_eq!(s.left_to_terminated, Time::new::<second>(300.0));
+        assert_eq!(s.act_delay_after_mac, Time::new::<second>(5.0));
+    }
+
+    #[test]
+    fn all_timers_default_when_missing_from_json() {
+        let s: CoordinationSettings = serde_json::from_str("{}").expect("deserializes from {}");
+        assert_eq!(s, settings());
+    }
+
+    #[test]
+    fn a_field_present_in_json_overrides_its_default_while_the_rest_still_default() {
+        let s: CoordinationSettings = serde_json::from_str(r#"{"lam_timeout":10.0}"#)
+            .expect("deserializes with only lam_timeout set");
+        assert_eq!(
+            s.lam_timeout,
+            Time::new::<second>(10.0),
+            "explicit value wins"
+        );
+        assert_eq!(s.act_time, settings().act_time, "still defaults");
+        assert_eq!(
+            s.dialogue_timeout,
+            settings().dialogue_timeout,
+            "still defaults"
+        );
     }
 
     #[test]
