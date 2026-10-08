@@ -418,6 +418,11 @@ pub struct CoordinationSettings {
     pub act_delay_after_mac: Time,
     /// Per-partner-FIR overrides, keyed by the partner FIR.
     pub fir_overrides: HashMap<String, CoordinationTiming>,
+    /// Id of the synthetic position representing everything outside the adaptation (an unowned
+    /// sector, or a route point in no sector at all).
+    pub ext_position_id: String,
+    /// `ext_position_id`'s frequency.
+    pub ext_frequency: String,
 }
 
 impl CoordinationSettings {
@@ -429,6 +434,8 @@ impl CoordinationSettings {
     const DEFAULT_HANDOVER_TO_LEFT_SEC: f32 = 60.0;
     const DEFAULT_LEFT_TO_TERMINATED_SEC: f32 = 300.0;
     const DEFAULT_ACT_DELAY_AFTER_MAC_SEC: f32 = 5.0;
+    const DEFAULT_EXT_POSITION_ID: &'static str = "EXT";
+    const DEFAULT_EXT_FREQUENCY: &'static str = "122.800";
 
     /// Resolves the effective ABI/ACT/REV timing for a given partner FIR and/or a
     /// specific matched `Constraint`'s own override.
@@ -467,6 +474,8 @@ impl Default for CoordinationSettings {
             left_to_terminated: Time::new::<second>(Self::DEFAULT_LEFT_TO_TERMINATED_SEC),
             act_delay_after_mac: Time::new::<second>(Self::DEFAULT_ACT_DELAY_AFTER_MAC_SEC),
             fir_overrides: HashMap::new(),
+            ext_position_id: Self::DEFAULT_EXT_POSITION_ID.to_string(),
+            ext_frequency: Self::DEFAULT_EXT_FREQUENCY.to_string(),
         }
     }
 }
@@ -536,6 +545,21 @@ mod coordination_settings_tests {
     fn all_timers_default_when_missing_from_json() {
         let s: CoordinationSettings = serde_json::from_str("{}").expect("deserializes from {}");
         assert_eq!(s, settings());
+    }
+
+    #[test]
+    fn ext_position_defaults_to_documented_values() {
+        let s = settings();
+        assert_eq!(s.ext_position_id, "EXT");
+        assert_eq!(s.ext_frequency, "122.800");
+    }
+
+    #[test]
+    fn ext_position_fields_override_their_defaults_individually_from_json() {
+        let s: CoordinationSettings = serde_json::from_str(r#"{"ext_frequency":"121.500"}"#)
+            .expect("deserializes with only ext_frequency set");
+        assert_eq!(s.ext_frequency, "121.500", "explicit value wins");
+        assert_eq!(s.ext_position_id, "EXT", "still defaults");
     }
 
     #[test]

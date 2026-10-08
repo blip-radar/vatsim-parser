@@ -400,6 +400,8 @@ mod tests {
             HashMap::from([("7000".to_string(), "V".to_string())])
         );
         assert!(adaptation.settings.track.vector.enabled);
+        assert_eq!(adaptation.settings.coordination.ext_position_id, "EXT");
+        assert_eq!(adaptation.settings.coordination.ext_frequency, "122.800");
     }
 
     #[test]
