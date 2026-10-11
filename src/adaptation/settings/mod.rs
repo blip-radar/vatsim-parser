@@ -384,6 +384,7 @@ pub struct CoordinationTiming {
     pub act_time: Option<Time>,
     pub abi_time: Option<Time>,
     pub rev_time: Option<Time>,
+    pub estimate_time_diff: Option<Time>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -391,6 +392,7 @@ pub struct ResolvedCoordinationTiming {
     pub act_time: Time,
     pub abi_time: Time,
     pub rev_time: Time,
+    pub estimate_time_diff: Time,
 }
 
 /// Missing fields deserialize from `Default::default()` below, so an older stored profile missing
@@ -404,6 +406,8 @@ pub struct CoordinationSettings {
     pub act_time: Time,
     /// Time difference to the COP before a REV is no longer sent, after this only RAP/RRV are sent.
     pub rev_time: Time,
+    /// Minimum change of the COP estimate that counts as a revision (revised ABI, REV, RRV).
+    pub estimate_time_diff: Time,
     /// LAM acknowledgement timeout
     pub lam_timeout: Time,
     /// ACP/RJC decision timeout for an outgoing RAP/RRV/CDN once the partner has answered SBY.
@@ -429,6 +433,7 @@ impl CoordinationSettings {
     const DEFAULT_ACT_TIME_MIN: f32 = 15.0;
     const DEFAULT_ABI_TIME_MIN: f32 = 30.0;
     const DEFAULT_REV_TIME_MIN: f32 = 5.0;
+    const DEFAULT_ESTIMATE_TIME_DIFF_MIN: f32 = 2.0;
     const DEFAULT_LAM_TIMEOUT_SEC: f32 = 5.0;
     const DEFAULT_DIALOGUE_TIMEOUT_SEC: f32 = 120.0;
     const DEFAULT_HANDOVER_TO_LEFT_SEC: f32 = 60.0;
@@ -458,6 +463,7 @@ impl CoordinationSettings {
             act_time: pick(|t| t.act_time, self.act_time),
             abi_time: pick(|t| t.abi_time, self.abi_time),
             rev_time: pick(|t| t.rev_time, self.rev_time),
+            estimate_time_diff: pick(|t| t.estimate_time_diff, self.estimate_time_diff),
         }
     }
 }
@@ -468,6 +474,7 @@ impl Default for CoordinationSettings {
             act_time: Time::new::<minute>(Self::DEFAULT_ACT_TIME_MIN),
             abi_time: Time::new::<minute>(Self::DEFAULT_ABI_TIME_MIN),
             rev_time: Time::new::<minute>(Self::DEFAULT_REV_TIME_MIN),
+            estimate_time_diff: Time::new::<minute>(Self::DEFAULT_ESTIMATE_TIME_DIFF_MIN),
             lam_timeout: Time::new::<second>(Self::DEFAULT_LAM_TIMEOUT_SEC),
             dialogue_timeout: Time::new::<second>(Self::DEFAULT_DIALOGUE_TIMEOUT_SEC),
             handover_to_left: Time::new::<second>(Self::DEFAULT_HANDOVER_TO_LEFT_SEC),
@@ -534,6 +541,7 @@ mod coordination_settings_tests {
         assert_eq!(s.act_time, Time::new::<minute>(15.0));
         assert_eq!(s.abi_time, Time::new::<minute>(30.0));
         assert_eq!(s.rev_time, Time::new::<minute>(5.0));
+        assert_eq!(s.estimate_time_diff, Time::new::<minute>(2.0));
         assert_eq!(s.lam_timeout, Time::new::<second>(5.0));
         assert_eq!(s.dialogue_timeout, Time::new::<second>(120.0));
         assert_eq!(s.handover_to_left, Time::new::<second>(60.0));
@@ -586,6 +594,7 @@ mod coordination_settings_tests {
         assert_eq!(resolved.act_time, s.act_time);
         assert_eq!(resolved.abi_time, s.abi_time);
         assert_eq!(resolved.rev_time, s.rev_time);
+        assert_eq!(resolved.estimate_time_diff, s.estimate_time_diff);
     }
 
     #[test]
@@ -597,6 +606,7 @@ mod coordination_settings_tests {
                 act_time: Some(Time::new::<minute>(20.0)),
                 abi_time: None,
                 rev_time: None,
+                estimate_time_diff: None,
             },
         );
 
@@ -604,6 +614,36 @@ mod coordination_settings_tests {
         assert_eq!(resolved.act_time, Time::new::<minute>(20.0));
         assert_eq!(resolved.abi_time, s.abi_time);
         assert_eq!(resolved.rev_time, s.rev_time);
+    }
+
+    #[test]
+    fn estimate_time_diff_resolves_constraint_then_fir_then_global() {
+        let mut s = settings();
+        s.fir_overrides.insert(
+            "EDMM".to_string(),
+            CoordinationTiming {
+                estimate_time_diff: Some(Time::new::<minute>(3.0)),
+                ..CoordinationTiming::default()
+            },
+        );
+        let constraint_timing = CoordinationTiming {
+            estimate_time_diff: Some(Time::new::<minute>(1.0)),
+            ..CoordinationTiming::default()
+        };
+
+        assert_eq!(
+            s.resolve(Some("EDMM"), Some(&constraint_timing))
+                .estimate_time_diff,
+            Time::new::<minute>(1.0)
+        );
+        assert_eq!(
+            s.resolve(Some("EDMM"), None).estimate_time_diff,
+            Time::new::<minute>(3.0)
+        );
+        assert_eq!(
+            s.resolve(None, None).estimate_time_diff,
+            Time::new::<minute>(2.0)
+        );
     }
 
     #[test]
@@ -615,12 +655,14 @@ mod coordination_settings_tests {
                 act_time: Some(Time::new::<minute>(20.0)),
                 abi_time: Some(Time::new::<minute>(40.0)),
                 rev_time: None,
+                estimate_time_diff: None,
             },
         );
         let constraint_timing = CoordinationTiming {
             act_time: Some(Time::new::<minute>(10.0)),
             abi_time: None,
             rev_time: None,
+            estimate_time_diff: None,
         };
 
         let resolved = s.resolve(Some("EDMM"), Some(&constraint_timing));
@@ -658,6 +700,7 @@ mod coordination_settings_tests {
                 act_time: Some(Time::new::<second>(1200.0)),
                 abi_time: None,
                 rev_time: None,
+                estimate_time_diff: None,
             },
         );
 
